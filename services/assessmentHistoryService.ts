@@ -103,7 +103,7 @@ export const addAssessmentEntry = (
     feedback?: string,
     categoryScores?: Record<string, number>,
     certificationHash?: string
-): Promise<AssessmentHistoryEntry> => {
+): AssessmentHistoryEntry => {
     const history = loadAssessmentHistory();
     // Use user ID if available, otherwise candidate ID
     const userId = (window as any).currentUser?.id || candidateId;
