@@ -94,7 +94,11 @@ export const dataService = {
         // A candidate is "verified" if they have at least one passed assessment
         return data.map((profile: any) => {
             const submissions = profile.assessment_submissions || [];
-            const passedCount = submissions.filter((s: any) => s.passed).length;
+            // If RLS blocks submissions or it's empty, fallback to counting skills in profile
+            const passedCount = submissions.length > 0
+                ? submissions.filter((s: any) => s.passed).length
+                : Object.keys(profile.skills || {}).length;
+
             const hasPassedAssessment = passedCount > 0;
 
             return {

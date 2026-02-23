@@ -188,21 +188,23 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
 
    // Filter Candidates
    const displayedCandidates = (rankedCandidates.length > 0 ? rankedCandidates : candidates).filter(candidate => {
+      const candidateTitle = candidate.title || '';
+
       const matchesIndustry = selectedIndustry === 'All' ||
-         candidate.title.toLowerCase().includes(selectedIndustry.toLowerCase()) ||
-         (selectedIndustry === 'Data Science' && candidate.title.includes('Data')) ||
-         (selectedIndustry === 'Software Engineering' && (candidate.title.includes('Developer') || candidate.title.includes('Engineer'))) ||
+         candidateTitle.toLowerCase().includes(selectedIndustry.toLowerCase()) ||
+         (selectedIndustry === 'Data Science' && candidateTitle.includes('Data')) ||
+         (selectedIndustry === 'Software Engineering' && (candidateTitle.includes('Developer') || candidateTitle.includes('Engineer'))) ||
          (selectedIndustry === 'Virtual Assistant' && (
-            candidate.title.toLowerCase().includes('virtual assistant') ||
-            candidate.title.toLowerCase().includes('administrative') ||
-            candidate.title.toLowerCase().includes('executive assistant') ||
+            candidateTitle.toLowerCase().includes('virtual assistant') ||
+            candidateTitle.toLowerCase().includes('administrative') ||
+            candidateTitle.toLowerCase().includes('executive assistant') ||
             Object.keys(candidate.skills).some(s => s.toLowerCase().includes('virtual assistant'))
          ));
 
       const matchesSearch = skillSearch === '' ||
-         candidate.name.toLowerCase().includes(skillSearch.toLowerCase()) ||
-         candidate.title.toLowerCase().includes(skillSearch.toLowerCase()) ||
-         Object.keys(candidate.skills).some(s => s.toLowerCase().includes(skillSearch.toLowerCase()));
+         candidate.name?.toLowerCase().includes(skillSearch.toLowerCase()) ||
+         candidateTitle.toLowerCase().includes(skillSearch.toLowerCase()) ||
+         Object.keys(candidate.skills || {}).some(s => s.toLowerCase().includes(skillSearch.toLowerCase()));
 
       const matchesExperience = (candidate.yearsOfExperience || 0) >= minExperience;
       const matchesVerified = !verifiedOnly || candidate.verified;
