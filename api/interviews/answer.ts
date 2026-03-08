@@ -47,11 +47,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             throw new ApiError(500, 'Failed to save interview session');
         }
 
-        console.log('Interview answer submitted', {
-            userId: user.id,
-            interviewId: interview.id
-        });
-
         sendSuccess(res, {
             feedback: {
                 clarity: feedback.clarity,

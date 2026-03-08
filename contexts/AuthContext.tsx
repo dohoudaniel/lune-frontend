@@ -56,8 +56,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 const type = hashParams.get('type');
 
                 if (accessToken && type === 'signup') {
-                    // This is an email verification callback - show confirmation
-                    console.log('Email verification successful!');
                     // Clean up the URL hash
                     window.history.replaceState(null, '', window.location.pathname);
                 }
@@ -79,14 +77,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-            console.log('Auth state changed:', event);
-
             // Handle email verification specifically
             if (event === 'SIGNED_IN' && newSession) {
                 const hashParams = new URLSearchParams(window.location.hash.substring(1));
                 if (hashParams.get('type') === 'signup') {
                     // Email was just verified - the user will be automatically logged in
-                    console.log('User email verified and logged in');
+                    window.history.replaceState(null, '', window.location.pathname);
                 }
             }
 
@@ -163,14 +159,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(authUser));
             } else {
                 // Use fallback user
-                console.warn('Profile fetch failed or timed out, using fallback:', error?.message);
+
                 const fallbackUser = createFallbackUser();
                 setUser(fallbackUser);
                 localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(fallbackUser));
             }
         } catch (error) {
             // Timeout or network error - use fallback
-            console.warn('Profile fetch error, using fallback:', error);
+
             const fallbackUser = createFallbackUser();
             setUser(fallbackUser);
             localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(fallbackUser));

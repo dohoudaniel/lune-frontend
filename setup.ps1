@@ -144,6 +144,4 @@ if ($startNow -eq "y") {
 }
 
 Write-Host "`n📚 For more information, check:" -ForegroundColor Cyan
-Write-Host "  - CONFIGURATION_STATUS.md" -ForegroundColor Gray
-Write-Host "  - SETUP_GUIDE.md" -ForegroundColor Gray
 Write-Host "  - backend\API_DOCUMENTATION.md" -ForegroundColor Gray

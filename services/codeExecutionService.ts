@@ -228,7 +228,7 @@ export const smartExecuteCode = async (
     try {
         return await runTestCases(sourceCode, language, testCases);
     } catch (error) {
-        console.warn('Judge0 API failed, using simulation:', error);
+        console.error('Judge0 API failed, using simulation:', error);
         return await simulateExecution(sourceCode, language, testCases);
     }
 };

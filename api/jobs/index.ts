@@ -60,7 +60,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 throw new ApiError(500, 'Failed to create job');
             }
 
-            console.log('Job created', { jobId: job.id, employerId: user.id });
             sendCreated(res, { job });
 
         } else {

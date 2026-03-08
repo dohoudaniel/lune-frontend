@@ -37,8 +37,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .update({ video_intro_url: videoUrl })
             .eq('user_id', id);
 
-        console.log('Video introduction uploaded', { userId: id });
-
         sendSuccess(res, { message: 'Video uploaded successfully', videoUrl });
 
     } catch (error) {

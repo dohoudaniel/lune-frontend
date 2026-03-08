@@ -10,7 +10,6 @@ export const getCandidateProfile = async (userId: string): Promise<Partial<Candi
             .single();
 
         if (error || !data) {
-            console.warn('Could not fetch candidate profile:', error?.message);
             return null;
         }
 

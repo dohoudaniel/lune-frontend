@@ -100,14 +100,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             throw new ApiError(500, 'Failed to save submission');
         }
 
-        console.log('Assessment submitted', {
-            userId: user.id,
-            submissionId: submission.id,
-            score: evaluation.score,
-            passed,
-            cheatingDetected
-        });
-
         sendSuccess(res, {
             submission: {
                 id: submission.id,

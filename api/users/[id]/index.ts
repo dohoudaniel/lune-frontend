@@ -108,7 +108,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 }
             }
 
-            console.log('User profile updated', { userId: id });
             sendSuccess(res, { message: 'Profile updated successfully' });
         } else {
             res.status(405).json({ error: 'Method not allowed' });

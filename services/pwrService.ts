@@ -17,7 +17,7 @@ export const mintCertificate = async (
   skill: string,
   score: number
 ): Promise<string> => {
-  console.log("Initiating Blockchain Transaction...");
+
 
   // 1. Check for Web3 Wallet
   if (typeof window !== 'undefined' && window.ethereum) {
@@ -25,7 +25,7 @@ export const mintCertificate = async (
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const address = await signer.getAddress();
-      console.log("Wallet Connected:", address);
+
 
       // In a production app, we would call the contract here:
       // const contract = new ethers.Contract(ADDRESS, ABI, signer);
@@ -38,7 +38,7 @@ export const mintCertificate = async (
       // Generate a deterministic hash based on the signature to simulate a TxHash
       const txHash = ethers.keccak256(ethers.toUtf8Bytes(signature + Date.now()));
 
-      console.log("Transaction Signed & Sent:", txHash);
+
       return txHash;
 
     } catch (error) {
@@ -47,7 +47,7 @@ export const mintCertificate = async (
       return mockMint();
     }
   } else {
-    console.warn("No Web3 Wallet detected. Falling back to Lune internal ledger.");
+
     return mockMint();
   }
 };
@@ -100,7 +100,7 @@ export const mintSkillPassport = async (
   skills: Record<string, number>,
   certifications: Array<{ skill: string; txHash?: string }>
 ): Promise<{ txHash: string; passportId: string }> => {
-  console.log("Initiating Skill Passport Minting...");
+
 
   // Generate passport data
   const passportData = {
@@ -121,7 +121,7 @@ export const mintSkillPassport = async (
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
         const address = await signer.getAddress();
-        console.log("Wallet Connected for Passport Minting:", address);
+
 
         // Sign the passport data
         const message = `Lune Skill Passport: Mint for ${candidateName}\n\nSkills: ${Object.keys(skills).join(', ')}\nCertifications: ${certifications.length}\nTimestamp: ${passportData.mintedAt}`;
@@ -131,7 +131,7 @@ export const mintSkillPassport = async (
         const txHash = ethers.keccak256(ethers.toUtf8Bytes(signature + Date.now()));
         const passportId = `LUNE-PASS-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-        console.log("Skill Passport Minted:", { txHash, passportId });
+
         return { txHash, passportId };
 
       } catch (error) {
@@ -139,7 +139,7 @@ export const mintSkillPassport = async (
         return mockMintPassport(candidateName);
       }
     } else {
-      console.warn("No Web3 Wallet detected. Falling back to Lune internal ledger for passport.");
+
       return mockMintPassport(candidateName);
     }
   } catch (err) {

@@ -406,10 +406,7 @@ class ProctoringService {
         });
 
         // Method 2: Check for display capture API usage indication
-        if ('getDisplayMedia' in navigator.mediaDevices) {
-            // Can't directly detect, but flag the capability
-            console.log('Display capture API available - monitoring for suspicious activity');
-        }
+
     }
 
     // =====================================================
@@ -670,7 +667,7 @@ class ProctoringService {
             await document.documentElement.requestFullscreen();
             this.isFullscreen = true;
         } catch (error) {
-            console.warn('Could not enter fullscreen:', error);
+
         }
     }
 

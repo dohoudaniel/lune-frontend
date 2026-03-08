@@ -37,8 +37,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             throw new ApiError(500, 'Failed to fetch user profile');
         }
 
-        console.log('User logged in', { userId: data.user.id });
-
         sendSuccess(res, {
             message: 'Login successful',
             user: profile,

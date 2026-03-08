@@ -67,13 +67,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             throw new ApiError(500, 'Failed to create assessment');
         }
 
-        console.log('Assessment generated', {
-            userId: user.id,
-            assessmentId: assessment.id,
-            skill: skillName,
-            difficulty
-        });
-
         // Return assessment without correct answers
         sendSuccess(res, {
             assessment: {

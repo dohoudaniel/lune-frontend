@@ -74,10 +74,7 @@ export const InstallPrompt: React.FC<InstallPromptProps> = ({ onDismiss }) => {
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
 
-        if (outcome === 'accepted') {
-            console.log('User accepted the install prompt');
-        } else {
-            console.log('User dismissed the install prompt');
+        if (outcome !== 'accepted') {
             localStorage.setItem('lune_install_dismissed', new Date().toISOString());
         }
 
@@ -296,7 +293,7 @@ export const registerServiceWorker = async () => {
                 scope: '/',
             });
 
-            console.log('ServiceWorker registered:', registration.scope);
+
 
             // Check for updates
             registration.addEventListener('updatefound', () => {
@@ -305,7 +302,7 @@ export const registerServiceWorker = async () => {
                     newWorker.addEventListener('statechange', () => {
                         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                             // New content is available
-                            console.log('New content available, refresh to update');
+
                         }
                     });
                 }

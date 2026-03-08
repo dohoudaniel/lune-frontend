@@ -18,9 +18,9 @@ const getWallet = async (): Promise<any | null> => {
                 PWRWallet = pwrModule.default;
             }
             pwrWallet = PWRWallet.fromSeedPhrase(SEED_PHRASE);
-            console.log('PWRCHAIN wallet initialized successfully');
+
         } catch (error) {
-            console.warn('PWR wallet module not available, using mock:', error);
+
         }
     }
     return pwrWallet;
@@ -41,11 +41,11 @@ export const mintCertificate = async (
     certificateData: CertificateData
 ): Promise<string> => {
     try {
-        console.log('Minting certificate on PWRCHAIN', { certificateData });
+
 
         const wallet = await getWallet();
         if (!wallet) {
-            console.warn('PWR wallet not initialized, using fallback');
+
             return await mockMintCertificate(certificateData);
         }
 
@@ -67,7 +67,7 @@ export const mintCertificate = async (
             Buffer.from(payload, 'utf-8')
         );
 
-        console.log('Certificate minted successfully', { txHash });
+
         return txHash.transactionHash;
 
     } catch (error) {
@@ -87,7 +87,7 @@ export const verifyCertificate = async (
     timestamp?: string;
 }> => {
     try {
-        console.log('Verifying certificate on PWRCHAIN', { txHash });
+
 
         const response = await fetch(`${PWR_CHAIN_RPC_URL}/transaction/?txnHash=${txHash}`);
 
@@ -172,7 +172,7 @@ const mockMintCertificate = async (
         setTimeout(() => {
             const dataString = JSON.stringify(certificateData);
             const hash = '0x' + Buffer.from(dataString).toString('hex').substring(0, 64).padEnd(64, '0');
-            console.log('Mock certificate minted', { hash });
+
             resolve(hash);
         }, 1500);
     });

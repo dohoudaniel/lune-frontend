@@ -18,8 +18,10 @@ import { VideoVerificationResult } from './services/videoAnalysisService';
 import { mintCertificate } from './services/pwrService';
 import { seedService } from './services/seedService';
 
-// Expose seedService to window for development
-(window as any).seedService = seedService;
+// Expose seedService to window for development only
+if (import.meta.env.DEV) {
+  (window as any).seedService = seedService;
+}
 
 import { getCandidateProfile, updateCandidateProfile } from './services/profileService';
 import { initializeAssessmentHistory } from './services/assessmentHistoryService';
@@ -720,12 +722,13 @@ Verify my certificate: ${certificateUrl}
     );
   };
 
-  return (
-    <>
-      <Suspense fallback={<LoadingFallback />}>
-        {currentView === ViewState.LANDING && <Landing onNavigate={handleNavigate} />}
-
-        {currentView === ViewState.CANDIDATE_DASHBOARD && (
+  // Render the appropriate view based on state
+  const renderContent = () => {
+    switch (currentView) {
+      case ViewState.LANDING:
+        return <Landing onNavigate={handleNavigate} />;
+      case ViewState.CANDIDATE_DASHBOARD:
+        return (
           <CandidateDashboard
             candidate={candidateProfile}
             onStartAssessment={handleStartAssessment}
@@ -734,70 +737,54 @@ Verify my certificate: ${certificateUrl}
             onOpenVideoAnalyzer={() => setShowVideoAnalyzer(true)}
             onStartTour={handleStartTour}
           />
-        )}
-
-        {currentView === ViewState.SKILL_SELECTION && renderSkillSelection()}
-
-        {/* Route to appropriate assessment type */}
-        {currentView === ViewState.ASSESSMENT && assessmentType === 'code' && (
-          <Assessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} />
-        )}
-
-        {currentView === ViewState.ASSESSMENT && assessmentType === 'scenario' && (
-          <ScenarioAssessment
-            skill={selectedSkill}
-            difficulty={selectedDifficulty}
-            onComplete={handleAssessmentComplete}
-            onCancel={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)}
-          />
-        )}
-
-        {currentView === ViewState.ASSESSMENT && assessmentType === 'spreadsheet' && (
-          <SpreadsheetAssessment
-            skill={selectedSkill}
-            difficulty={selectedDifficulty}
-            onComplete={handleAssessmentComplete}
-            onCancel={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)}
-          />
-        )}
-
-        {currentView === ViewState.ASSESSMENT && assessmentType === 'text_editor' && (
-          <TextEditorAssessment
-            skill={selectedSkill}
-            difficulty={selectedDifficulty}
-            onComplete={handleAssessmentComplete}
-            onCancel={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)}
-          />
-        )}
-
-        {currentView === ViewState.ASSESSMENT && assessmentType === 'presentation' && (
-          <PresentationAssessment
-            skill={selectedSkill}
-            difficulty={selectedDifficulty}
-            onComplete={handleAssessmentComplete}
-            onCancel={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)}
-          />
-        )}
-
-        {currentView === ViewState.ASSESSMENT && assessmentType === 'video_verification' && (
-          <VideoVerificationAssessment
-            skill={selectedSkill}
-            difficulty={selectedDifficulty}
-            onComplete={handleVideoVerificationComplete}
-            onCancel={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)}
-          />
-        )}
-
-        {currentView === ViewState.ASSESSMENT_RESULT && renderResult()}
-
-        {currentView === ViewState.EMPLOYER_DASHBOARD && (
+        );
+      case ViewState.EMPLOYER_DASHBOARD:
+        return (
           <EmployerDashboard
             onLogout={handleLogout}
             onOpenEnterpriseDashboard={() => setShowEnterpriseDashboard(true)}
             onStartTour={handleStartTour}
             userName={user?.name || 'Employer'}
           />
-        )}
+        );
+      case ViewState.SKILL_SELECTION:
+        return renderSkillSelection();
+      case ViewState.ASSESSMENT:
+        return renderAssessment();
+      case ViewState.ASSESSMENT_RESULT:
+        return renderResult();
+      case ViewState.AUTH_SELECTION:
+        return renderAuthSelection();
+      default:
+        return <Landing onNavigate={handleNavigate} />;
+    }
+  };
+
+  const renderAssessment = () => {
+    if (assessmentType === 'code') {
+      return <Assessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} />;
+    } else if (assessmentType === 'scenario') {
+      return <ScenarioAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} onCancel={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)} />;
+    } else if (assessmentType === 'spreadsheet') {
+      return <SpreadsheetAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} onCancel={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)} />;
+    } else if (assessmentType === 'text_editor') {
+      return <TextEditorAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} onCancel={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)} />;
+    } else if (assessmentType === 'presentation') {
+      return <PresentationAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} onCancel={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)} />;
+    } else if (assessmentType === 'video_verification') {
+      return <VideoVerificationAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleVideoVerificationComplete} onCancel={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)} />;
+    }
+    return null;
+  };
+
+  if (isLoading) {
+    return <LoadingFallback />;
+  }
+
+  return (
+    <>
+      <Suspense fallback={<LoadingFallback />}>
+        {renderContent()}
       </Suspense>
 
       {/* Auth Modal */}

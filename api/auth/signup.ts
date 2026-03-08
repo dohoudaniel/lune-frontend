@@ -72,8 +72,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 });
         }
 
-        console.log('User created successfully', { userId: authData.user.id, role });
-
         sendCreated(res, {
             message: 'User created successfully',
             user: {

@@ -37,7 +37,6 @@ export class ErrorBoundary extends Component<Props, State> {
 
             // Only reload if we haven't done so in the last 10 seconds (loop protection)
             if (!lastReload || (timeNow - parseInt(lastReload) > 10000)) {
-                console.log('Chunk load error detected. Reloading page...');
                 sessionStorage.setItem(storageKey, timeNow.toString());
                 window.location.reload();
                 return;

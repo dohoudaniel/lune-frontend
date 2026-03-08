@@ -96,7 +96,6 @@ export const generateAssessment = async (
 
         if (response.text) {
             const assessment = JSON.parse(response.text);
-            console.log('Generated new assessment', { skill, difficulty });
             return assessment;
         }
 

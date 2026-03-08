@@ -259,7 +259,6 @@ export const collectLearningData = (
 
     // Check consent
     if (!hasConsent(data.candidateId)) {
-        console.log('Data collection skipped: No consent');
         return null;
     }
 

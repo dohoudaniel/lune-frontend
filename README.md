@@ -40,27 +40,29 @@ A decentralized talent verification platform using AI proctoring, Gemini AI, and
 
 ```
 lune/
+├── api/                     # Vercel-style serverless routes
+│   ├── assessments/
+│   ├── auth/
+│   ├── certificates/
+│   ├── interviews/
+│   ├── jobs/
+│   └── users/
 ├── backend/                 # Node.js/Express API
 │   ├── src/
-│   │   ├── controllers/    # API request handlers
-│   │   ├── middleware/     # Auth, error handling
-│   │   ├── routes/        # API routes
-│   │   ├── services/      # Supabase, PWRCHAIN, Gemini
-│   │   └── server.ts      # Express app
-│   ├── supabase/
-│   │   └── schema.sql     # Database schema
-│   └── package.json
-├── src/                    # React frontend
-│   ├── components/        # UI components
-│   ├── services/          # API client, Supabase
-│   ├── contexts/          # React contexts (Auth)
-│   └── types.ts
-└── package.json
+│   └── supabase/schema.sql
+├── components/              # React UI components
+├── contexts/                # React contexts (Auth)
+├── lib/                     # Shared utilities (supabase, gemini, pwr)
+├── services/                # Frontend service layer
+├── src/contexts/            # Additional contexts (Realtime, Wallet)
+├── App.tsx                  # Main app + routing
+├── index.tsx                # Entry point
+└── types.ts                 # Shared TypeScript types
 ```
 
 ## 🚦 Quick Start
 
-See [SETUP_GUIDE.md](./SETUP_GUIDE.md) for detailed setup instructions.
+
 
 ### Prerequisites
 

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '../services/supabaseClient';
+import { supabase } from '../../lib/supabase';
 import { useToast } from '../../lib/toast';
 
 interface RealtimeUpdate {
@@ -41,7 +41,7 @@ export const RealtimeProvider: React.FC<{ children: ReactNode }> = ({ children }
     const subscribe = (table: string, callback: (update: RealtimeUpdate) => void) => {
         // Don't subscribe if already subscribed
         if (subscriptions.has(table)) {
-            console.warn(`Already subscribed to ${table}`);
+
             return;
         }
 
@@ -65,7 +65,7 @@ export const RealtimeProvider: React.FC<{ children: ReactNode }> = ({ children }
             )
             .subscribe((status) => {
                 if (status === 'SUBSCRIBED') {
-                    console.log(`Subscribed to ${table} updates`);
+
                 } else if (status === 'CHANNEL_ERROR') {
                     toast.error(`Failed to subscribe to ${table} updates`);
                 }
@@ -83,7 +83,7 @@ export const RealtimeProvider: React.FC<{ children: ReactNode }> = ({ children }
                 newMap.delete(table);
                 return newMap;
             });
-            console.log(`Unsubscribed from ${table}`);
+
         }
     };
 

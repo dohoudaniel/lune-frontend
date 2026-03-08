@@ -93,12 +93,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             throw new ApiError(500, 'Failed to store certificate');
         }
 
-        console.log('Certificate minted', {
-            userId: user.id,
-            certificateId: certificate.id,
-            blockchainHash
-        });
-
         sendSuccess(res, {
             message: 'Certificate minted successfully',
             certificate: {

@@ -192,7 +192,6 @@ export const recordUsedQuestions = (
     const session = sessions.find(s => s.sessionId === sessionId);
 
     if (!session) {
-        console.warn(`Session ${sessionId} not found`);
         return;
     }
 

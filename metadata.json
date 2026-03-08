@@ -1,8 +1,0 @@
-{
-  "name": "Lune - Blockchain Skill Verification",
-  "description": "A decentralized talent verification platform using AI proctoring and PWR Chain for immutable certification.",
-  "requestFramePermissions": [
-    "camera",
-    "microphone"
-  ]
-}

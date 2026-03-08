@@ -91,8 +91,7 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
                 const newSessionId = createAssessmentSession(candidateId, skill, difficulty);
                 setSessionId(newSessionId);
 
-                console.log(`Created assessment session: ${newSessionId}`);
-                console.log(`Assessment structure: 1 MC + 10 Situational + 1 Oral = 12 questions`);
+
 
                 const assessmentContent = await generateScenarioAssessment(skill, difficulty);
                 setContent(assessmentContent);
@@ -593,7 +592,7 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
 
         // Record used questions in the session before evaluation
         if (sessionId && content) {
-            console.log(`Recording ${content.situationalQuestions.length} questions for session ${sessionId}`);
+
             recordUsedQuestions(sessionId, content.situationalQuestions);
         }
 

@@ -28,12 +28,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Generate interview question using Gemini AI
         const question = await geminiService.generateInterviewQuestion(role, topic);
 
-        console.log('Mock interview started', {
-            userId: user.id,
-            role,
-            topic
-        });
-
         sendSuccess(res, {
             question,
             role,
