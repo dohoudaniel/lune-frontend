@@ -1,0 +1,230 @@
+import { AssessmentContent, Job, RecommendedCertification, InterviewFeedback, DifficultyLevel, AssessmentType, SkillCategory } from "../types";
+
+// Backend API URL for proxied Gemini calls
+// In production, VITE_API_URL must be set to the deployed backend URL
+const API_URL = import.meta.env.VITE_API_URL || '';
+
+if (!API_URL) {
+  console.warn('VITE_API_URL is not set. API calls may fail.');
+}
+
+// Skill to Category Mapping (static helper)
+const SKILL_CATEGORY_MAP: Record<string, SkillCategory> = {
+  // Tech skills
+  'React': 'frontend', 'Vue': 'frontend', 'Angular': 'frontend', 'CSS': 'frontend',
+  'JavaScript': 'frontend', 'TypeScript': 'frontend',
+  'Node.js': 'backend', 'Python': 'backend', 'Java': 'backend', 'Go': 'backend',
+  'PostgreSQL': 'backend', 'MongoDB': 'backend',
+  'AWS': 'cloud', 'Azure': 'cloud', 'GCP': 'cloud',
+  'Docker': 'devops', 'Kubernetes': 'devops', 'CI/CD': 'devops',
+  'System Design': 'architect', 'Microservices': 'architect',
+  // Non-tech
+  'Customer Support Representative': 'customer_service', 'Call Center Agent': 'customer_service',
+  'Sales Representative': 'sales', 'Business Development': 'sales',
+  'Digital Marketing': 'marketing', 'Social Media Manager': 'marketing',
+  'Virtual Assistant': 'admin', 'Project Manager': 'generalist',
+  'Public Speaking': 'communication', 'Microsoft Excel': 'office_tools'
+};
+
+const NON_TECH_CATEGORIES: SkillCategory[] = ['customer_service', 'sales', 'marketing', 'admin', 'generalist', 'communication', 'office_tools'];
+
+export const getSkillCategory = (skill: string): SkillCategory => {
+  return SKILL_CATEGORY_MAP[skill] || 'generalist';
+};
+
+export const isNonTechSkill = (skill: string): boolean => {
+  const category = getSkillCategory(skill);
+  return NON_TECH_CATEGORIES.includes(category);
+};
+
+export const getAssessmentType = (skill: string): AssessmentType => {
+  const category = getSkillCategory(skill);
+  switch (category) {
+    case 'office_tools':
+      if (skill.includes('Excel')) return 'spreadsheet';
+      if (skill.includes('PowerPoint')) return 'presentation';
+      if (skill.includes('Word')) return 'text_editor';
+      return 'scenario';
+    case 'communication':
+    case 'sales':
+    case 'customer_service':
+      return 'video_verification';
+    default:
+      return NON_TECH_CATEGORIES.includes(category) ? 'scenario' : 'code';
+  }
+};
+
+// Interfaces
+export interface ScenarioAssessmentContent {
+  title: string;
+  description: string;
+  difficulty: string;
+  roleContext: string;
+  uniqueId: string;
+  situationalQuestions: {
+    id: number;
+    scenario: string;
+    question: string;
+    options?: string[];
+    isOpenEnded: boolean;
+    requiresOralResponse?: boolean;
+    taskType: 'multiple_choice' | 'written_task' | 'oral_response';
+  }[];
+  writtenTask?: {
+    prompt: string;
+    wordLimit: number;
+    evaluationCriteria: string[];
+  };
+  rolePlayScenario?: {
+    context: string;
+    customerProfile: string;
+    objective: string;
+  };
+  oralResponseTask?: {
+    prompt: string;
+    evaluationCriteria: string[];
+    maxDurationSeconds: number;
+  };
+}
+
+export interface CheatingMetrics {
+  tabSwitches: number;
+  pasteEvents: number;
+  suspiciousEyemovements: number;
+  typingBursts: number;
+  pasteContentWarnings: number;
+}
+
+export interface SkillPassportAnalysis {
+  strengths: { skill: string; score: number; evidence: string; category: string; }[];
+  weaknesses: { skill: string; score: number; recommendation: string; resources: string[]; category: string; }[];
+  opportunities: { jobTitle: string; company: string; matchScore: number; reason: string; salaryRange: string; location: string; }[];
+  overallProfile: { summary: string; readinessScore: number; topCategory: string; growthAreas: string[]; };
+}
+
+export interface AssessmentHistoryItem {
+  skill: string;
+  score: number;
+  passed: boolean;
+  difficulty: DifficultyLevel;
+  completedAt: string;
+  category?: string;
+}
+
+export interface CertificationItem {
+  skill: string;
+  score: number;
+  issuedAt: string;
+  blockchainHash: string;
+}
+
+// =====================================================
+// API CLIENT FUNCTIONS (PROXY)
+// =====================================================
+
+const callBackend = async (endpoint: string, body: any) => {
+  try {
+    const response = await fetch(`${API_URL}/ai/${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Backend service failed: ${response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`API Error (${endpoint}):`, error);
+    throw error;
+  }
+};
+
+export const generateAssessment = async (skillName: string, difficulty: DifficultyLevel): Promise<AssessmentContent> => {
+  return callBackend('generate-assessment', { skillName, difficulty });
+};
+
+export const generateScenarioAssessment = async (skill: string, difficulty: DifficultyLevel): Promise<ScenarioAssessmentContent> => {
+  try {
+    return await callBackend('generate-scenario', { skill, difficulty });
+  } catch (e) {
+    // Fallback logic could be re-implemented here if needed, but keeping it simple for now
+    throw e;
+  }
+};
+
+export const evaluateCodeSubmission = async (
+  code: string, language: string, taskDescription: string, theoryAnswers: Record<number, number>
+): Promise<{ score: number; feedback: string }> => {
+  try {
+    return await callBackend('evaluate-submission', { code, language, taskDescription, theoryAnswers });
+  } catch (e) {
+    return { score: 0, feedback: "Evaluation failed." };
+  }
+};
+
+export const generateCheatingAnalysis = async (
+  events: string[], metrics: CheatingMetrics, codeSnapshot: string
+): Promise<{ isCheating: boolean; reason: string }> => {
+  try {
+    return await callBackend('analyze-cheating', { events, metrics, codeSnapshot });
+  } catch (e) {
+    return { isCheating: false, reason: "Analysis failed" };
+  }
+};
+
+export const evaluateScenarioResponse = async (
+  skill: string,
+  responses: { situationalAnswers: Record<number, string>; writtenResponse: string; oralResponseTranscript?: string; },
+  assessmentContent: ScenarioAssessmentContent
+): Promise<{ score: number; feedback: string; categoryScores: Record<string, number>; verbalCommunicationScore?: number }> => {
+  try {
+    return await callBackend('evaluate-scenario', { skill, responses, assessmentContent });
+  } catch (e) {
+    return { score: 0, feedback: "Evaluation failed.", categoryScores: {} };
+  }
+};
+
+export const getCareerRecommendations = async (skills: Record<string, number>): Promise<{ certifications: RecommendedCertification[], jobs: Job[] }> => {
+  try {
+    return await callBackend('career-recommendations', { skills });
+  } catch (e) {
+    return { certifications: [], jobs: [] };
+  }
+};
+
+export const matchCandidatesToJob = async (jobDescription: string, candidates: any[]): Promise<{ candidateId: string, matchReason: string, score: number }[]> => {
+  try {
+    return await callBackend('match-candidates', { jobDescription, candidates });
+  } catch (e) {
+    return [];
+  }
+};
+
+export const generateInterviewQuestion = async (role: string, topic: 'behavioral' | 'technical'): Promise<string> => {
+  try {
+    const res = await callBackend('interview-question', { role, topic });
+    return res.question;
+  } catch (e) {
+    return "Tell me about yourself.";
+  }
+};
+
+export const evaluateInterviewResponse = async (question: string, answer: string): Promise<InterviewFeedback> => {
+  try {
+    return await callBackend('evaluate-interview', { question, answer });
+  } catch (e) {
+    return { clarity: 0, confidence: 0, relevance: 0, feedback: "Error", improvedAnswer: "" };
+  }
+};
+
+export const generateSkillPassport = async (
+  assessmentHistory: AssessmentHistoryItem[], certifications: CertificationItem[], candidateName: string
+): Promise<SkillPassportAnalysis> => {
+  try {
+    return await callBackend('generate-passport', { assessmentHistory, certifications, candidateName });
+  } catch (e) {
+    // Return empty/safe default
+    throw e;
+  }
+};
