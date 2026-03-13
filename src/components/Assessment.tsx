@@ -328,7 +328,7 @@ export const Assessment: React.FC<AssessmentProps> = ({ skill, difficulty, onCom
     const passed = evaluation.score >= 70;
 
     if (passed && !cheatAnalysis.isCheating) {
-      setStatusMessage("Minting Certificate on PWR Chain...");
+      setStatusMessage("Generating Secure Certificate...");
       try {
         txHash = `cert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       } catch (e) {
@@ -406,7 +406,7 @@ export const Assessment: React.FC<AssessmentProps> = ({ skill, difficulty, onCom
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2 text-teal-400 bg-teal-900/30 px-3 py-1 rounded-full border border-teal-500/20">
             <ShieldCheck size={14} />
-            <span className="text-xs font-bold">Secured by PWR Chain</span>
+            <span className="text-xs font-bold">Secure Environment</span>
           </div>
           <motion.div
             animate={isLowTime ? { scale: [1, 1.05, 1], color: ['#fff', '#f87171', '#fff'] } : {}}

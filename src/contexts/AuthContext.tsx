@@ -20,10 +20,12 @@ interface AuthContextType {
     session: AuthSession | null;
     isLoading: boolean;
     isAuthenticated: boolean;
-    signUp: (email: string, password: string, name: string, role: 'candidate' | 'employer') => Promise<{ success: boolean; error?: string }>;
+    signUp: (email: string, password: string, first_name: string, last_name: string, role: 'candidate' | 'employer') => Promise<{ success: boolean; error?: string }>;
     login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
     verifyEmail: (token: string) => Promise<{ success: boolean; error?: string }>;
     googleLogin: (credential: string, role?: 'candidate' | 'employer') => Promise<{ success: boolean; error?: string }>;
+    requestPasswordReset: (email: string) => Promise<{ success: boolean; error?: string }>;
+    resetPassword: (token: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<void>;
 }
 
@@ -71,12 +73,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const signUp = useCallback(async (
         email: string,
         password: string,
-        name: string,
+        first_name: string,
+        last_name: string,
         role: 'candidate' | 'employer'
     ): Promise<{ success: boolean; error?: string }> => {
         try {
             setIsLoading(true);
-            await api.post('/auth/register/', { email, password, name, role });
+            await api.post('/auth/register/', { email, password, first_name, last_name, role });
             // Don't set user since they need to verify email
             return { success: true };
         } catch (error: any) {
@@ -158,20 +161,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     }, []);
 
+    const requestPasswordReset = useCallback(async (email: string) => {
+        try {
+            setIsLoading(true);
+            await api.post('/auth/password-reset/', { email });
+            return { success: true };
+        } catch (error: any) {
+            return { success: false, error: error.message || 'Failed to request password reset.' };
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    const resetPassword = useCallback(async (token: string, new_password: string) => {
+        try {
+            setIsLoading(true);
+            await api.post('/auth/password-reset-confirm/', { token, new_password });
+            return { success: true };
+        } catch (error: any) {
+            return { success: false, error: error.message || 'Failed to reset password.' };
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
     const logout = useCallback(async () => {
         try {
             setIsLoading(true);
-            // api.post('/auth/logout', {});
+            const refresh = session?.refresh_token;
+            if (refresh) {
+                await api.post('/auth/logout/', { refresh });
+            }
             setUser(null);
             setSession(null);
             localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
             localStorage.removeItem(STORAGE_KEYS.TOKEN);
         } catch (error) {
             console.error('Logout error:', error);
+            // Still clear local state even if backend call fails
+            setUser(null);
+            setSession(null);
+            localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
+            localStorage.removeItem(STORAGE_KEYS.TOKEN);
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [session]);
 
     const value: AuthContextType = {
         user,
@@ -182,6 +217,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         login,
         verifyEmail,
         googleLogin,
+        requestPasswordReset,
+        resetPassword,
         logout,
     };
 

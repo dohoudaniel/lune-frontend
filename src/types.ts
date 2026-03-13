@@ -4,11 +4,15 @@ export enum ViewState {
   AUTH_SELECTION = 'AUTH_SELECTION',
   LOGIN = 'LOGIN',
   SIGNUP = 'SIGNUP',
+  FORGOT_PASSWORD = 'FORGOT_PASSWORD',
+  RESET_PASSWORD = 'RESET_PASSWORD',
   CANDIDATE_DASHBOARD = 'CANDIDATE_DASHBOARD',
   SKILL_SELECTION = 'SKILL_SELECTION',
   ASSESSMENT = 'ASSESSMENT',
   ASSESSMENT_RESULT = 'ASSESSMENT_RESULT',
   EMPLOYER_DASHBOARD = 'EMPLOYER_DASHBOARD',
+  VERIFY_EMAIL = 'VERIFY_EMAIL',
+  CHECK_EMAIL = 'CHECK_EMAIL',
 }
 
 export enum UserRole {
@@ -36,14 +40,13 @@ export interface CandidateProfile {
   image?: string;
   videoIntroUrl?: string;
   skills: Record<string, number>; // skillId -> percentage
-  certifications: string[]; // PWR Chain Transaction Hashes
+  certifications: string[]; // Certificate IDs
   bio?: string;
   experience?: string; // Text summary
   yearsOfExperience?: number; // Numeric
   preferredWorkMode?: 'Remote' | 'Hybrid' | 'On-site';
   verified?: boolean; // UI helper
   passportId?: string;
-  passportTxHash?: string;
 }
 
 export interface Job {
@@ -54,6 +57,8 @@ export interface Job {
   type: string;
   salary: string;
   description?: string;
+  required_skills?: string[];
+  created_at?: string;
   matchScore?: number;
   matchReason?: string;
 }
@@ -86,6 +91,11 @@ export interface AssessmentContent {
     question: string;
     options: string[];
   }[];
+  testCases?: {
+    name: string;
+    input: string;
+    expected_output: string;
+  }[];
 }
 
 export interface CertificateDetails {
@@ -111,7 +121,7 @@ export interface InterviewFeedback {
 export interface Notification {
   id: string;
   userId: string;
-  type: 'certificate_verified' | 'certificate_minted' | 'job_match' | 'profile_view';
+  type: 'certificate_verified' | 'certificate_issued' | 'job_match' | 'profile_view';
   title: string;
   message: string;
   relatedData?: {

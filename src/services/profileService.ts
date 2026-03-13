@@ -20,3 +20,21 @@ export const updateCandidateProfile = async (userId: string, updates: Partial<Ca
         return false;
     }
 };
+export const getEmployerProfile = async (userId: string): Promise<any | null> => {
+    try {
+        return await api.get(`/profiles/employer/${userId}/`);
+    } catch (error) {
+        console.error('Error in getEmployerProfile:', error);
+        return null;
+    }
+};
+
+export const updateEmployerProfile = async (updates: any): Promise<boolean> => {
+    try {
+        await api.put(`/profiles/employer/`, updates);
+        return true;
+    } catch (error) {
+        console.error('Error in updateEmployerProfile:', error);
+        return false;
+    }
+};

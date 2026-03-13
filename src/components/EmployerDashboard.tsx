@@ -1134,7 +1134,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
                            Verified Talent Pool
                         </h3>
                         <p className="text-white/90 text-sm">
-                           {candidates.filter(c => c.verified).length} candidates with blockchain-verified skills ready to hire
+                           {candidates.filter(c => c.verified).length} candidates with verified skills ready to hire
                         </p>
                      </div>
                      <button
@@ -1196,7 +1196,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
                                        onClick={() => openProfile(candidate, 'credentials')}
                                        className="absolute top-4 right-4 bg-teal text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm backdrop-blur-md bg-opacity-90 hover:scale-105 transition"
                                     >
-                                       <Award size={12} /> PWR Certified
+                                       <Award size={12} /> Verified
                                     </button>
                                     {candidate.certifications.length > 0 && (
                                        <button

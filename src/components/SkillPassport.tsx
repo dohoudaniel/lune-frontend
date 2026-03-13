@@ -27,7 +27,7 @@ interface SelectedSkillDetail {
     category: string;
     evidence: string;
     assessmentDate?: string;
-    blockchainHash?: string;
+    certificateId?: string;
 }
 
 export const SkillPassport: React.FC<SkillPassportProps> = ({
@@ -81,7 +81,7 @@ export const SkillPassport: React.FC<SkillPassportProps> = ({
                         skill: skillName,
                         score: 85,
                         issuedAt: date,
-                        blockchainHash: hash
+                        certificateId: hash
                     };
                 });
 
@@ -155,7 +155,7 @@ export const SkillPassport: React.FC<SkillPassportProps> = ({
             category: strength.category,
             evidence: strength.evidence,
             assessmentDate: assessment?.completedAt || cert?.issuedAt,
-            blockchainHash: cert?.blockchainHash
+            certificateId: cert?.certificateId
         });
     };
 
@@ -236,14 +236,14 @@ export const SkillPassport: React.FC<SkillPassportProps> = ({
                                     </p>
                                 </div>
                             )}
-                            {selectedSkill.blockchainHash && (
-                                <div className="p-3 bg-purple-50 rounded-xl">
-                                    <div className="flex items-center gap-2 text-purple-600 mb-1">
-                                        <ShieldCheck className="w-4 h-4" />
-                                        <span className="text-xs font-medium">Blockchain Hash</span>
+                             {selectedSkill.certificateId && (
+                                <div className="p-3 bg-blue-50 rounded-xl">
+                                    <div className="flex items-center gap-2 text-blue-600 mb-1">
+                                        <Award className="w-4 h-4" />
+                                        <span className="text-xs font-medium">Certificate ID</span>
                                     </div>
-                                    <p className="text-purple-800 font-mono text-xs truncate" title={selectedSkill.blockchainHash}>
-                                        {selectedSkill.blockchainHash.slice(0, 16)}...
+                                    <p className="text-blue-800 font-mono text-xs truncate" title={selectedSkill.certificateId}>
+                                        {selectedSkill.certificateId.slice(0, 16).toUpperCase()}
                                     </p>
                                 </div>
                             )}

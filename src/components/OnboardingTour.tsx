@@ -54,8 +54,8 @@ const CANDIDATE_TOUR_STEPS: TourStep[] = [
     },
     {
         id: 'certificate',
-        title: 'Blockchain Certificates',
-        description: 'Pass your assessment (70%+) and mint an immutable certificate on PWRCHAIN. Share it anywhere - it\'s permanently verifiable!',
+        title: 'Digital Certificates',
+        description: 'Pass your assessment (70%+) and earn a verified certificate. Share it anywhere - it\'s permanently verifiable!',
         icon: <Award className="text-orange" size={32} />,
         position: 'center'
     },
@@ -79,7 +79,7 @@ const EMPLOYER_TOUR_STEPS: TourStep[] = [
     {
         id: 'welcome',
         title: 'Welcome to Lune! 🚀',
-        description: 'Find verified talent with blockchain-backed credentials. Let us show you how to hire with confidence!',
+        description: 'Find verified talent with secure digital credentials. Let us show you how to hire with confidence!',
         icon: <Sparkles className="text-teal" size={32} />,
         position: 'center'
     },
@@ -92,8 +92,8 @@ const EMPLOYER_TOUR_STEPS: TourStep[] = [
     },
     {
         id: 'verify',
-        title: 'Blockchain Verification',
-        description: 'Each candidate\'s certification is stored on PWRCHAIN. Verify any hash instantly to confirm authentic credentials.',
+        title: 'Secure Verification',
+        description: 'Each candidate\'s certification is securely stored. Verify any credential instantly to confirm authenticity.',
         icon: <ShieldCheck className="text-teal" size={32} />,
         position: 'center'
     },

@@ -1,6 +1,10 @@
 import React, { useState, useEffect, Suspense, lazy, Component, ErrorInfo, ReactNode } from 'react';
 import { Landing } from './components/Landing';
-import { AuthModal } from './components/AuthModal';
+import { LoginPage } from './components/auth/LoginPage';
+import { SignupPage } from './components/auth/SignupPage';
+import { ForgotPasswordPage } from './components/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from './components/auth/ResetPasswordPage';
+import { CheckEmail } from './components/auth/CheckEmail';
 import { InstallPrompt, registerServiceWorker } from './components/InstallPrompt';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -22,7 +26,7 @@ if (import.meta.env.DEV) {
   (window as any).seedService = seedService;
 }
 
-import { getCandidateProfile, updateCandidateProfile } from './services/profileService';
+import { getCandidateProfile, updateCandidateProfile, getEmployerProfile } from './services/profileService';
 import { initializeAssessmentHistory } from './services/assessmentHistoryService';
 import { initializeSessions } from './services/assessmentSessionService';
 import { initializeGamification } from './services/gamificationService';
@@ -130,7 +134,6 @@ function AppContent() {
     });
   };
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
 
   // New state for integrated components
   const [showCertificateBadge, setShowCertificateBadge] = useState(false);
@@ -153,6 +156,22 @@ function AppContent() {
   const [showPermissionModal, setShowPermissionModal] = useState(false);
 
   // Update profile when user changes and check for onboarding
+  // Handle initial routing based on URL path
+  useEffect(() => {
+    const path = window.location.pathname;
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    if (path === '/verify-email') {
+      setCurrentView(ViewState.VERIFY_EMAIL);
+    } else if (path === '/reset-password') {
+      setCurrentView(ViewState.RESET_PASSWORD);
+    } else if (path === '/login') {
+      setCurrentView(ViewState.LOGIN);
+    } else if (path === '/signup') {
+      setCurrentView(ViewState.SIGNUP);
+    }
+  }, []);
+
   useEffect(() => {
     if (user) {
       if (user.role === 'candidate') {
@@ -174,7 +193,7 @@ function AppContent() {
           }
         });
 
-        // Initialize other state from Supabase
+        // Initialize other state from Backend
         initializeAssessmentHistory(user.id);
         initializeSessions(user.id);
         initializeGamification(user.id);
@@ -182,11 +201,15 @@ function AppContent() {
         initializeNotifications(user.id);
         onboardingService.setUserId(user.id);
       } else {
-        setCandidateProfileState(prev => ({
-          ...prev,
-          id: user.id,
-          name: user.name,
-        }));
+        // Fetch real profile from Backend
+        getEmployerProfile(user.id).then((profileData) => {
+          setCandidateProfileState(prev => ({
+            ...prev,
+            id: user.id,
+            name: user.name,
+            ...profileData
+          }));
+        });
 
         initializeNotifications(user.id);
       }
@@ -208,7 +231,8 @@ function AppContent() {
 
       // Session restore on page refresh: if user is authenticated but still on LANDING,
       // redirect to their dashboard automatically
-      if (currentView === ViewState.LANDING) {
+      // OR if we were on a verification page and just finished, we want to go home (which will be dashboard)
+      if (currentView === ViewState.LANDING || currentView === ViewState.VERIFY_EMAIL || currentView === ViewState.RESET_PASSWORD) {
         if (user.role === 'employer') {
           setCurrentView(ViewState.EMPLOYER_DASHBOARD);
         } else {
@@ -227,25 +251,13 @@ function AppContent() {
       // Mark first login
       onboardingService.markFirstLogin();
     }
-  }, [user, authModalOpen]);
+  }, [user, authModalOpen, currentView]);
 
   const handleNavigate = (view: ViewState, role?: UserRole) => {
     if (role) setUserRole(role);
 
-    // Handle auth views by opening modal instead
-    if (view === ViewState.LOGIN) {
-      setAuthModalMode('login');
-      setAuthModalOpen(true);
-      return;
-    }
-    if (view === ViewState.SIGNUP) {
-      setAuthModalMode('signup');
-      setAuthModalOpen(true);
-      return;
-    }
-    if (view === ViewState.AUTH_SELECTION) {
-      setAuthModalMode('signup');
-      setAuthModalOpen(true);
+    if (view === ViewState.AUTH_SELECTION || view === ViewState.SIGNUP) {
+      setCurrentView(ViewState.SIGNUP);
       return;
     }
 
@@ -253,7 +265,6 @@ function AppContent() {
   };
 
   const handleAuthSuccess = (role: 'candidate' | 'employer') => {
-    setAuthModalOpen(false);
     if (role === 'candidate') {
       setUserRole(UserRole.CANDIDATE);
       setCurrentView(ViewState.CANDIDATE_DASHBOARD);
@@ -352,7 +363,7 @@ function AppContent() {
           score: result.score,
           difficulty: selectedDifficulty,
           issuedAt: new Date(),
-          blockchainHash: result.certificationHash,
+          verificationId: result.certificationHash,
           certificateId: `cert-${Date.now()}`
         });
       }
@@ -741,8 +752,20 @@ Verify my certificate: ${certificateUrl}
         return renderAssessment();
       case ViewState.ASSESSMENT_RESULT:
         return renderResult();
-      case ViewState.AUTH_SELECTION:
-        return renderAuthSelection();
+      case ViewState.LOGIN:
+        return <LoginPage onNavigate={handleNavigate} />;
+      case ViewState.SIGNUP:
+        return <SignupPage onNavigate={handleNavigate} onSuccess={handleAuthSuccess} />;
+      case ViewState.FORGOT_PASSWORD:
+        return <ForgotPasswordPage onNavigate={handleNavigate} />;
+      case ViewState.RESET_PASSWORD:
+        return <ResetPasswordPage onNavigate={handleNavigate} />;
+      case ViewState.CHECK_EMAIL:
+        return <CheckEmail onNavigate={handleNavigate} />;
+      case ViewState.AUTH_SELECTION: // Fallback directly to signup
+        return <SignupPage onNavigate={handleNavigate} onSuccess={handleAuthSuccess} />;
+      case ViewState.VERIFY_EMAIL:
+        return <VerifyEmail />;
       default:
         return <Landing onNavigate={handleNavigate} />;
     }
@@ -752,7 +775,7 @@ Verify my certificate: ${certificateUrl}
     if (assessmentType === 'code') {
       return <Assessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} />;
     } else if (assessmentType === 'scenario') {
-      return <ScenarioAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} onCancel={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)} />;
+      return <ScenarioAssessment skill={selectedSkill} difficulty={selectedDifficulty} candidateId={user?.id || ''} onComplete={handleAssessmentComplete} onCancel={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)} />;
     } else if (assessmentType === 'spreadsheet') {
       return <SpreadsheetAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} onCancel={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)} />;
     } else if (assessmentType === 'text_editor') {
@@ -774,14 +797,6 @@ Verify my certificate: ${certificateUrl}
       <Suspense fallback={<LoadingFallback />}>
         {renderContent()}
       </Suspense>
-
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-        initialMode={authModalMode}
-        onSuccess={handleAuthSuccess}
-      />
 
       {/* Permission Check Modal for Assessments */}
       <Suspense fallback={null}>

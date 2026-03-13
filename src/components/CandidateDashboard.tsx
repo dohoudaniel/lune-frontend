@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import { Code, Award, TrendingUp, Briefcase, MapPin, User, Play, Plus, Sparkles, CheckCircle, Loader, ArrowRight, Video, X, Upload, Edit2, Save, Bookmark, Star, Mic, Globe, Clock, Share2, Shield, ExternalLink, Eye, History, Search } from 'lucide-react';
+import { Code, Award, TrendingUp, Briefcase, MapPin, User, Play, Plus, Sparkles, CheckCircle, Loader, ArrowRight, Video, X, Upload, Edit2, Save, Bookmark, Star, Mic, Globe, Clock, Share2, Shield, ExternalLink, Eye, History, Search, Zap, Target } from 'lucide-react';
 import { CandidateProfile, RecommendedCertification, Job } from '../types';
 import { getCareerRecommendations } from '../services/geminiService';
 import { notificationService } from '../services/notificationService';
@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // Lazy load SkillPassport for performance
 const SkillPassport = lazy(() => import('./SkillPassport').then(m => ({ default: m.SkillPassport })));
+import { api } from '../lib/api';
 
 
 interface CandidateDashboardProps {
@@ -85,12 +86,21 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
    });
 
    // Skill Passport State
-   const [isMintingPassport, setIsMintingPassport] = useState(false);
+   const [isGeneratingPassport, setIsGeneratingPassport] = useState(false);
    const [passportData, setPassportData] = useState<{ txHash: string; passportId: string } | null>(null);
    const [showPassportModal, setShowPassportModal] = useState(false);
 
    const fileInputRef = useRef<HTMLInputElement>(null);
    const profilePicInputRef = useRef<HTMLInputElement>(null);
+
+   const [userStats, setUserStats] = useState<{
+      total_assessments: number;
+      passed_assessments: number;
+      average_score: number;
+      total_points: number;
+      current_streak: number;
+      longest_streak: number;
+   } | null>(null);
 
    // Update local form data when prop changes
    useEffect(() => {
@@ -103,6 +113,11 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
          preferredWorkMode: candidate.preferredWorkMode || 'Remote',
          title: candidate.title || ''
       });
+
+      // Fetch stats from backend
+      api.get('/users/me/statistics/')
+         .then(setUserStats)
+         .catch(err => console.error('Failed to fetch user stats:', err));
    }, [candidate]);
 
    const fetchRecommendations = async () => {
@@ -112,32 +127,31 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
       setLoadingRecommendations(false);
    };
 
-   // Mint Skill Passport
-   const handleMintPassport = async () => {
+   // Generate Skill Passport
+   const handleGeneratePassport = async () => {
       if (Object.keys(candidate.skills).length === 0) {
-         toast.warning("Complete at least one skill assessment before minting your passport.");
+         toast.warning("Complete at least one skill assessment before generating your passport.");
          return;
       }
 
-      setIsMintingPassport(true);
+      setIsGeneratingPassport(true);
       try {
          const passportId = `passport_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
          const txHash = `cert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
          const result = { passportId, txHash };
          setPassportData(result);
-         toast.success("🎉 Skill Passport minted successfully!");
+         toast.success("🎉 Skill Passport generated successfully!");
 
          // Update candidate profile with passport info
          onUpdateProfile({
             certifications: [...(candidate.certifications || []), result.txHash],
             passportId: result.passportId,
-            passportTxHash: result.txHash
          });
       } catch (error) {
-         toast.error("Failed to mint passport. Please try again.");
+         toast.error("Failed to generate passport. Please try again.");
          console.error(error);
       } finally {
-         setIsMintingPassport(false);
+         setIsGeneratingPassport(false);
       }
    };
 
@@ -145,7 +159,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
    const handleSharePassport = () => {
       const passportId = passportData?.passportId || (candidate as any).passportId;
       if (!passportId) {
-         toast.warning("Mint your passport first to share it.");
+         toast.warning("Generate your passport first to share it.");
          return;
       }
       const shareLink = `${window.location.origin}/passport/${passportId}`;
@@ -299,6 +313,53 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Welcome Banner */}
             <WelcomeBanner userName={candidate.name} userRole="candidate" onStartTour={onStartTour} className="mb-8" />
+
+            {/* Stats Overview */}
+            {userStats && (
+               <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+               >
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
+                     <div className="bg-orange/10 p-3 rounded-xl text-orange">
+                        <Target size={24} />
+                     </div>
+                     <div>
+                        <div className="text-2xl font-bold text-slate-900">{userStats.total_assessments}</div>
+                        <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Total Attempts</div>
+                     </div>
+                  </div>
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
+                     <div className="bg-teal/10 p-3 rounded-xl text-teal">
+                        <Award size={24} />
+                     </div>
+                     <div>
+                        <div className="text-2xl font-bold text-slate-900">{userStats.passed_assessments}</div>
+                        <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Certifications</div>
+                     </div>
+                  </div>
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
+                     <div className="bg-purple/10 p-3 rounded-xl text-purple">
+                        <TrendingUp size={24} />
+                     </div>
+                     <div>
+                        <div className="text-2xl font-bold text-slate-900">{userStats.total_points.toLocaleString()}</div>
+                        <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Total Points</div>
+                     </div>
+                  </div>
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
+                     <div className="bg-red/10 p-3 rounded-xl text-red-500">
+                        <Zap size={24} />
+                     </div>
+                     <div>
+                        <div className="text-2xl font-bold text-slate-900">{userStats.current_streak} Day{userStats.current_streak !== 1 ? 's' : ''}</div>
+                        <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Streak (Best: {userStats.longest_streak})</div>
+                     </div>
+                  </div>
+               </motion.div>
+            )}
 
             <motion.div
                variants={containerVariants}
@@ -510,14 +571,14 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4 mt-4">
-                           <div>
-                              <div className="text-2xl font-bold text-slate-900">88%</div>
-                              <div className="text-xs text-slate-500">Avg. Score</div>
-                           </div>
-                           <div>
-                              <div className="text-2xl font-bold text-slate-900">{candidate.certifications.length}</div>
-                              <div className="text-xs text-slate-500">Certificates</div>
-                           </div>
+                            <div>
+                                <div className="text-2xl font-bold text-slate-900">{Math.round(userStats?.average_score || 0)}%</div>
+                                <div className="text-xs text-slate-500">Avg. Score</div>
+                            </div>
+                            <div>
+                                <div className="text-2xl font-bold text-slate-900">{userStats?.passed_assessments || candidate.certifications.length}</div>
+                                <div className="text-xs text-slate-500">Passed</div>
+                            </div>
                         </div>
 
                         {/* Complete Profile Button */}
@@ -599,27 +660,27 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                               </div>
                            </div>
                         ) : (
-                           <div className="space-y-3">
-                              <p className="text-orange-100 text-sm">
-                                 Mint your verified skills and share with employers.
-                              </p>
+                            <div className="space-y-3">
+                               <p className="text-orange-100 text-sm">
+                                  Generate your verified skill passport and share with employers.
+                               </p>
                               <motion.button
-                                 whileHover={{ scale: 1.02 }}
-                                 whileTap={{ scale: 0.98 }}
-                                 onClick={handleMintPassport}
-                                 disabled={isMintingPassport || Object.keys(candidate.skills).length === 0}
-                                 className="w-full bg-white text-orange px-4 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition shadow-lg disabled:opacity-60 disabled:cursor-not-allowed hover:bg-gray-50"
-                              >
-                                 {isMintingPassport ? (
-                                    <span className="flex items-center gap-2">
-                                       <Loader className="animate-spin" size={16} /> Minting Passport...
-                                    </span>
-                                 ) : (
-                                    <span className="flex items-center gap-2">
-                                       <Shield size={16} /> Mint Skill Passport
-                                    </span>
-                                 )}
-                              </motion.button>
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={handleGeneratePassport}
+                                  disabled={isGeneratingPassport || Object.keys(candidate.skills).length === 0}
+                                  className="w-full bg-white text-orange px-4 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition shadow-lg disabled:opacity-60 disabled:cursor-not-allowed hover:bg-gray-50"
+                               >
+                                  {isGeneratingPassport ? (
+                                     <span className="flex items-center gap-2">
+                                        <Loader className="animate-spin" size={16} /> Generating Passport...
+                                     </span>
+                                  ) : (
+                                     <span className="flex items-center gap-2">
+                                        <Shield size={16} /> Generate Skill Passport
+                                     </span>
+                                  )}
+                               </motion.button>
                               {Object.keys(candidate.skills).length === 0 && (
                                  <p className="text-orange-200 text-xs text-center">
                                     Complete at least one assessment first

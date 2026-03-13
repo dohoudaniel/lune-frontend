@@ -83,9 +83,9 @@ export const CertificateBadge: React.FC<CertificateBadgeProps> = ({
             <div className="p-6 space-y-6">
                 {/* Certificate Info */}
                 <div className="text-center">
-                    <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium mb-3">
-                        <Shield className="w-4 h-4" />
-                        Blockchain Verified
+                    <div className="inline-flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm font-medium mb-3">
+                        <Award className="w-4 h-4" />
+                        Official Verification
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900">{certificate.skill} Certificate</h2>
                     <p className="text-gray-500 mt-1">{certificate.difficulty} Level</p>
@@ -124,15 +124,9 @@ export const CertificateBadge: React.FC<CertificateBadgeProps> = ({
                 <div className="bg-gray-50 rounded-xl p-4">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-gray-500 uppercase tracking-wide">PWRCHAIN Hash</p>
-                            <p className="font-mono text-sm text-gray-900 mt-1">{shortHash}</p>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide">Certificate ID</p>
+                            <p className="font-mono text-sm text-gray-900 mt-1">{certificate.blockchainHash.slice(0, 16).toUpperCase()}</p>
                         </div>
-                        <button
-                            onClick={() => window.open(`https://explorer.pwrlabs.io/tx/${certificate.blockchainHash}`, '_blank')}
-                            className="p-2 hover:bg-gray-200 rounded-lg transition"
-                        >
-                            <ExternalLink className="w-5 h-5 text-gray-600" />
-                        </button>
                     </div>
                 </div>
 
@@ -208,17 +202,16 @@ export const CertificateBadge: React.FC<CertificateBadgeProps> = ({
                     </div>
                 </div>
 
-                {/* NFT Info */}
-                <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-4">
+                {/* Verification Notice */}
+                <div className="bg-slate-50 rounded-xl p-4">
                     <div className="flex items-start gap-3">
-                        <div className="p-2 bg-purple-100 rounded-lg">
-                            <Award className="w-5 h-5 text-purple-600" />
+                        <div className="p-2 bg-teal/10 rounded-lg">
+                            <Shield className="w-5 h-5 text-teal" />
                         </div>
                         <div>
-                            <p className="font-medium text-gray-900">NFT-Ready Certificate</p>
+                            <p className="font-medium text-gray-900">Verified Credential</p>
                             <p className="text-sm text-gray-600 mt-1">
-                                This certificate is stored on PWRCHAIN and can be verified by anyone.
-                                Metadata is compatible with OpenSea and other NFT marketplaces.
+                                This certificate is an official record of your skill assessment and is permanently verifiable on your profile.
                             </p>
                         </div>
                     </div>

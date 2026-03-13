@@ -1,6 +1,6 @@
 /**
  * Certificate Badge Generator
- * Creates visual NFT-style badges for blockchain certificates
+ * Creates visual badges for verified skill certificates
  */
 
 export interface CertificateData {
@@ -9,7 +9,7 @@ export interface CertificateData {
     score: number;
     difficulty: 'Beginner' | 'Mid-Level' | 'Advanced';
     issuedAt: Date;
-    blockchainHash: string;
+    verificationId: string;
     certificateId: string;
 }
 
@@ -56,7 +56,7 @@ export const generateCertificateBadge = (data: CertificateData): string => {
         month: 'long',
         day: 'numeric'
     });
-    const shortHash = data.blockchainHash.slice(0, 10) + '...' + data.blockchainHash.slice(-8);
+    const shortHash = data.verificationId.slice(0, 10) + '...' + data.verificationId.slice(-8);
 
     // Score ring calculation
     const scorePercentage = data.score / 100;
@@ -162,12 +162,12 @@ export const generateCertificateBadge = (data: CertificateData): string => {
   <!-- Divider -->
   <line x1="50" y1="400" x2="350" y2="400" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
   
-  <!-- Blockchain Info -->
+  <!-- Verification Info -->
   <g transform="translate(200, 430)">
     <text x="0" y="0" font-family="monospace" font-size="9" 
-          fill="rgba(255,255,255,0.4)" text-anchor="middle">PWRCHAIN VERIFIED</text>
+          fill="rgba(255,255,255,0.4)" text-anchor="middle">OFFICIALLY VERIFIED</text>
     <text x="0" y="15" font-family="monospace" font-size="8" 
-          fill="${style.primaryColor}" text-anchor="middle">${shortHash}</text>
+          fill="${style.primaryColor}" text-anchor="middle">${data.verificationId.slice(0, 16).toUpperCase()}</text>
   </g>
   
   <!-- Date -->
@@ -267,7 +267,7 @@ export const generateNFTMetadata = (data: CertificateData): object => {
         name: `Lune ${data.skill} Certificate`,
         description: `Verified ${data.difficulty} level ${data.skill} certification with a score of ${data.score}/100. Issued by Lune Skill Verification Platform.`,
         image: `ipfs://placeholder/${data.certificateId}.png`, // Would be replaced with actual IPFS hash
-        external_url: `${window.location.origin}/verify/${data.blockchainHash}`,
+        external_url: `${window.location.origin}/verify/${data.verificationId}`,
         attributes: [
             {
                 trait_type: 'Skill',
@@ -286,10 +286,6 @@ export const generateNFTMetadata = (data: CertificateData): object => {
                 trait_type: 'Issue Date',
                 value: Math.floor(data.issuedAt.getTime() / 1000),
                 display_type: 'date'
-            },
-            {
-                trait_type: 'Blockchain',
-                value: 'PWRCHAIN'
             },
             {
                 trait_type: 'Verified',
@@ -311,9 +307,9 @@ export const generateNFTMetadata = (data: CertificateData): object => {
 /**
  * Generate shareable certificate link
  */
-export const generateShareableLink = (blockchainHash: string): string => {
+export const generateShareableLink = (verificationId: string): string => {
     const baseUrl = window.location.origin;
-    return `${baseUrl}/verify/${blockchainHash}`;
+    return `${baseUrl}/verify/${verificationId}`;
 };
 
 /**
@@ -324,11 +320,11 @@ export const generateShareText = (data: CertificateData): {
     linkedin: string;
     generic: string;
 } => {
-    const link = generateShareableLink(data.blockchainHash);
+    const link = generateShareableLink(data.verificationId);
 
     return {
-        twitter: `🎉 I just earned my ${data.skill} certification on @LunePlatform with a score of ${data.score}/100! Verified on blockchain. ${link} #VerifiedSkills #Web3 #TechCareers`,
-        linkedin: `I'm excited to share that I've earned a verified ${data.skill} certification through Lune's blockchain-based skill verification platform!\n\n📊 Score: ${data.score}/100\n🏆 Level: ${data.difficulty}\n🔗 Verified on PWRCHAIN\n\nView my certificate: ${link}`,
-        generic: `I earned my ${data.skill} certification with a score of ${data.score}/100! Verified on blockchain: ${link}`,
+        twitter: `🎉 I just earned my ${data.skill} certification on @LunePlatform with a score of ${data.score}/100! #VerifiedSkills #CareerGrowth #LunePlatforms`,
+        linkedin: `I'm excited to share that I've earned a verified ${data.skill} certification through Lune's skill verification platform!\n\n📊 Score: ${data.score}/100\n🏆 Level: ${data.difficulty}\n\nView my certificate: ${link}`,
+        generic: `I earned my ${data.skill} certification with a score of ${data.score}/100! Verified on Lune: ${link}`,
     };
 };

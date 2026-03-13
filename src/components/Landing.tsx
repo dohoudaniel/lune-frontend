@@ -24,7 +24,7 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
             "price": "0",
             "priceCurrency": "USD"
         },
-        "description": "Blockchain-powered skill verification and AI-driven talent assessment platform.",
+        "description": "AI-driven skill verification and talent assessment platform.",
         "aggregateRating": {
             "@type": "AggregateRating",
             "ratingValue": "4.8",
@@ -62,8 +62,8 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
         <div className="min-h-screen bg-cream font-sans selection:bg-teal selection:text-white flex flex-col overflow-x-hidden">
             <SEO
                 title="Lune | AI-Verified Talent Platform"
-                description="Hire pre-vetted Virtual Assistants and Operations talent. Lune uses AI scenarios and blockchain verification to ensure 100% authentic skills."
-                keywords="hiring platform, virtual assistant, skill verification, blockchain credentials, AI assessment"
+                description="Hire pre-vetted Virtual Assistants and Operations talent. Lune uses AI scenarios and strict verification to ensure 100% authentic skills."
+                keywords="hiring platform, virtual assistant, skill verification, verified credentials, AI assessment"
                 structuredData={structuredData}
             />
             {/* Header */}
@@ -478,7 +478,7 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                         className="text-center max-w-3xl mx-auto mb-16"
                     >
                         <h2 className="text-3xl font-bold text-slate-900 mb-4">The Future of Hiring is Verified</h2>
-                        <p className="text-slate-600">We combine AI's advanced reasoning with PWR Chain's immutability to create a hiring platform you can trust.</p>
+                        <p className="text-slate-600">We combine AI's advanced reasoning with strict identity verification to create a hiring platform you can trust.</p>
                     </motion.div>
 
                     <div className="grid md:grid-cols-3 gap-8">
@@ -577,7 +577,7 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                     </div>
                 </div>
 
-                {/* Technology Deep Dive: Anti-Cheating & Blockchain */}
+                {/* Technology Deep Dive: Anti-Cheating */}
                 <div className="mt-32">
                     <div className="bg-slate-900 rounded-[3rem] p-8 md:p-20 text-white overflow-hidden relative">
                         {/* Abstract background shapes */}
@@ -586,9 +586,9 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
 
                         <div className="relative z-10 grid lg:grid-cols-2 gap-16 items-center">
                             <div>
-                                <h2 className="text-3xl md:text-5xl font-bold mb-8 leading-tight">Ironclad Integrity via <span className="text-teal-400">AI</span> & <span className="text-orange">Blockchain</span>.</h2>
+                                <h2 className="text-3xl md:text-5xl font-bold mb-8 leading-tight">Ironclad Integrity via <span className="text-teal-400">AI</span>.</h2>
                                 <p className="text-slate-300 text-lg mb-12 leading-relaxed">
-                                    We combine military-grade proctoring with immutable blockchain records to create the world's most trusted skill verification system.
+                                    We combine military-grade proctoring with rigid identity checks to create the world's most trusted skill verification system.
                                 </p>
 
                                 <div className="space-y-8">
@@ -609,9 +609,9 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                                             <Lock className="text-orange" size={24} />
                                         </div>
                                         <div>
-                                            <h4 className="text-xl font-bold mb-2">PWR Chain Verification</h4>
+                                            <h4 className="text-xl font-bold mb-2">Secure Verification</h4>
                                             <p className="text-slate-400 text-sm">
-                                                Passing scores are instantly minted as Soulbound Tokens (SBTs) on the PWR Chain. These credentials are tamper-proof and universally verifiable by any employer.
+                                                Passing scores are instantly paired with unique, secure digital certificates. These credentials are tamper-proof and universally verifiable by any employer.
                                             </p>
                                         </div>
                                     </div>

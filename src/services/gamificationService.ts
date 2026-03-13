@@ -255,18 +255,30 @@ let cachedGamificationData: Record<string, UserGamification> = {};
 
 export const initializeGamification = async (userId: string) => {
     try {
-        const data = await api.get(`/users/${userId}/preferences`);
+        const stats = await api.get('/users/me/statistics/');
+        const achievementsData = await api.get('/users/me/achievements/');
 
-        if (data && data.gamification) {
-            cachedGamificationData = data.gamification;
-            // Backup to local storage
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedGamificationData));
-        } else {
-            // Fallback load
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-                cachedGamificationData = JSON.parse(stored);
+        if (stats) {
+            const user = initializeUser(userId);
+            user.totalXP = stats.total_points;
+            user.currentXP = stats.total_points % XP_PER_LEVEL;
+            user.level = Math.floor(stats.total_points / XP_PER_LEVEL) + 1;
+            user.streak.current = stats.current_streak;
+            user.streak.longest = stats.longest_streak;
+            
+            if (achievementsData) {
+                achievementsData.forEach((a: any) => {
+                    const localAch = user.achievements.find(la => la.id === a.achievement_id);
+                    if (localAch) {
+                        localAch.unlocked = true;
+                        user.unlockedAt[a.achievement_id] = a.earned_at;
+                    }
+                });
             }
+
+            const data = getStoredData();
+            data[userId] = user;
+            saveData(data);
         }
     } catch (err) {
         console.error('Failed to init gamification:', err);
@@ -288,16 +300,15 @@ const saveData = (data: Record<string, UserGamification>): void => {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 
-        // Background sync to the first user in the dictionary 
-        // (usually there's only one user on the client anyway)
+        // Background sync to user preferences (for extra UI state)
         const userIds = Object.keys(data);
         if (userIds.length > 0) {
             const userId = userIds[0];
-            api.get(`/users/${userId}/preferences`)
+            api.get(`/users/${userId}/preferences/`)
                 .then(async (profData) => {
                     const prefs = profData || {};
                     prefs.gamification = data;
-                    await api.put(`/users/${userId}/preferences`, prefs);
+                    await api.put(`/users/${userId}/preferences/`, prefs);
                 })
                 .catch(() => {});
         }
@@ -622,7 +633,7 @@ export const updateDailyChallenge = (userId: string, challengeId: string, progre
 export const getLeaderboard = (type: 'xp' | 'streak' | 'assessments' = 'xp', limit: number = 10): LeaderboardEntry[] => {
     const data = getStoredData();
 
-    const entries: LeaderboardEntry[] = Object.values(data).map(user => ({
+    const entries: LeaderboardEntry[] = (Object.values(data) as UserGamification[]).map(user => ({
         rank: 0,
         userId: user.userId,
         userName: `User ${user.userId.slice(-4)}`, // Anonymous

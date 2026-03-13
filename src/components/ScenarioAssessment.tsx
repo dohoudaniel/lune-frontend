@@ -23,6 +23,7 @@ import {
 interface ScenarioAssessmentProps {
     skill: string;
     difficulty: DifficultyLevel;
+    candidateId: string;
     onComplete: (result: EvaluationResult) => void;
     onCancel?: () => void;
 }
@@ -32,6 +33,7 @@ type AssessmentStep = 'loading' | 'context' | 'situational' | 'oral' | 'submitti
 export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
     skill,
     difficulty,
+    candidateId,
     onComplete,
     onCancel
 }) => {
@@ -87,7 +89,6 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
         const loadContent = async () => {
             try {
                 // Create assessment session for tracking
-                const candidateId = 'candidate_' + Date.now(); // In production, use actual user ID
                 const newSessionId = createAssessmentSession(candidateId, skill, difficulty);
                 setSessionId(newSessionId);
 

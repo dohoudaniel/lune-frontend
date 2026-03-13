@@ -45,7 +45,7 @@ class OnboardingService {
     private async syncFromSupabase() {
         if (!this.userId) return;
         try {
-            const data = await api.get(`/users/${this.userId}/preferences`);
+            const data = await api.get(`/users/${this.userId}/preferences/`);
             if (data) {
                 const prefs = data as any;
                 if (prefs.onboarding) {
@@ -75,11 +75,11 @@ class OnboardingService {
                 dismissedTips: this.getDismissedTips()
             };
 
-            const data = await api.get(`/users/${this.userId}/preferences`);
+            const data = await api.get(`/users/${this.userId}/preferences/`);
             const prefs = data || {};
             prefs.onboarding = state;
 
-            await api.put(`/users/${this.userId}/preferences`, prefs);
+            await api.put(`/users/${this.userId}/preferences/`, prefs);
         } catch (e) {
             console.error('Failed to sync onboarding', e);
         }

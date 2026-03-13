@@ -41,7 +41,7 @@ let defaultUserId: string | null = null;
 export const initializeSessions = async (userId: string) => {
     defaultUserId = userId;
     try {
-        const data = await api.get(`/users/${userId}/preferences`);
+        const data = await api.get(`/users/${userId}/preferences/`);
         if (data && data.sessions) {
             cachedSessions = data.sessions;
             localStorage.setItem(SESSIONS_KEY, JSON.stringify(cachedSessions));
@@ -79,11 +79,11 @@ const saveSessions = (sessions: AssessmentSession[]): void => {
 
         // Background sync
         if (defaultUserId) {
-            api.get(`/users/${defaultUserId}/preferences`)
+            api.get(`/users/${defaultUserId}/preferences/`)
                 .then(async (data) => {
                     const prefs = data || {};
                     prefs.sessions = sessions;
-                    await api.put(`/users/${defaultUserId}/preferences`, prefs);
+                    await api.put(`/users/${defaultUserId}/preferences/`, prefs);
                 })
                 .catch(error => {
                     console.error('Failed to sync sessions', error);

@@ -8,7 +8,7 @@ let defaultUserId: string | null = null;
 export const initializeNotifications = async (userId: string) => {
     defaultUserId = userId;
     try {
-        const data = await api.get(`/users/${userId}/preferences`);
+        const data = await api.get(`/users/${userId}/preferences/`);
         if (data) {
             const prefs = data as any;
             if (prefs.notifications) {
@@ -35,10 +35,10 @@ export const initializeNotifications = async (userId: string) => {
 const syncToSupabaseAsync = async (section: 'notifications' | 'verification_events', payload: any) => {
     if (!defaultUserId) return;
     try {
-        const data = await api.get(`/users/${defaultUserId}/preferences`);
+        const data = await api.get(`/users/${defaultUserId}/preferences/`);
         const prefs = data || {};
         (prefs as any)[section] = payload;
-        await api.put(`/users/${defaultUserId}/preferences`, prefs);
+        await api.put(`/users/${defaultUserId}/preferences/`, prefs);
     } catch (e) {
         console.error('Failed to sync notifications', e);
     }

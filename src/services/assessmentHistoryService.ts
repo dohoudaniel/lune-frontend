@@ -66,28 +66,27 @@ let cachedHistory: AssessmentHistoryEntry[] = [];
  */
 export const initializeAssessmentHistory = async (userId: string) => {
     try {
-        const data = await api.get(`/assessments/history/${userId}`);
-            cachedHistory = data.map(row => ({
-                id: row.id,
-                candidateId: row.user_id,
-                skill: row.skill_id, // assuming skill_id stores the skill name in current DB
-                category: getSkillCategory(row.skill_id),
-                score: row.score,
-                passed: row.passed,
-                difficulty: 'Mid-Level', // Defaulting since it's not in the view below without a join, but we'll try to map it
-                completedAt: row.submitted_at,
-                timeSpentSeconds: row.time_spent_seconds || 0,
-                cheatingDetected: row.cheating_detected,
-                integrityScore: row.integrity_score || 100,
-                feedback: row.feedback,
-                categoryScores: row.category_scores,
-                certificationHash: row.certification_hash
-            }));
+        const data = await api.get('/assessments/history/');
+        cachedHistory = data.map((row: any) => ({
+            id: row.id,
+            candidateId: row.user,
+            skill: row.skill_name,
+            category: row.skill_category,
+            score: row.score,
+            passed: row.passed,
+            difficulty: row.difficulty,
+            completedAt: row.completed_at,
+            timeSpentSeconds: row.time_spent_seconds || 0,
+            cheatingDetected: row.cheating_detected,
+            integrityScore: row.integrity_score || 100,
+            feedback: row.feedback,
+            categoryScores: row.category_scores,
+            certificationHash: row.certification_hash
+        }));
 
-            // Backup to localstorage just in case app refreshes
-            saveAssessmentHistory(cachedHistory);
+        saveAssessmentHistory(cachedHistory);
     } catch (err) {
-        console.error('Failed to initialize history from Supabase:', err);
+        console.error('Failed to initialize history:', err);
     }
 };
 
@@ -142,9 +141,6 @@ export const addAssessmentEntry = (
     categoryScores?: Record<string, number>,
     certificationHash?: string
 ): AssessmentHistoryEntry => {
-    // Use user ID if available, otherwise candidate ID
-    const userId = (window as any).currentUser?.id || candidateId;
-
     const entry: AssessmentHistoryEntry = {
         id: `assessment_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
         candidateId,
@@ -165,30 +161,23 @@ export const addAssessmentEntry = (
     cachedHistory.push(entry);
     saveAssessmentHistory(cachedHistory);
 
-    // Save to Supabase (Async - Fire & Forget)
+    // Save to Backend (Async - Fire & Forget)
     (async () => {
         try {
-            // 1. Insert submission via API
-            await api.post(`/assessments/history/add`, {
-                user_id: candidateId,
-                assessment_id: 'dynamic', // Temporary fallback
+            await api.post('/assessments/submit/', {
+                assessment: 'dynamic_id', // Handle real IDs later
+                skill_name: skill,
+                difficulty,
                 score,
                 passed,
+                time_spent_seconds: timeSpentSeconds,
                 code_submission: '',
                 theory_answers: {},
                 feedback: feedback || '',
                 cheating_detected: cheatingDetected,
             });
-
-            // 2. Update Candidate Profile Settings via API
-            await api.post(`/users/${candidateId}/profile/update-skills`, {
-                skill,
-                score,
-                passed,
-                certificationHash
-            });
         } catch (err) {
-            console.error('Failed to sync assessment to Supabase:', err);
+            console.error('Failed to sync assessment:', err);
         }
     })();
 

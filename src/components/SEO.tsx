@@ -13,8 +13,8 @@ interface SEOProps {
 
 export const SEO: React.FC<SEOProps> = ({
     title = "Lune | Talent Beyond Borders",
-    description = "Blockchain-powered skill verification and AI-driven talent assessment platform. Get verified, get hired.",
-    keywords = "remote work, skill verification, blockchain, AI assessment, talent platform, crypto hiring",
+    description = "AI-powered skill verification and talent assessment platform. Get verified, get hired.",
+    keywords = "remote work, skill verification, AI assessment, talent platform, tech hiring",
     image = "/images/og-image.png",
     url = "https://lune.platform",
     type = "website",

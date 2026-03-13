@@ -13,7 +13,6 @@ interface SkillBadgeProps {
     recipientName: string;
     issuedAt: Date;
     certificateId: string;
-    blockchainHash?: string;
 }
 
 interface ShareableCredentialProps {
@@ -75,7 +74,7 @@ const generateBadgeSVG = (skill: string, score: number, difficulty: string, name
             <path d="M191 400 L197 406 L209 394" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
             
             <!-- Footer -->
-            <text x="200" y="460" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12" opacity="0.5">Verified on Blockchain</text>
+            <text x="200" y="460" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12" opacity="0.5">Official Lune Verification</text>
             <text x="200" y="480" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10" opacity="0.3">lune.platform/verify</text>
         </svg>
     `;
@@ -246,12 +245,6 @@ export const ShareableCredential: React.FC<ShareableCredentialProps> = ({
                                         <p className="text-gray-500">Issued</p>
                                         <p className="text-gray-900">{credential.issuedAt.toLocaleDateString()}</p>
                                     </div>
-                                    {credential.blockchainHash && (
-                                        <div className="col-span-2">
-                                            <p className="text-gray-500">Blockchain Hash</p>
-                                            <p className="font-mono text-gray-900 text-xs truncate">{credential.blockchainHash}</p>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         </motion.div>

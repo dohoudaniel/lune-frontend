@@ -17,7 +17,7 @@ interface Assessment {
 export const dataService = {
     async getJobs(): Promise<Job[]> {
         try {
-            return await api.get('/jobs');
+            return await api.get('/jobs/');
         } catch (error) {
             console.error('Error fetching jobs:', error);
             return [];
@@ -26,7 +26,7 @@ export const dataService = {
 
     async getJobById(id: string): Promise<Job | null> {
         try {
-            return await api.get(`/jobs/${id}`);
+            return await api.get(`/jobs/${id}/`);
         } catch (error) {
             console.error('Error fetching job:', error);
             return null;
@@ -35,7 +35,7 @@ export const dataService = {
 
     async createJob(job: Omit<Job, 'id' | 'created_at'>): Promise<Job | null> {
         try {
-            return await api.post('/jobs', job);
+            return await api.post('/jobs/', job);
         } catch (error) {
             console.error('Error creating job:', error);
             throw error;
@@ -44,7 +44,7 @@ export const dataService = {
 
     async getCandidates(): Promise<CandidateProfile[]> {
         try {
-            return await api.get('/candidates');
+            return await api.get('/candidates/');
         } catch (error) {
             console.error('Error fetching candidates:', error);
             return [];
@@ -53,7 +53,7 @@ export const dataService = {
 
     async getAssessments(): Promise<Assessment[]> {
         try {
-            return await api.get('/assessments');
+            return await api.get('/assessments/');
         } catch (error) {
             console.error('Error fetching assessments:', error);
             return [];
@@ -66,7 +66,7 @@ export const dataService = {
 
     async getRecordings(): Promise<any[]> {
         try {
-            return await api.get('/recordings');
+            return await api.get('/recordings/');
         } catch (error) {
             console.error('Error fetching recordings:', error);
             return [];

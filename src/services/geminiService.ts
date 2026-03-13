@@ -1,12 +1,5 @@
 import { AssessmentContent, Job, RecommendedCertification, InterviewFeedback, DifficultyLevel, AssessmentType, SkillCategory } from "../types";
-
-// Backend API URL for proxied Gemini calls
-// In production, VITE_API_URL must be set to the deployed backend URL
-const API_URL = import.meta.env.VITE_API_URL || '';
-
-if (!API_URL) {
-  console.warn('VITE_API_URL is not set. API calls may fail.');
-}
+import { api } from "../lib/api";
 
 // Skill to Category Mapping (static helper)
 const SKILL_CATEGORY_MAP: Record<string, SkillCategory> = {
@@ -115,7 +108,7 @@ export interface CertificationItem {
   skill: string;
   score: number;
   issuedAt: string;
-  blockchainHash: string;
+  certificateId: string;
 }
 
 // =====================================================
@@ -124,16 +117,7 @@ export interface CertificationItem {
 
 const callBackend = async (endpoint: string, body: any) => {
   try {
-    const response = await fetch(`${API_URL}/ai/${endpoint}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-
-    if (!response.ok) {
-      throw new Error(`Backend service failed: ${response.statusText}`);
-    }
-    return await response.json();
+    return await api.post(`/ai/${endpoint}/`, body);
   } catch (error) {
     console.error(`API Error (${endpoint}):`, error);
     throw error;
