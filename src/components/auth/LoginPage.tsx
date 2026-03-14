@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../lib/toast';
 import { GoogleLogin } from '@react-oauth/google';
 import { ViewState } from '../../types';
@@ -61,7 +61,7 @@ export const LoginPage: React.FC<{
                     useOneTap
                     shape="pill"
                     theme="outline"
-                    width="100%"
+                    width="420"
                     size="large"
                 />
             </div>

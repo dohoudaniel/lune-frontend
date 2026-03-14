@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, User, Briefcase, Code, Loader2, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../lib/toast';
 import { GoogleLogin } from '@react-oauth/google';
 import { ViewState } from '../../types';
@@ -27,7 +27,7 @@ export const SignupPage: React.FC<{
         if (!email) newErrors.email = 'Email is required';
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Invalid email format';
         if (!password) newErrors.password = 'Password is required';
-        else if (password.length < 6) newErrors.password = 'Password must be at least 6 characters';
+        else if (password.length < 8) newErrors.password = 'Password must be at least 8 characters';
         if (!firstName) newErrors.firstName = 'First name is required';
         if (!lastName) newErrors.lastName = 'Last name is required';
         
@@ -72,8 +72,9 @@ export const SignupPage: React.FC<{
                     useOneTap
                     shape="pill"
                     theme="outline"
-                    width="100%"
+                    width="420"
                     size="large"
+                    text="signup_with"
                 />
             </div>
             

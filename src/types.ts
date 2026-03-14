@@ -143,3 +143,16 @@ export interface VerificationEvent {
   verifiedBy: string; // Employer company name
   verifiedAt: string;
 }
+
+export interface AuthUser {
+    id: string;
+    email: string;
+    name: string;
+    role: 'candidate' | 'employer';
+}
+
+export interface AuthSession {
+    access_token: string;
+    refresh_token: string;
+    expires_at: number;
+}

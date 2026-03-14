@@ -14,7 +14,8 @@ import { ViewState, UserRole, EvaluationResult, CandidateProfile, DifficultyLeve
 import { CheckCircle, AlertCircle, Code, ArrowLeft, ArrowRight, Award, ShieldCheck, Share2, Copy, Linkedin, Download, ExternalLink, X, Sparkles, Building2, Video, FileSpreadsheet, Presentation as PresentationIcon, FileText, Brain } from 'lucide-react';
 import { ToastProvider, useToast } from './lib/toast';
 import { celebrateSuccess } from './lib/confetti';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './hooks/useAuth';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAssessmentType, getSkillCategory } from './services/geminiService';
 import { addAssessmentEntry } from './services/assessmentHistoryService';
@@ -107,10 +108,27 @@ const saveProfileToStorage = (profile: CandidateProfile) => {
   }
 };
 
+
+/**
+ * Maps the current URL path to a ViewState
+ */
+const getViewFromPath = (): ViewState => {
+  const path = window.location.pathname;
+  if (path === '/verify-email') return ViewState.VERIFY_EMAIL;
+  if (path === '/reset-password') return ViewState.RESET_PASSWORD;
+  if (path === '/login') return ViewState.LOGIN;
+  if (path === '/signup') return ViewState.SIGNUP;
+  if (path === '/forgot-password') return ViewState.FORGOT_PASSWORD;
+  if (path === '/check-email') return ViewState.CHECK_EMAIL;
+  if (path === '/dashboard') return ViewState.CANDIDATE_DASHBOARD;
+  if (path === '/employer') return ViewState.EMPLOYER_DASHBOARD;
+  return ViewState.LANDING;
+};
+
 function AppContent() {
   const toast = useToast();
   const { user, isAuthenticated, isLoading, logout } = useAuth();
-  const [currentView, setCurrentView] = useState<ViewState>(ViewState.LANDING);
+  const [currentView, setCurrentView] = useState<ViewState>(getViewFromPath);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<string>('');
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>('Mid-Level');
@@ -157,19 +175,14 @@ function AppContent() {
 
   // Update profile when user changes and check for onboarding
   // Handle initial routing based on URL path
+  // Handle browser back/forward buttons
   useEffect(() => {
-    const path = window.location.pathname;
-    const urlParams = new URLSearchParams(window.location.search);
-    
-    if (path === '/verify-email') {
-      setCurrentView(ViewState.VERIFY_EMAIL);
-    } else if (path === '/reset-password') {
-      setCurrentView(ViewState.RESET_PASSWORD);
-    } else if (path === '/login') {
-      setCurrentView(ViewState.LOGIN);
-    } else if (path === '/signup') {
-      setCurrentView(ViewState.SIGNUP);
-    }
+    const handlePopState = () => {
+      setCurrentView(getViewFromPath());
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   useEffect(() => {
@@ -232,19 +245,24 @@ function AppContent() {
       // Session restore on page refresh: if user is authenticated but still on LANDING,
       // redirect to their dashboard automatically
       // OR if we were on a verification page and just finished, we want to go home (which will be dashboard)
-      if (currentView === ViewState.LANDING || currentView === ViewState.VERIFY_EMAIL || currentView === ViewState.RESET_PASSWORD) {
+      // Session restore: if user is on Landing or Login/Signup but authenticated, send to dashboard.
+      // We explicitly EXCLUDE verification/reset pages so they work even if a session exists.
+      if (currentView === ViewState.LANDING || currentView === ViewState.LOGIN || currentView === ViewState.SIGNUP) {
         if (user.role === 'employer') {
           setCurrentView(ViewState.EMPLOYER_DASHBOARD);
+          window.history.replaceState({}, '', '/employer');
         } else {
           setCurrentView(ViewState.CANDIDATE_DASHBOARD);
+          window.history.replaceState({}, '', '/dashboard');
         }
       }
 
       // Initialize onboarding service for this user
       onboardingService.setUserId(user.id);
 
-      // Check if first-time user and show tour
-      if (onboardingService.shouldShowTour()) {
+      // Check if first-time user and show tour (only on dashboard routes)
+      const isDashboard = currentView === ViewState.CANDIDATE_DASHBOARD || currentView === ViewState.EMPLOYER_DASHBOARD;
+      if (isDashboard && onboardingService.shouldShowTour()) {
         setShowOnboardingTour(true);
       }
 
@@ -256,21 +274,37 @@ function AppContent() {
   const handleNavigate = (view: ViewState, role?: UserRole) => {
     if (role) setUserRole(role);
 
-    if (view === ViewState.AUTH_SELECTION || view === ViewState.SIGNUP) {
-      setCurrentView(ViewState.SIGNUP);
-      return;
+    let path = '/';
+    switch (view) {
+      case ViewState.LOGIN: path = '/login'; break;
+      case ViewState.SIGNUP: path = '/signup'; break;
+      case ViewState.FORGOT_PASSWORD: path = '/forgot-password'; break;
+      case ViewState.RESET_PASSWORD: path = '/reset-password'; break;
+      case ViewState.VERIFY_EMAIL: path = '/verify-email'; break;
+      case ViewState.CHECK_EMAIL: path = '/check-email'; break;
+      case ViewState.CANDIDATE_DASHBOARD: path = '/dashboard'; break;
+      case ViewState.EMPLOYER_DASHBOARD: path = '/employer'; break;
+      case ViewState.LANDING: path = '/'; break;
+      default: path = window.location.pathname; // Keep current path for nested views
     }
 
-    setCurrentView(view);
+    // Update URL if it changed
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
+
+    if (view === ViewState.AUTH_SELECTION || view === ViewState.SIGNUP) {
+      setCurrentView(ViewState.SIGNUP);
+    } else {
+      setCurrentView(view);
+    }
   };
 
   const handleAuthSuccess = (role: 'candidate' | 'employer') => {
     if (role === 'candidate') {
-      setUserRole(UserRole.CANDIDATE);
-      setCurrentView(ViewState.CANDIDATE_DASHBOARD);
+        handleNavigate(ViewState.CANDIDATE_DASHBOARD, UserRole.CANDIDATE);
     } else {
-      setUserRole(UserRole.EMPLOYER);
-      setCurrentView(ViewState.EMPLOYER_DASHBOARD);
+        handleNavigate(ViewState.EMPLOYER_DASHBOARD, UserRole.EMPLOYER);
     }
     // Show welcome banner for new users
     setShowWelcomeBanner(true);
@@ -295,7 +329,7 @@ function AppContent() {
   const handleLogout = async () => {
     await logout();
     setUserRole(null);
-    setCurrentView(ViewState.LANDING);
+    handleNavigate(ViewState.LANDING);
     toast.success('👋 Logged out successfully!');
   };
 
@@ -765,7 +799,7 @@ Verify my certificate: ${certificateUrl}
       case ViewState.AUTH_SELECTION: // Fallback directly to signup
         return <SignupPage onNavigate={handleNavigate} onSuccess={handleAuthSuccess} />;
       case ViewState.VERIFY_EMAIL:
-        return <VerifyEmail />;
+        return <VerifyEmail onNavigate={handleNavigate} />;
       default:
         return <Landing onNavigate={handleNavigate} />;
     }

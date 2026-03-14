@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../lib/toast';
 import { ViewState } from '../../types';
 import { AuthLayout } from '../AuthLayout';

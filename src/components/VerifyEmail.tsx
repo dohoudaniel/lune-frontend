@@ -1,9 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { Loader2, CheckCircle, XCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { ViewState } from '../types';
+import { AuthLayout } from './AuthLayout';
 
-export const VerifyEmail: React.FC = () => {
+interface VerifyEmailProps {
+    onNavigate: (view: ViewState) => void;
+}
+
+export const VerifyEmail: React.FC<VerifyEmailProps> = ({ onNavigate }) => {
     const { verifyEmail } = useAuth();
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
     const [message, setMessage] = useState('');
@@ -22,9 +28,8 @@ export const VerifyEmail: React.FC = () => {
             const res = await verifyEmail(token);
             if (res.success) {
                 setStatus('success');
-                setMessage('Your email has been successfully verified! Redirecting to the dashboard...');
+                setMessage('Your email has been successfully verified! You can now access your dashboard and start your journey.');
                 setTimeout(() => {
-                    // Redirect will ideally be picked up by App.tsx since auth state changes
                     window.location.href = '/';
                 }, 3000);
             } else {
@@ -37,46 +42,85 @@ export const VerifyEmail: React.FC = () => {
     }, [verifyEmail]);
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-cream">
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white p-8 md:p-12 rounded-3xl shadow-xl max-w-md w-full text-center"
-            >
+        <AuthLayout
+            onNavigate={onNavigate}
+            title={status === 'loading' ? "Verifying..." : status === 'success' ? "Welcome to Lune!" : "Verification Failed"}
+            subtitle={status === 'loading' ? "Please wait while we confirm your identity" : status === 'success' ? "Your account is now fully active" : "Something went wrong during verification"}
+        >
+            <div className="space-y-8">
                 {status === 'loading' && (
-                    <div className="flex flex-col items-center">
-                        <Loader2 className="w-16 h-16 text-teal animate-spin mb-6" />
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Verifying Email...</h2>
-                        <p className="text-gray-500">Please wait while we confirm your email address.</p>
-                    </div>
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="flex flex-col items-center py-10"
+                    >
+                        <div className="relative flex items-center justify-center">
+                            <div className="w-16 h-16 border-4 border-slate-100 border-t-teal rounded-full animate-spin"></div>
+                            <Loader2 className="w-6 h-6 text-teal animate-pulse absolute" />
+                        </div>
+                        <p className="mt-8 text-slate-500 font-medium text-center">
+                            Securely confirming your credentials...
+                        </p>
+                    </motion.div>
                 )}
                 
                 {status === 'success' && (
-                    <div className="flex flex-col items-center">
-                        <div className="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-6">
-                            <CheckCircle className="w-8 h-8" />
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="flex flex-col items-center"
+                    >
+                        <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-emerald-100">
+                            <CheckCircle size={40} />
                         </div>
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Email Verified!</h2>
-                        <p className="text-gray-500 mb-6">{message}</p>
-                    </div>
+                        <p className="text-slate-600 text-center text-[15px] leading-relaxed mb-8">
+                            {message}
+                        </p>
+                        <motion.button 
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => window.location.href = '/'}
+                            className="w-full py-4 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10"
+                        >
+                            Go to Dashboard <ArrowRight size={18} />
+                        </motion.button>
+                    </motion.div>
                 )}
 
                 {status === 'error' && (
-                    <div className="flex flex-col items-center">
-                        <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-6">
-                            <XCircle className="w-8 h-8" />
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="flex flex-col items-center"
+                    >
+                        <div className="w-20 h-20 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-red-100">
+                            <XCircle size={40} />
                         </div>
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Verification Failed</h2>
-                        <p className="text-gray-500 mb-6">{message}</p>
-                        <button 
-                            onClick={() => window.location.href = '/'}
-                            className="px-6 py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition"
-                        >
-                            Return Home
-                        </button>
-                    </div>
+                        <p className="text-slate-600 text-center text-[15px] leading-relaxed mb-8">
+                            {message}
+                        </p>
+                        <div className="w-full space-y-4">
+                            <button 
+                                onClick={() => window.location.href = '/'}
+                                className="w-full py-4 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition"
+                            >
+                                Return to Homepage
+                            </button>
+                            <button 
+                                onClick={() => onNavigate(ViewState.SIGNUP)}
+                                className="w-full py-3 text-slate-500 text-sm font-semibold hover:text-slate-900 transition underline underline-offset-4"
+                            >
+                                Contact Support
+                            </button>
+                        </div>
+                    </motion.div>
                 )}
-            </motion.div>
-        </div>
+
+                <div className="pt-8 border-t border-slate-100 flex items-center justify-center gap-2 text-slate-400">
+                    <ShieldCheck size={14} />
+                    <span className="text-xs font-medium tracking-wide uppercase">Secure Verification System</span>
+                </div>
+            </div>
+        </AuthLayout>
     );
 };

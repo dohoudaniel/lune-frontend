@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../lib/toast';
 import { ViewState } from '../../types';
 import { AuthLayout } from '../AuthLayout';

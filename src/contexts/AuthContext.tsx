@@ -1,19 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { api } from '../lib/api';
 
-// Types
-export interface AuthUser {
-    id: string;
-    email: string;
-    name: string;
-    role: 'candidate' | 'employer';
-}
-
-export interface AuthSession {
-    access_token: string;
-    refresh_token: string;
-    expires_at: number;
-}
+import { AuthUser, AuthSession } from '../types';
 
 interface AuthContextType {
     user: AuthUser | null;
@@ -29,12 +17,28 @@ interface AuthContextType {
     logout: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Storage keys
 const STORAGE_KEYS = {
     USER_PROFILE: 'lune_user_profile',
-    TOKEN: 'token'
+    ACCESS_TOKEN: 'lune_access_token',
+    REFRESH_TOKEN: 'lune_refresh_token',
+};
+
+const extractErrorMessage = (error: any): string => {
+    if (error.response?.data) {
+        const data = error.response.data;
+        if (data.detail) return data.detail;
+        if (typeof data === 'object') {
+            // Flatten first field error
+            const firstKey = Object.keys(data)[0];
+            const firstError = data[firstKey];
+            if (Array.isArray(firstError)) return `${firstKey}: ${firstError[0]}`;
+            if (typeof firstError === 'string') return firstError;
+        }
+    }
+    return error.message || 'An unexpected error occurred. Please try again.';
 };
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -46,18 +50,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     useEffect(() => {
         const loadAuthState = async () => {
             try {
-                const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
-                if (token) {
-                    // Ideally we should call a /me endpoint here to verify token and get user
-                    // For now, we will just load user from localStorage
+                const accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+                const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+                
+                if (accessToken) {
+                    // Try to restore user profile from cache first
                     const cachedProfile = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
                     if (cachedProfile) {
                         setUser(JSON.parse(cachedProfile));
                         setSession({
-                            access_token: token,
-                            refresh_token: '',
+                            access_token: accessToken,
+                            refresh_token: refreshToken || '',
                             expires_at: 0
                         });
+                    }
+                    
+                    // Verify authorization by fetching current user data
+                    try {
+                        const meRes = await api.get('/users/me/');
+                        const authUser: AuthUser = {
+                            id: (meRes as any).id,
+                            email: (meRes as any).email,
+                            name: (meRes as any).name,
+                            role: (meRes as any).role,
+                        };
+                        setUser(authUser);
+                        localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(authUser));
+                    } catch (err) {
+                        console.error('Failed to verify session:', err);
+                        // If token is invalid and can't be refreshed, clear state handled by API interceptor
                     }
                 }
             } catch (error) {
@@ -84,7 +105,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return { success: true };
         } catch (error: any) {
             console.error('Signup error:', error);
-            return { success: false, error: error.message || 'An unexpected error occurred. Please try again.' };
+            return { success: false, error: extractErrorMessage(error) };
         } finally {
             setIsLoading(false);
         }
@@ -98,11 +119,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setIsLoading(true);
             const response = await api.post('/auth/login/', { email, password });
             
-            // Wait to intercept tokens from simpleJWT
-            const { access, refresh } = response as any;
+            // Tokens from simpleJWT
+            const { access, refresh, expires_at } = response as any;
             
-            // we should technically decode the JWT or fetch `/users/me/`
-            localStorage.setItem(STORAGE_KEYS.TOKEN, access);
+            localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, access);
+            localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refresh);
+            
             const meRes = await api.get('/users/me/');
             
             const authUser: AuthUser = {
@@ -113,14 +135,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             };
 
             setUser(authUser);
-            setSession({ access_token: access, refresh_token: refresh, expires_at: 0 });
+            setSession({ access_token: access, refresh_token: refresh, expires_at: expires_at || 0 });
             localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(authUser));
-            localStorage.setItem(STORAGE_KEYS.TOKEN, access);
 
             return { success: true };
         } catch (error: any) {
             console.error('Login error:', error);
-            return { success: false, error: error.message || 'Invalid credentials or unverified email.' };
+            return { success: false, error: extractErrorMessage(error) };
         } finally {
             setIsLoading(false);
         }
@@ -132,13 +153,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const data = res as any;
             
             setUser(data.user);
-            setSession({ access_token: data.tokens.access, refresh_token: data.tokens.refresh, expires_at: 0 });
+            setSession({ 
+                access_token: data.tokens.access, 
+                refresh_token: data.tokens.refresh, 
+                expires_at: data.tokens.expires_at || 0 
+            });
             localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(data.user));
-            localStorage.setItem(STORAGE_KEYS.TOKEN, data.tokens.access);
+            localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.tokens.access);
+            localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.tokens.refresh);
 
             return { success: true };
         } catch (error: any) {
-            return { success: false, error: error.message || 'Failed to verify email.' };
+            return { success: false, error: extractErrorMessage(error) };
         }
     }, []);
 
@@ -149,13 +175,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const data = res as any;
 
             setUser(data.user);
-            setSession({ access_token: data.tokens.access, refresh_token: data.tokens.refresh, expires_at: 0 });
+            setSession({ 
+                access_token: data.tokens.access, 
+                refresh_token: data.tokens.refresh, 
+                expires_at: data.tokens.expires_at || 0 
+            });
             localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(data.user));
-            localStorage.setItem(STORAGE_KEYS.TOKEN, data.tokens.access);
+            localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.tokens.access);
+            localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.tokens.refresh);
 
             return { success: true };
         } catch (error: any) {
-            return { success: false, error: error.message || 'Google signup failed.' };
+            return { success: false, error: extractErrorMessage(error) };
         } finally {
             setIsLoading(false);
         }
@@ -195,14 +226,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setUser(null);
             setSession(null);
             localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
-            localStorage.removeItem(STORAGE_KEYS.TOKEN);
+            localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+            localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
         } catch (error) {
             console.error('Logout error:', error);
             // Still clear local state even if backend call fails
             setUser(null);
             setSession(null);
             localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
-            localStorage.removeItem(STORAGE_KEYS.TOKEN);
+            localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+            localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
         } finally {
             setIsLoading(false);
         }
@@ -229,10 +262,3 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     );
 };
 
-export const useAuth = (): AuthContextType => {
-    const context = useContext(AuthContext);
-    if (context === undefined) {
-        throw new Error('useAuth must be used within an AuthProvider');
-    }
-    return context;
-};
