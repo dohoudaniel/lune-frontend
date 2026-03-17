@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { sanitizeHTML } from '../lib/sanitize';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Download, Share2, ExternalLink, Copy, Check,
@@ -75,7 +76,7 @@ export const CertificateBadge: React.FC<CertificateBadgeProps> = ({
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     className="w-64"
-                    dangerouslySetInnerHTML={{ __html: svgContent }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHTML(svgContent) }}
                 />
             </div>
 

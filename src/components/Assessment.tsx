@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { sanitizeHTML } from '../lib/sanitize';
 import { Play, AlertTriangle, Loader, Code, ShieldAlert, ShieldCheck, Eye, Command, Check, Send, Clock, Cpu, FileJson, XCircle, Terminal, CheckCircle2, XCircle as XCircleIcon } from 'lucide-react';
 import { evaluateCodeSubmission, generateCheatingAnalysis, generateAssessment } from '../services/geminiService';
 
@@ -674,7 +675,7 @@ export const Assessment: React.FC<AssessmentProps> = ({ skill, difficulty, onCom
             aria-hidden="true"
             style={{ tabSize: 2 }}
           >
-            <code className="language-javascript" dangerouslySetInnerHTML={{ __html: Prism.highlight(code, Prism.languages.javascript, 'javascript') }} />
+            <code className="language-javascript" dangerouslySetInnerHTML={{ __html: sanitizeHTML(Prism.highlight(code, Prism.languages.javascript, 'javascript')) }} />
           </pre>
 
           {/* Layer 2: Input (Top) */}

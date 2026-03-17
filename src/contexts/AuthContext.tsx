@@ -1,11 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { api } from '../lib/api';
-
-import { AuthUser, AuthSession } from '../types';
+import { AuthUser } from '../types';
 
 interface AuthContextType {
     user: AuthUser | null;
-    session: AuthSession | null;
     isLoading: boolean;
     isAuthenticated: boolean;
     signUp: (email: string, password: string, first_name: string, last_name: string, role: 'candidate' | 'employer') => Promise<{ success: boolean; error?: string }>;
@@ -19,76 +17,71 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Storage keys
-const STORAGE_KEYS = {
-    USER_PROFILE: 'lune_user_profile',
-    ACCESS_TOKEN: 'lune_access_token',
-    REFRESH_TOKEN: 'lune_refresh_token',
-};
+// Only the non-sensitive user profile is cached in localStorage.
+// JWT tokens are stored exclusively in HttpOnly cookies managed by the backend.
+const USER_PROFILE_KEY = 'lune_user_profile';
 
-const extractErrorMessage = (error: any): string => {
-    if (error.response?.data) {
-        const data = error.response.data;
+const extractErrorMessage = (error: unknown): string => {
+    const err = error as any;
+    if (err?.response?.data) {
+        const data = err.response.data;
         if (data.detail) return data.detail;
         if (typeof data === 'object') {
-            // Flatten first field error
             const firstKey = Object.keys(data)[0];
             const firstError = data[firstKey];
             if (Array.isArray(firstError)) return `${firstKey}: ${firstError[0]}`;
             if (typeof firstError === 'string') return firstError;
         }
     }
-    return error.message || 'An unexpected error occurred. Please try again.';
+    return err?.message || 'An unexpected error occurred. Please try again.';
 };
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<AuthUser | null>(null);
-    const [session, setSession] = useState<AuthSession | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Load auth state on mount
+    // On mount: restore cached profile, then verify with the backend
     useEffect(() => {
         const loadAuthState = async () => {
             try {
-                const accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-                const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
-                
-                if (accessToken) {
-                    // Try to restore user profile from cache first
-                    const cachedProfile = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
-                    if (cachedProfile) {
-                        setUser(JSON.parse(cachedProfile));
-                        setSession({
-                            access_token: accessToken,
-                            refresh_token: refreshToken || '',
-                            expires_at: 0
-                        });
-                    }
-                    
-                    // Verify authorization by fetching current user data
-                    try {
-                        const meRes = await api.get('/users/me/');
-                        const authUser: AuthUser = {
-                            id: (meRes as any).id,
-                            email: (meRes as any).email,
-                            name: (meRes as any).name,
-                            role: (meRes as any).role,
-                        };
-                        setUser(authUser);
-                        localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(authUser));
-                    } catch (err) {
-                        console.error('Failed to verify session:', err);
-                        // If token is invalid and can't be refreshed, clear state handled by API interceptor
-                    }
+                // Only attempt backend verification if there's a cached profile —
+                // no cache means no active session, so skip the round-trip entirely.
+                const cached = localStorage.getItem(USER_PROFILE_KEY);
+                if (!cached) {
+                    setIsLoading(false);
+                    return;
                 }
-            } catch (error) {
-                console.error('Error loading auth state:', error);
+
+                // Optimistically restore from cache so the UI renders instantly
+                setUser(JSON.parse(cached));
+
+                // Verify the session cookie is still valid
+                const meRes = await api.get('/users/me/') as any;
+                const authUser: AuthUser = {
+                    id: meRes.id,
+                    email: meRes.email,
+                    name: meRes.name,
+                    role: meRes.role,
+                };
+                setUser(authUser);
+                localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(authUser));
+            } catch {
+                // No valid session — clear stale cache
+                setUser(null);
+                localStorage.removeItem(USER_PROFILE_KEY);
             } finally {
                 setIsLoading(false);
             }
         };
 
         loadAuthState();
+
+        const handleSessionExpired = () => {
+            setUser(null);
+            localStorage.removeItem(USER_PROFILE_KEY);
+        };
+        window.addEventListener('auth:session-expired', handleSessionExpired);
+        return () => window.removeEventListener('auth:session-expired', handleSessionExpired);
     }, []);
 
     const signUp = useCallback(async (
@@ -101,10 +94,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         try {
             setIsLoading(true);
             await api.post('/auth/register/', { email, password, first_name, last_name, role });
-            // Don't set user since they need to verify email
             return { success: true };
-        } catch (error: any) {
-            console.error('Signup error:', error);
+        } catch (error: unknown) {
             return { success: false, error: extractErrorMessage(error) };
         } finally {
             setIsLoading(false);
@@ -117,30 +108,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     ): Promise<{ success: boolean; error?: string }> => {
         try {
             setIsLoading(true);
-            const response = await api.post('/auth/login/', { email, password });
-            
-            // Tokens from simpleJWT
-            const { access, refresh, expires_at } = response as any;
-            
-            localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, access);
-            localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refresh);
-            
-            const meRes = await api.get('/users/me/');
-            
+            // Backend sets HttpOnly cookies; response body contains user data
+            await api.post('/auth/login/', { email, password });
+
+            const meRes = await api.get('/users/me/') as any;
             const authUser: AuthUser = {
-                id: (meRes as any).id,
-                email: (meRes as any).email,
-                name: (meRes as any).name,
-                role: (meRes as any).role,
+                id: meRes.id,
+                email: meRes.email,
+                name: meRes.name,
+                role: meRes.role,
             };
-
             setUser(authUser);
-            setSession({ access_token: access, refresh_token: refresh, expires_at: expires_at || 0 });
-            localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(authUser));
-
+            localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(authUser));
             return { success: true };
-        } catch (error: any) {
-            console.error('Login error:', error);
+        } catch (error: unknown) {
             return { success: false, error: extractErrorMessage(error) };
         } finally {
             setIsLoading(false);
@@ -149,21 +130,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const verifyEmail = useCallback(async (token: string) => {
         try {
-            const res = await api.post('/auth/verify-email/', { token });
-            const data = res as any;
-            
-            setUser(data.user);
-            setSession({ 
-                access_token: data.tokens.access, 
-                refresh_token: data.tokens.refresh, 
-                expires_at: data.tokens.expires_at || 0 
-            });
-            localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(data.user));
-            localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.tokens.access);
-            localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.tokens.refresh);
-
+            const res = await api.post('/auth/verify-email/', { token }) as any;
+            const authUser: AuthUser = {
+                id: res.user.id,
+                email: res.user.email,
+                name: res.user.name,
+                role: res.user.role,
+            };
+            setUser(authUser);
+            localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(authUser));
             return { success: true };
-        } catch (error: any) {
+        } catch (error: unknown) {
             return { success: false, error: extractErrorMessage(error) };
         }
     }, []);
@@ -171,21 +148,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const googleLogin = useCallback(async (credential: string, role?: 'candidate' | 'employer') => {
         try {
             setIsLoading(true);
-            const res = await api.post('/auth/google/', { credential, role });
-            const data = res as any;
-
-            setUser(data.user);
-            setSession({ 
-                access_token: data.tokens.access, 
-                refresh_token: data.tokens.refresh, 
-                expires_at: data.tokens.expires_at || 0 
-            });
-            localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(data.user));
-            localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.tokens.access);
-            localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.tokens.refresh);
-
+            const res = await api.post('/auth/google/', { credential, role }) as any;
+            const authUser: AuthUser = {
+                id: res.user.id,
+                email: res.user.email,
+                name: res.user.name,
+                role: res.user.role,
+            };
+            setUser(authUser);
+            localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(authUser));
             return { success: true };
-        } catch (error: any) {
+        } catch (error: unknown) {
             return { success: false, error: extractErrorMessage(error) };
         } finally {
             setIsLoading(false);
@@ -197,8 +170,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setIsLoading(true);
             await api.post('/auth/password-reset/', { email });
             return { success: true };
-        } catch (error: any) {
-            return { success: false, error: error.message || 'Failed to request password reset.' };
+        } catch (error: unknown) {
+            return { success: false, error: extractErrorMessage(error) };
         } finally {
             setIsLoading(false);
         }
@@ -209,8 +182,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setIsLoading(true);
             await api.post('/auth/password-reset-confirm/', { token, new_password });
             return { success: true };
-        } catch (error: any) {
-            return { success: false, error: error.message || 'Failed to reset password.' };
+        } catch (error: unknown) {
+            return { success: false, error: extractErrorMessage(error) };
         } finally {
             setIsLoading(false);
         }
@@ -219,33 +192,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const logout = useCallback(async () => {
         try {
             setIsLoading(true);
-            const refresh = session?.refresh_token;
-            if (refresh) {
-                await api.post('/auth/logout/', { refresh });
-            }
-            setUser(null);
-            setSession(null);
-            localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
-            localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-            localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-        } catch (error) {
-            console.error('Logout error:', error);
-            // Still clear local state even if backend call fails
-            setUser(null);
-            setSession(null);
-            localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
-            localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-            localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+            await api.post('/auth/logout/', {});
+        } catch {
+            // Still clear local state even if the backend call fails
         } finally {
+            setUser(null);
+            localStorage.removeItem(USER_PROFILE_KEY);
             setIsLoading(false);
         }
-    }, [session]);
+    }, []);
 
     const value: AuthContextType = {
         user,
-        session,
         isLoading,
-        isAuthenticated: !!user && !!session,
+        isAuthenticated: !!user,
         signUp,
         login,
         verifyEmail,
@@ -261,4 +221,3 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         </AuthContext.Provider>
     );
 };
-

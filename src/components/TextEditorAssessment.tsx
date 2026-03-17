@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { sanitizeTextHTML } from '../lib/sanitize';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     FileText, Clock, CheckCircle, Loader, ArrowRight,
@@ -570,7 +571,7 @@ Phase 2: [Description] - [Duration]
                                         onInput={handleEditorInput}
                                         className="min-h-[600px] p-8 focus:outline-none prose prose-sm max-w-none"
                                         style={{ fontFamily: 'Georgia, serif', lineHeight: 1.8 }}
-                                        dangerouslySetInnerHTML={{ __html: task.template.replace(/\n/g, '<br>') }}
+                                        dangerouslySetInnerHTML={{ __html: sanitizeTextHTML(task.template.replace(/\n/g, '<br>')) }}
                                     />
                                 </div>
                             </div>

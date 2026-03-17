@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy, Component, ErrorInfo, ReactNode } from 'react';
+import React, { useState, useEffect, Suspense, lazy, startTransition, Component, ErrorInfo, ReactNode } from 'react';
 import { Landing } from './components/Landing';
 import { LoginPage } from './components/auth/LoginPage';
 import { SignupPage } from './components/auth/SignupPage';
@@ -294,9 +294,9 @@ function AppContent() {
     }
 
     if (view === ViewState.AUTH_SELECTION || view === ViewState.SIGNUP) {
-      setCurrentView(ViewState.SIGNUP);
+      startTransition(() => setCurrentView(ViewState.SIGNUP));
     } else {
-      setCurrentView(view);
+      startTransition(() => setCurrentView(view));
     }
   };
 
@@ -323,7 +323,7 @@ function AppContent() {
   };
 
   const handleStartTour = () => {
-    setShowOnboardingTour(true);
+    startTransition(() => setShowOnboardingTour(true));
   };
 
   const handleLogout = async () => {
@@ -347,17 +347,17 @@ function AppContent() {
 
   const startAssessmentFlow = (difficulty: DifficultyLevel) => {
     setSelectedDifficulty(difficulty);
-    setShowPermissionModal(true); // Show permission modal first
+    startTransition(() => setShowPermissionModal(true)); // Show permission modal first
   };
 
   const handlePermissionGranted = () => {
     setShowPermissionModal(false);
-    setCurrentView(ViewState.ASSESSMENT);
+    startTransition(() => setCurrentView(ViewState.ASSESSMENT));
   };
 
   const handleAssessmentComplete = (result: EvaluationResult) => {
     setAssessmentResult(result);
-    setCurrentView(ViewState.ASSESSMENT_RESULT);
+    startTransition(() => setCurrentView(ViewState.ASSESSMENT_RESULT));
 
     // Save to assessment history
     addAssessmentEntry(
@@ -448,7 +448,7 @@ function AppContent() {
 
   const handleViewCertificate = () => {
     if (selectedCertificate) {
-      setShowCertificateBadge(true);
+      startTransition(() => setShowCertificateBadge(true));
     }
   };
 
@@ -601,7 +601,7 @@ Verify my certificate: ${certificateUrl}
     <div className="min-h-screen bg-cream flex flex-col items-center justify-center p-4">
       <div className="max-w-4xl w-full">
         <div className="flex items-center mb-8">
-          <button onClick={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)} className="bg-white p-2 rounded-full hover:bg-gray-100 mr-4">
+          <button onClick={() => startTransition(() => setCurrentView(ViewState.CANDIDATE_DASHBOARD))} className="bg-white p-2 rounded-full hover:bg-gray-100 mr-4">
             <ArrowLeft />
           </button>
           <div>
@@ -744,7 +744,7 @@ Verify my certificate: ${certificateUrl}
             )}
 
             <button
-              onClick={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)}
+              onClick={() => startTransition(() => setCurrentView(ViewState.CANDIDATE_DASHBOARD))}
               className="mt-4 text-center text-gray-400 text-sm hover:text-gray-600"
             >
               Return to Dashboard
@@ -767,7 +767,7 @@ Verify my certificate: ${certificateUrl}
             onStartAssessment={handleStartAssessment}
             onLogout={handleLogout}
             onUpdateProfile={(updates) => setCandidateProfile(prev => ({ ...prev, ...updates }))}
-            onOpenVideoAnalyzer={() => setShowVideoAnalyzer(true)}
+            onOpenVideoAnalyzer={() => startTransition(() => setShowVideoAnalyzer(true))}
             onStartTour={handleStartTour}
           />
         );
@@ -775,7 +775,7 @@ Verify my certificate: ${certificateUrl}
         return (
           <EmployerDashboard
             onLogout={handleLogout}
-            onOpenEnterpriseDashboard={() => setShowEnterpriseDashboard(true)}
+            onOpenEnterpriseDashboard={() => startTransition(() => setShowEnterpriseDashboard(true))}
             onStartTour={handleStartTour}
             userName={user?.name || 'Employer'}
           />
@@ -809,15 +809,15 @@ Verify my certificate: ${certificateUrl}
     if (assessmentType === 'code') {
       return <Assessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} />;
     } else if (assessmentType === 'scenario') {
-      return <ScenarioAssessment skill={selectedSkill} difficulty={selectedDifficulty} candidateId={user?.id || ''} onComplete={handleAssessmentComplete} onCancel={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)} />;
+      return <ScenarioAssessment skill={selectedSkill} difficulty={selectedDifficulty} candidateId={user?.id || ''} onComplete={handleAssessmentComplete} onCancel={() => startTransition(() => setCurrentView(ViewState.CANDIDATE_DASHBOARD))} />;
     } else if (assessmentType === 'spreadsheet') {
-      return <SpreadsheetAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} onCancel={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)} />;
+      return <SpreadsheetAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} onCancel={() => startTransition(() => setCurrentView(ViewState.CANDIDATE_DASHBOARD))} />;
     } else if (assessmentType === 'text_editor') {
-      return <TextEditorAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} onCancel={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)} />;
+      return <TextEditorAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} onCancel={() => startTransition(() => setCurrentView(ViewState.CANDIDATE_DASHBOARD))} />;
     } else if (assessmentType === 'presentation') {
-      return <PresentationAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} onCancel={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)} />;
+      return <PresentationAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} onCancel={() => startTransition(() => setCurrentView(ViewState.CANDIDATE_DASHBOARD))} />;
     } else if (assessmentType === 'video_verification') {
-      return <VideoVerificationAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleVideoVerificationComplete} onCancel={() => setCurrentView(ViewState.CANDIDATE_DASHBOARD)} />;
+      return <VideoVerificationAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleVideoVerificationComplete} onCancel={() => startTransition(() => setCurrentView(ViewState.CANDIDATE_DASHBOARD))} />;
     }
     return null;
   };

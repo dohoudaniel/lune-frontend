@@ -21,12 +21,12 @@ export const RealtimeProvider: React.FC<{ children: ReactNode }> = ({ children }
         setIsConnected(true);
     }, []);
 
-    const subscribe = (table: string, callback: (update: RealtimeUpdate) => void) => {
-        console.log(`Subscribed to ${table} via WebSocket (mock)`);
+    const subscribe = (_table: string, _callback: (update: RealtimeUpdate) => void) => {
+        // WebSocket not yet implemented
     };
 
-    const unsubscribe = (table: string) => {
-        console.log(`Unsubscribed from ${table}`);
+    const unsubscribe = (_table: string) => {
+        // WebSocket not yet implemented
     };
 
     return (

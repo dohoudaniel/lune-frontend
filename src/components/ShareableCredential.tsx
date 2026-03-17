@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { sanitizeHTML } from '../lib/sanitize';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Award, Download, Share2, ExternalLink, Copy, CheckCircle,
@@ -214,7 +215,7 @@ export const ShareableCredential: React.FC<ShareableCredentialProps> = ({
                             <div
                                 ref={badgeRef}
                                 className="inline-block rounded-2xl overflow-hidden shadow-lg mb-6"
-                                dangerouslySetInnerHTML={{ __html: badgeSVG }}
+                                dangerouslySetInnerHTML={{ __html: sanitizeHTML(badgeSVG) }}
                             />
 
                             <div className="flex justify-center gap-3 mb-6">

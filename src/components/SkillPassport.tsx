@@ -51,7 +51,7 @@ export const SkillPassport: React.FC<SkillPassportProps> = ({
             // Convert candidate skills to assessment history if not provided
             const history: AssessmentHistoryItem[] = assessmentHistory.length > 0
                 ? assessmentHistory
-                : Object.entries(candidate.skills).map(([skill, score]) => ({
+                : Object.entries(candidate.skills || {}).map(([skill, score]) => ({
                     skill,
                     score: score as number,
                     passed: (score as number) >= 70,
@@ -63,7 +63,7 @@ export const SkillPassport: React.FC<SkillPassportProps> = ({
             // Convert certifications
             const certs: CertificationItem[] = certifications.length > 0
                 ? certifications
-                : candidate.certifications.map(cert => {
+                : (candidate.certifications || []).map(cert => {
                     let skillName = 'Verified Skill';
                     let hash: string = cert;
                     let date = new Date().toISOString();
