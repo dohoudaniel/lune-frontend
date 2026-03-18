@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, lazy, Suspense, useMemo } from 'react';
-import { Code, Award, TrendingUp, Briefcase, MapPin, User, Play, Plus, Sparkles, CheckCircle, Loader, ArrowRight, Video, X, Upload, Edit2, Save, Bookmark, Star, Mic, Globe, Clock, Share2, Shield, ExternalLink, Eye, History, Search, Zap, Target, Home } from 'lucide-react';
+import { Code, Award, TrendingUp, Briefcase, MapPin, User, Play, Plus, Sparkles, CheckCircle, Loader, ArrowRight, Video, X, Bookmark, Star, Mic, Share2, Shield, ExternalLink, Eye, History, Search, Zap, Target, Home } from 'lucide-react';
 import { CandidateProfile, RecommendedCertification, Job } from '../types';
 import { getCareerRecommendations } from '../services/geminiService';
 import { notificationService } from '../services/notificationService';
@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 // Lazy load SkillPassport for performance
 const SkillPassport = lazy(() => import('./SkillPassport').then(m => ({ default: m.SkillPassport })));
 import { api } from '../lib/api';
-import { updateCandidateProfile, uploadProfileImage, generatePassport } from '../services/profileService';
+import { generatePassport } from '../services/profileService';
 
 
 interface CandidateDashboardProps {
@@ -85,18 +85,6 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
       return filtered;
    }, [searchQuery]);
 
-   // Edit Mode State
-   const [isEditing, setIsEditing] = useState(false);
-   const [formData, setFormData] = useState({
-      name: candidate.name || '',
-      bio: candidate.bio || '',
-      experience: candidate.experience || '',
-      location: candidate.location || '',
-      yearsOfExperience: candidate.yearsOfExperience || 0,
-      preferredWorkMode: candidate.preferredWorkMode || 'Remote',
-      title: candidate.title || ''
-   });
-
    // Skill Passport State
    const [isGeneratingPassport, setIsGeneratingPassport] = useState(false);
    const [passportData, setPassportData] = useState<{ txHash: string; passportId: string } | null>(null);
@@ -104,9 +92,6 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
    const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set());
 
    const getJobKey = (job: Job) => `${job.title}-${job.company}`;
-
-   const fileInputRef = useRef<HTMLInputElement>(null);
-   const profilePicInputRef = useRef<HTMLInputElement>(null);
 
    const [userStats, setUserStats] = useState<{
       total_assessments: number;
@@ -117,18 +102,8 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
       longest_streak: number;
    } | null>(null);
 
-   // Update local form data when prop changes
+   // Fetch user stats on profile change
    useEffect(() => {
-      setFormData({
-         name: candidate.name || '',
-         bio: candidate.bio || '',
-         experience: candidate.experience || '',
-         location: candidate.location || '',
-         yearsOfExperience: candidate.yearsOfExperience || 0,
-         preferredWorkMode: candidate.preferredWorkMode || 'Remote',
-         title: candidate.title || ''
-      });
-
       // Fetch stats from backend
       api.get('/users/me/statistics/')
          .then(setUserStats)
@@ -197,72 +172,6 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
       });
    };
 
-   const handleVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (file) {
-         // Validate file type
-         if (!file.type.startsWith('video/')) {
-            toast.error("Please upload a video file.");
-            return;
-         }
-         // Validate file size (max 50MB)
-         if (file.size > 50 * 1024 * 1024) {
-            toast.error("Video must be less than 50MB.");
-            return;
-         }
-
-         try {
-            const base64Url = await fileToBase64(file);
-            onUpdateProfile({ videoIntroUrl: base64Url });
-            toast.success("Video uploaded successfully!");
-         } catch (error) {
-            toast.error("Failed to upload video.");
-            console.error(error);
-         }
-      }
-   };
-
-   const handleProfilePicUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
-
-      if (!file.type.startsWith('image/')) {
-         toast.error("Please upload an image file.");
-         return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-         toast.error("Image must be less than 5MB.");
-         return;
-      }
-
-      toast.info("Uploading image…");
-      try {
-         const remoteUrl = await uploadProfileImage(file);
-         if (remoteUrl) {
-            onUpdateProfile({ image: remoteUrl });
-            toast.success("Profile picture updated!");
-         } else {
-            // Fallback: store as base64 locally if Supabase isn't configured yet
-            const base64Url = await fileToBase64(file);
-            onUpdateProfile({ image: base64Url });
-            toast.warning("Image saved locally. Configure Supabase storage for cloud sync.");
-         }
-      } catch (error) {
-         toast.error("Failed to upload image.");
-         console.error(error);
-      }
-   };
-
-   const handleSaveProfile = async () => {
-      onUpdateProfile(formData);
-      setIsEditing(false);
-      toast.success("✨ Profile saved successfully!");
-      // Persist to backend (fire-and-forget; local state already updated)
-      updateCandidateProfile(candidate.id, formData).catch(() => {
-         toast.warning("Profile saved locally. Sync to server failed — will retry on next save.");
-      });
-   };
-
    const getMatchColor = (score: number) => {
       if (score >= 90) return 'text-green-600 bg-green-50 border-green-200';
       if (score >= 75) return 'text-blue-600 bg-blue-50 border-blue-200';
@@ -285,22 +194,6 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
       hidden: { opacity: 0, y: 20 },
       visible: { opacity: 1, y: 0 }
    };
-
-   // Calculate profile completion percentage
-   const calculateProfileCompletion = () => {
-      let completed = 0;
-      let total = 5; // bio, experience, location, yearsOfExperience, video
-
-      if (candidate.bio && candidate.bio.trim()) completed++;
-      if (candidate.experience && candidate.experience.trim()) completed++;
-      if (candidate.location && candidate.location.trim()) completed++;
-      if (candidate.yearsOfExperience && candidate.yearsOfExperience > 0) completed++;
-      if (candidate.videoIntroUrl) completed++;
-
-      return Math.round((completed / total) * 100);
-   };
-
-   const profileCompletion = calculateProfileCompletion();
 
    return (
       <div className="min-h-screen bg-cream font-sans pb-16 sm:pb-0">
@@ -413,234 +306,6 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                   </div>
                </motion.div>
             )}
-
-            {/* Horizontal Profile Hero Banner */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-               {/* Cover gradient strip */}
-               <div className="h-32 bg-gradient-to-r from-orange via-red-400 to-slate-800 relative">
-                  <button
-                     onClick={() => isEditing ? handleSaveProfile() : setIsEditing(true)}
-                     className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full text-white transition z-20 shadow-sm"
-                     aria-label={isEditing ? "Save Profile" : "Edit Profile"}
-                  >
-                     {isEditing ? <Save size={16} /> : <Edit2 size={16} />}
-                  </button>
-               </div>
-               {/* Profile info row */}
-               <div className="px-6 pb-6">
-                  <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-start sm:items-end -mt-12">
-                     {/* Avatar */}
-                     <motion.div
-                        whileHover={{ scale: 1.05 }}
-                        className="w-24 h-24 rounded-2xl border-4 border-white shadow-lg bg-white overflow-hidden flex-shrink-0 relative group cursor-pointer"
-                        onClick={() => profilePicInputRef.current?.click()}
-                     >
-                        <img
-                           src={candidate.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(candidate.name)}&size=300&background=f97316&color=ffffff&bold=true`}
-                           alt="Profile"
-                           className="w-full h-full object-cover"
-                        />
-                        {/* Upload overlay */}
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                           <Upload className="w-6 h-6 text-white" />
-                        </div>
-                        {/* Remove button if custom image exists */}
-                        {candidate.image && (
-                           <button
-                              onClick={(e) => {
-                                 e.stopPropagation();
-                                 onUpdateProfile({ image: undefined });
-                                 toast.success("Profile picture removed.");
-                              }}
-                              className="absolute -top-1 -right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-md"
-                              title="Remove profile picture"
-                              aria-label="Remove profile picture"
-                           >
-                              <X size={12} />
-                           </button>
-                        )}
-                     </motion.div>
-                     {/* Name + title + location row */}
-                     <div className="flex-1 pt-2 sm:pb-1">
-                        {isEditing ? (
-                           <input
-                              type="text"
-                              value={formData.name}
-                              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                              className="text-2xl font-bold text-slate-900 bg-white border border-gray-200 rounded-lg px-3 py-1 w-full sm:w-auto mb-1 focus:ring-2 focus:ring-orange outline-none"
-                           />
-                        ) : (
-                           <h2 className="text-2xl font-bold text-slate-900">{candidate.name}</h2>
-                        )}
-                        {isEditing ? (
-                           <input
-                              type="text"
-                              value={formData.title}
-                              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                              placeholder="Your job title (e.g., Virtual Assistant)"
-                              className="text-sm text-gray-500 bg-white border border-gray-200 rounded-lg px-3 py-1 w-full sm:w-auto focus:ring-2 focus:ring-orange outline-none"
-                           />
-                        ) : (
-                           <p className="text-gray-500 text-sm mt-0.5">{candidate.title || <span className="italic text-gray-400">Add your job title</span>}</p>
-                        )}
-                        <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-gray-500">
-                           {isEditing ? (
-                              <input
-                                 type="text"
-                                 value={formData.location}
-                                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                 placeholder="Location"
-                                 className="bg-white border border-gray-200 rounded px-2 py-1 text-xs"
-                              />
-                           ) : (
-                              candidate.location && <span className="flex items-center gap-1"><MapPin size={13} /> {candidate.location}</span>
-                           )}
-                           {isEditing ? (
-                              <div className="flex items-center gap-1">
-                                 <input
-                                    type="number"
-                                    value={formData.yearsOfExperience}
-                                    onChange={(e) => setFormData({ ...formData, yearsOfExperience: parseInt(e.target.value) })}
-                                    className="w-14 bg-white border border-gray-200 rounded px-2 py-1 text-xs"
-                                 />
-                                 <span className="text-xs text-gray-500">yrs exp</span>
-                              </div>
-                           ) : (
-                              <span className="flex items-center gap-1"><Clock size={13} /> {candidate.yearsOfExperience || 0} yrs exp</span>
-                           )}
-                           {isEditing ? (
-                              <select
-                                 value={formData.preferredWorkMode}
-                                 onChange={(e) => setFormData({ ...formData, preferredWorkMode: e.target.value as any })}
-                                 className="bg-white border border-gray-200 rounded px-2 py-1 text-xs"
-                              >
-                                 <option value="Remote">Remote</option>
-                                 <option value="Hybrid">Hybrid</option>
-                                 <option value="On-site">On-site</option>
-                              </select>
-                           ) : (
-                              <span className="flex items-center gap-1"><Globe size={13} /> {candidate.preferredWorkMode || 'Remote'}</span>
-                           )}
-                        </div>
-                     </div>
-                     {/* Right side: badges + action buttons */}
-                     <div className="flex flex-wrap gap-2 items-center sm:pb-1">
-                        <span className="flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-bold px-3 py-1.5 rounded-full border border-green-100">
-                           <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                           Open for Work
-                        </span>
-                        {candidate.videoIntroUrl ? (
-                           <span className="flex items-center gap-1.5 bg-blue-50 text-blue-700 text-xs font-bold px-3 py-1.5 rounded-full border border-blue-100">
-                              <Video size={12} /> Has Video Intro
-                           </span>
-                        ) : (
-                           <button
-                              onClick={() => fileInputRef.current?.click()}
-                              className="flex items-center gap-1.5 text-orange text-xs font-bold px-3 py-1.5 rounded-full border border-orange/20 bg-orange/5 hover:bg-orange/10 transition"
-                           >
-                              <Video size={12} /> Add Video
-                           </button>
-                        )}
-                        {onOpenVideoAnalyzer && (
-                           <button
-                              onClick={onOpenVideoAnalyzer}
-                              className="flex items-center gap-1.5 text-purple-600 text-xs font-bold px-3 py-1.5 rounded-full border border-purple-100 bg-purple-50 hover:bg-purple-100 transition"
-                           >
-                              <Sparkles size={12} /> AI Analyze
-                           </button>
-                        )}
-                     </div>
-                  </div>
-                  {/* Bio + experience */}
-                  {(candidate.bio || candidate.experience || isEditing) && (
-                     <div className="mt-4 grid sm:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
-                        <div>
-                           <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">About Me</label>
-                           {isEditing ? (
-                              <textarea
-                                 rows={2}
-                                 value={formData.bio}
-                                 onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                                 placeholder="Tell us about yourself..."
-                                 className="w-full text-sm p-2 border border-gray-200 rounded-lg bg-gray-50 resize-none focus:ring-2 focus:ring-orange outline-none"
-                              />
-                           ) : (
-                              <p className="text-sm text-slate-600 leading-relaxed">{candidate.bio}</p>
-                           )}
-                        </div>
-                        <div>
-                           <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Work Summary</label>
-                           {isEditing ? (
-                              <textarea
-                                 rows={2}
-                                 value={formData.experience}
-                                 onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
-                                 placeholder="Briefly describe your roles..."
-                                 className="w-full text-sm p-2 border border-gray-200 rounded-lg bg-gray-50 resize-none focus:ring-2 focus:ring-orange outline-none"
-                              />
-                           ) : (
-                              <p className="text-sm text-slate-600 leading-relaxed">{candidate.experience}</p>
-                           )}
-                        </div>
-                     </div>
-                  )}
-                  {/* Profile completion bar */}
-                  {profileCompletion < 100 && !isEditing && (
-                     <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-4">
-                        <div className="flex-1">
-                           <div className="flex justify-between text-xs mb-1.5">
-                              <span className="text-gray-500 font-medium">Profile Completion</span>
-                              <span className="font-bold text-orange">{profileCompletion}%</span>
-                           </div>
-                           <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                              <motion.div
-                                 initial={{ width: 0 }}
-                                 animate={{ width: `${profileCompletion}%` }}
-                                 transition={{ duration: 0.8 }}
-                                 className="h-full bg-gradient-to-r from-orange to-red-500 rounded-full"
-                              />
-                           </div>
-                        </div>
-                        <button
-                           onClick={() => onNavigateProfile ? onNavigateProfile() : setIsEditing(true)}
-                           className="flex items-center gap-1.5 text-sm font-semibold text-orange border border-orange/20 px-3 py-1.5 rounded-lg hover:bg-orange/5 transition whitespace-nowrap"
-                        >
-                           <Edit2 size={14} /> Complete Profile
-                        </button>
-                     </div>
-                  )}
-                  {isEditing && (
-                     <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end gap-3">
-                        <button
-                           onClick={() => {
-                              setIsEditing(false);
-                              setFormData({
-                                 name: candidate.name || '',
-                                 bio: candidate.bio || '',
-                                 experience: candidate.experience || '',
-                                 location: candidate.location || '',
-                                 yearsOfExperience: candidate.yearsOfExperience || 0,
-                                 preferredWorkMode: candidate.preferredWorkMode || 'Remote',
-                                 title: candidate.title || ''
-                              });
-                           }}
-                           className="text-sm font-medium text-gray-600 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition"
-                        >
-                           Cancel
-                        </button>
-                        <button
-                           onClick={handleSaveProfile}
-                           className="text-sm font-bold text-white bg-teal px-5 py-2 rounded-lg hover:opacity-90 transition flex items-center gap-2"
-                        >
-                           <Save size={14} /> Save Changes
-                        </button>
-                     </div>
-                  )}
-                  {/* Hidden file inputs */}
-                  <input type="file" ref={profilePicInputRef} className="hidden" accept="image/*" onChange={handleProfilePicUpload} />
-                  <input type="file" ref={fileInputRef} className="hidden" accept="video/*" onChange={handleVideoUpload} />
-               </div>
-            </div>
 
             <motion.div
                variants={containerVariants}

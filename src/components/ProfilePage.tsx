@@ -339,7 +339,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
     try {
       const form = new FormData();
       form.append('avatar', file);
-      const data = await api.postForm(profileEndpoint + 'avatar/', form);
+      const data = await api.postForm('/profiles/upload-image/', form);
       setProfileData((prev) => ({ ...prev, avatar: data.avatar ?? data.avatar_url }));
       toast.success('Profile photo updated');
     } catch {

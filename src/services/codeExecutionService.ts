@@ -27,10 +27,10 @@ export const LANGUAGE_IDS: Record<string, number> = {
     'sql': 82,             // SQL
 };
 
-// Public Judge0 API (RapidAPI hosted) - Now accessed via backend proxy
+// Code execution routed through the backend proxy (Vite → Django → Piston API)
 // const JUDGE0_API_URL = 'https://judge0-ce.p.rapidapi.com';
 // const RAPID_API_KEY = import.meta.env.VITE_RAPIDAPI_KEY || '';
-const API_URL = import.meta.env.VITE_API_URL || '';
+const API_URL = import.meta.env.VITE_API_URL || '/api/assessments';
 
 export interface ExecutionResult {
     stdout: string | null;
@@ -227,9 +227,17 @@ export const smartExecuteCode = async (
     testCases: TestCase[]
 ): Promise<CodeExecutionResult> => {
     try {
-        return await runTestCases(sourceCode, language, testCases);
+        const result = await runTestCases(sourceCode, language, testCases);
+        // If every test case failed with an error (API unavailable), fall back to simulation
+        const allErrored = result.results.length > 0 &&
+            result.results.every(r => r.error && r.actual_output == null);
+        if (allErrored) {
+            console.warn('Code execution API unavailable, using simulation fallback');
+            return await simulateExecution(sourceCode, language, testCases);
+        }
+        return result;
     } catch (error) {
-        console.error('Judge0 API failed, using simulation:', error);
+        console.warn('Code execution failed, using simulation fallback:', error);
         return await simulateExecution(sourceCode, language, testCases);
     }
 };

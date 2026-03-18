@@ -409,7 +409,7 @@ export const SkillPassport: React.FC<SkillPassportProps> = ({
                                 </div>
                                 <div className="flex items-center justify-between p-3 bg-purple-50 rounded-xl">
                                     <span className="text-purple-700 font-medium">Certifications</span>
-                                    <span className="text-purple-800 font-bold">{certifications.length || candidate.certifications.length}</span>
+                                    <span className="text-purple-800 font-bold">{certifications.length || (candidate.certifications?.length ?? 0)}</span>
                                 </div>
                             </div>
                         </motion.div>

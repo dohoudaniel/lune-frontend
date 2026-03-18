@@ -119,6 +119,8 @@ export const Assessment: React.FC<AssessmentProps> = ({ skill, difficulty, onCom
     };
 
     const handleKeyDownGlobal = (e: KeyboardEvent) => {
+      // Allow DevTools inspection in development mode
+      if (import.meta.env.DEV) return;
       if (
         e.key === 'F12' ||
         (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C'))
@@ -141,8 +143,9 @@ export const Assessment: React.FC<AssessmentProps> = ({ skill, difficulty, onCom
     };
   }, []);
 
-  // Anti-Cheating: Granular Paste Detection
+  // Anti-Cheating: Block and log paste attempts in the code editor
   const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault(); // Block all paste in the code editor
     isPasting.current = true;
     const text = e.clipboardData.getData('text');
 
