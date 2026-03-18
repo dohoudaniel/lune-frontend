@@ -1,5 +1,6 @@
 import React, { useState, useEffect, Suspense, lazy, startTransition, Component, ErrorInfo, ReactNode } from 'react';
 import { Landing } from './components/Landing';
+import { NotFoundPage } from './components/NotFoundPage';
 import { LoginPage } from './components/auth/LoginPage';
 import { SignupPage } from './components/auth/SignupPage';
 import { ForgotPasswordPage } from './components/auth/ForgotPasswordPage';
@@ -139,7 +140,8 @@ const getViewFromPath = (): ViewState => {
   if (path === '/employer') return ViewState.EMPLOYER_DASHBOARD;
   if (path === '/admin') return ViewState.ADMIN_DASHBOARD;
   if (path === '/profile') return ViewState.PROFILE;
-  return ViewState.LANDING;
+  if (path === '/') return ViewState.LANDING;
+  return ViewState.NOT_FOUND;
 };
 
 function AppContent() {
@@ -889,6 +891,13 @@ Verify my certificate: ${certificateUrl}
               else handleNavigate(ViewState.CANDIDATE_DASHBOARD);
             }}
             onLogout={handleLogout}
+          />
+        );
+      case ViewState.NOT_FOUND:
+        return (
+          <NotFoundPage
+            onGoHome={() => handleNavigate(ViewState.LANDING)}
+            onGoBack={window.history.length > 1 ? () => window.history.back() : undefined}
           />
         );
       default:
