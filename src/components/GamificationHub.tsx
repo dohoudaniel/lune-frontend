@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Zap, Star, Trophy, Flame, Target, Award, Gift, Crown,
     ChevronUp, Lock, CheckCircle, TrendingUp, Calendar,
-    Users, Medal, Sparkles, ArrowUp, Timer, Shield
+    Users, Medal, Sparkles, ArrowUp, Timer, Shield, AlertTriangle
 } from 'lucide-react';
 import {
     getUserGamification,
@@ -19,26 +19,54 @@ import {
 interface GamificationHubProps {
     userId: string;
     userName: string;
+    onStartAssessment?: () => void;
 }
 
-export const GamificationHub: React.FC<GamificationHubProps> = ({ userId, userName }) => {
+export const GamificationHub: React.FC<GamificationHubProps> = ({ userId, userName, onStartAssessment }) => {
     const [data, setData] = useState<UserGamification | null>(null);
     const [activeTab, setActiveTab] = useState<'overview' | 'achievements' | 'challenges' | 'leaderboard'>('overview');
     const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
     const [userRank, setUserRank] = useState<number>(0);
     const [showAchievementModal, setShowAchievementModal] = useState<Achievement | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        const gamification = getUserGamification(userId);
-        setData(gamification);
-        setLeaderboard(getLeaderboard('xp', 10));
-        setUserRank(getUserRank(userId));
+    const loadData = useCallback(() => {
+        try {
+            const gamification = getUserGamification(userId);
+            setData(gamification);
+            setLeaderboard(getLeaderboard('xp', 10));
+            setUserRank(getUserRank(userId));
 
-        // Update streak on load
-        updateStreak(userId);
+            // Update streak on load
+            updateStreak(userId);
+        } catch (err) {
+            setError('Failed to load achievements. Please try again.');
+        }
     }, [userId]);
 
-    if (!data) return null;
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
+    if (error) return (
+        <div className="bg-white rounded-2xl p-8 text-center">
+            <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Failed to load achievements</h3>
+            <button
+                onClick={() => { setError(null); loadData(); }}
+                className="mt-2 px-4 py-2 bg-purple-600 text-white rounded-xl font-medium hover:bg-purple-700 transition"
+            >
+                Try Again
+            </button>
+        </div>
+    );
+
+    if (!data) return (
+        <div className="bg-white rounded-2xl p-12 text-center">
+            <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-gray-500">Loading your achievements...</p>
+        </div>
+    );
 
     const xpProgress = (data.currentXP / data.xpToNextLevel) * 100;
     const unlockedAchievements = data.achievements.filter(a => a.unlocked);
@@ -199,7 +227,7 @@ export const GamificationHub: React.FC<GamificationHubProps> = ({ userId, userNa
                                                 <CheckCircle className="w-5 h-5 text-green-500" />
                                             ) : (
                                                 <span className="text-xs text-gray-500">
-                                                    {challenge.requirement.current}/{challenge.requirement.target}
+                                                    {challenge.requirement.current} / {challenge.requirement.target}
                                                 </span>
                                             )}
                                         </div>
@@ -274,7 +302,7 @@ export const GamificationHub: React.FC<GamificationHubProps> = ({ userId, userNa
                                     </button>
                                 ))}
                                 {unlockedAchievements.length === 0 && (
-                                    <p className="text-gray-500 text-sm">Complete assessments to earn achievements!</p>
+                                    <p className="text-gray-500 text-sm">No achievements yet — complete your first assessment to earn one!</p>
                                 )}
                             </div>
                         </motion.div>
@@ -290,22 +318,26 @@ export const GamificationHub: React.FC<GamificationHubProps> = ({ userId, userNa
                                 <Award className="w-5 h-5 text-yellow-500" />
                                 Unlocked ({unlockedAchievements.length})
                             </h3>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {unlockedAchievements.map(achievement => (
-                                    <motion.button
-                                        key={achievement.id}
-                                        whileHover={{ scale: 1.05 }}
-                                        onClick={() => setShowAchievementModal(achievement)}
-                                        className={`p-4 rounded-xl ${getRarityBg(achievement.rarity)} border-2 border-transparent hover:border-purple-300 transition`}
-                                    >
-                                        <div className={`w-12 h-12 mx-auto bg-gradient-to-br ${getRarityColor(achievement.rarity)} rounded-xl flex items-center justify-center text-xl shadow-md mb-2`}>
-                                            {achievement.icon}
-                                        </div>
-                                        <p className="font-medium text-gray-900 text-sm">{achievement.name}</p>
-                                        <p className="text-xs text-purple-600">+{achievement.xpReward} XP</p>
-                                    </motion.button>
-                                ))}
-                            </div>
+                            {unlockedAchievements.length === 0 ? (
+                                <p className="text-gray-500 text-sm">No achievements yet — complete your first assessment to earn one!</p>
+                            ) : (
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {unlockedAchievements.map(achievement => (
+                                        <motion.button
+                                            key={achievement.id}
+                                            whileHover={{ scale: 1.05 }}
+                                            onClick={() => setShowAchievementModal(achievement)}
+                                            className={`p-4 rounded-xl ${getRarityBg(achievement.rarity)} border-2 border-transparent hover:border-purple-300 transition`}
+                                        >
+                                            <div className={`w-12 h-12 mx-auto bg-gradient-to-br ${getRarityColor(achievement.rarity)} rounded-xl flex items-center justify-center text-xl shadow-md mb-2`}>
+                                                {achievement.icon}
+                                            </div>
+                                            <p className="font-medium text-gray-900 text-sm">{achievement.name}</p>
+                                            <p className="text-xs text-purple-600">+{achievement.xpReward} XP</p>
+                                        </motion.button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Locked */}
@@ -355,46 +387,58 @@ export const GamificationHub: React.FC<GamificationHubProps> = ({ userId, userNa
                                 Today's Challenges
                             </h3>
                             <div className="space-y-4">
-                                {data.dailyChallenges.map((challenge, idx) => (
-                                    <motion.div
-                                        key={challenge.id}
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: idx * 0.1 }}
-                                        className={`p-4 rounded-xl border-2 ${challenge.completed
-                                            ? 'bg-green-50 border-green-300'
-                                            : 'bg-white border-gray-200'
-                                            }`}
-                                    >
-                                        <div className="flex items-start justify-between mb-3">
-                                            <div>
-                                                <h4 className="font-bold text-gray-900">{challenge.title}</h4>
-                                                <p className="text-sm text-gray-500">{challenge.description}</p>
+                                {data.dailyChallenges.map((challenge, idx) => {
+                                    const progressVal = (challenge as any).progress ?? challenge.requirement.current;
+                                    const targetVal = (challenge as any).target ?? challenge.requirement.target;
+                                    return (
+                                        <motion.div
+                                            key={challenge.id}
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: idx * 0.1 }}
+                                            className={`p-4 rounded-xl border-2 ${challenge.completed
+                                                ? 'bg-green-50 border-green-300'
+                                                : 'bg-white border-gray-200'
+                                                }`}
+                                        >
+                                            <div className="flex items-start justify-between mb-3">
+                                                <div>
+                                                    <h4 className="font-bold text-gray-900">{challenge.title}</h4>
+                                                    <p className="text-sm text-gray-500">{challenge.description}</p>
+                                                </div>
+                                                <div className="flex items-center gap-1 bg-purple-100 text-purple-700 px-2 py-1 rounded-lg text-sm font-bold">
+                                                    <Zap className="w-3 h-3" />
+                                                    {challenge.xpReward}
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-1 bg-purple-100 text-purple-700 px-2 py-1 rounded-lg text-sm font-bold">
-                                                <Zap className="w-3 h-3" />
-                                                {challenge.xpReward}
+                                            <div className="flex items-center gap-3 mb-3">
+                                                <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${(progressVal / targetVal) * 100}%` }}
+                                                        className={`h-full rounded-full ${challenge.completed ? 'bg-green-500' : 'bg-purple-500'
+                                                            }`}
+                                                    />
+                                                </div>
+                                                {challenge.completed ? (
+                                                    <CheckCircle className="w-6 h-6 text-green-500" />
+                                                ) : (
+                                                    <span className="text-sm font-medium text-gray-600">
+                                                        {progressVal} / {targetVal}
+                                                    </span>
+                                                )}
                                             </div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
-                                                <motion.div
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${(challenge.requirement.current / challenge.requirement.target) * 100}%` }}
-                                                    className={`h-full rounded-full ${challenge.completed ? 'bg-green-500' : 'bg-purple-500'
-                                                        }`}
-                                                />
-                                            </div>
-                                            {challenge.completed ? (
-                                                <CheckCircle className="w-6 h-6 text-green-500" />
-                                            ) : (
-                                                <span className="text-sm font-medium text-gray-600">
-                                                    {challenge.requirement.current}/{challenge.requirement.target}
-                                                </span>
+                                            {!challenge.completed && (
+                                                <button
+                                                    onClick={() => onStartAssessment?.()}
+                                                    className="w-full py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 transition"
+                                                >
+                                                    Start
+                                                </button>
                                             )}
-                                        </div>
-                                    </motion.div>
-                                ))}
+                                        </motion.div>
+                                    );
+                                })}
                             </div>
                         </motion.div>
 
@@ -445,46 +489,52 @@ export const GamificationHub: React.FC<GamificationHubProps> = ({ userId, userNa
                                 Global Leaderboard
                             </h3>
                         </div>
-                        <div className="divide-y divide-gray-100">
-                            {leaderboard.map((entry, idx) => (
-                                <motion.div
-                                    key={entry.userId}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: idx * 0.05 }}
-                                    className={`p-4 flex items-center gap-4 ${entry.userId === userId ? 'bg-purple-50' : ''
-                                        }`}
-                                >
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${entry.rank === 1 ? 'bg-yellow-400 text-yellow-900' :
-                                        entry.rank === 2 ? 'bg-gray-300 text-gray-700' :
-                                            entry.rank === 3 ? 'bg-orange-400 text-orange-900' :
-                                                'bg-gray-100 text-gray-600'
-                                        }`}>
-                                        {entry.rank <= 3 ? (
-                                            <Medal className="w-5 h-5" />
-                                        ) : (
-                                            entry.rank
-                                        )}
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="font-medium text-gray-900">
-                                            {entry.userName}
-                                            {entry.userId === userId && <span className="text-purple-600 ml-2">(You)</span>}
-                                        </p>
-                                        <p className="text-sm text-gray-500">Level {entry.level}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        {entry.badges.map((badge, i) => (
-                                            <span key={i} className="text-lg">{badge}</span>
-                                        ))}
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="font-bold text-purple-600">{entry.score.toLocaleString()}</p>
-                                        <p className="text-xs text-gray-500">XP</p>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </div>
+                        {leaderboard.length === 0 ? (
+                            <div className="p-8 text-center text-gray-500">
+                                Leaderboard is empty — be the first!
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-gray-100">
+                                {leaderboard.map((entry, idx) => (
+                                    <motion.div
+                                        key={entry.userId}
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: idx * 0.05 }}
+                                        className={`p-4 flex items-center gap-4 ${entry.userId === userId ? 'bg-purple-50' : ''
+                                            }`}
+                                    >
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${entry.rank === 1 ? 'bg-yellow-400 text-yellow-900' :
+                                            entry.rank === 2 ? 'bg-gray-300 text-gray-700' :
+                                                entry.rank === 3 ? 'bg-orange-400 text-orange-900' :
+                                                    'bg-gray-100 text-gray-600'
+                                            }`}>
+                                            {entry.rank <= 3 ? (
+                                                <Medal className="w-5 h-5" />
+                                            ) : (
+                                                entry.rank
+                                            )}
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="font-medium text-gray-900">
+                                                {entry.userName}
+                                                {entry.userId === userId && <span className="text-purple-600 ml-2">(You)</span>}
+                                            </p>
+                                            <p className="text-sm text-gray-500">Level {entry.level}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {entry.badges.map((badge, i) => (
+                                                <span key={i} className="text-lg">{badge}</span>
+                                            ))}
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-bold text-purple-600">{entry.score.toLocaleString()}</p>
+                                            <p className="text-xs text-gray-500">XP</p>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        )}
 
                         {/* Your Position */}
                         {userRank > 10 && (
@@ -542,6 +592,7 @@ export const GamificationHub: React.FC<GamificationHubProps> = ({ userId, userNa
                                 <span className="font-bold text-purple-700">+{showAchievementModal.xpReward} XP</span>
                             </div>
                             <button
+                                aria-label="Close achievement details"
                                 onClick={() => setShowAchievementModal(null)}
                                 className="w-full mt-6 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition"
                             >

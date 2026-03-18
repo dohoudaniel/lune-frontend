@@ -33,6 +33,7 @@ export const AssessmentHistory: React.FC<AssessmentHistoryProps> = ({
     const [selectedTrend, setSelectedTrend] = useState<AssessmentTrend | null>(null);
     const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'trends'>('overview');
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     // Load data on mount and when candidateId changes
     useEffect(() => {
@@ -41,11 +42,17 @@ export const AssessmentHistory: React.FC<AssessmentHistoryProps> = ({
 
     const loadData = () => {
         setLoading(true);
-        const performanceSummary = getPerformanceSummary(candidateId);
-        const improvementSuggestions = getImprovementSuggestions(candidateId);
-        setSummary(performanceSummary);
-        setSuggestions(improvementSuggestions);
-        setLoading(false);
+        setError(null);
+        try {
+            const performanceSummary = getPerformanceSummary(candidateId);
+            const improvementSuggestions = getImprovementSuggestions(candidateId);
+            setSummary(performanceSummary);
+            setSuggestions(improvementSuggestions);
+        } catch {
+            setError('Failed to load assessment history. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const getScoreColor = (score: number) => {
@@ -87,6 +94,22 @@ export const AssessmentHistory: React.FC<AssessmentHistoryProps> = ({
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
                 <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mx-auto mb-3" />
                 <p className="text-gray-500">Loading assessment history...</p>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+                <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Something went wrong</h3>
+                <p className="text-gray-500 mb-4">{error}</p>
+                <button
+                    onClick={loadData}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition inline-flex items-center gap-2"
+                >
+                    <RefreshCw className="w-4 h-4" /> Try Again
+                </button>
             </div>
         );
     }
@@ -315,12 +338,12 @@ export const AssessmentHistory: React.FC<AssessmentHistoryProps> = ({
                                             Integrity concerns detected
                                         </div>
                                     )}
-                                    {!entry.passed && onRetakeAssessment && (
+                                    {onRetakeAssessment && (
                                         <button
                                             onClick={() => onRetakeAssessment(entry.skill)}
                                             className="mt-2 text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1"
                                         >
-                                            Retake Assessment <ChevronRight className="w-3 h-3" />
+                                            {entry.passed ? 'Improve Score' : 'Retake Assessment'} <ChevronRight className="w-3 h-3" />
                                         </button>
                                     )}
                                 </div>

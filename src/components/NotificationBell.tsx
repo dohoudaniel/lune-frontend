@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Bell, X, CheckCircle, Award, Briefcase, Eye } from 'lucide-react';
 import { notificationService } from '../services/notificationService';
 import { Notification } from '../types';
@@ -9,23 +9,74 @@ interface NotificationBellProps {
     userId: string;
 }
 
+const POLLING_INTERVAL_MS = 30000;
+const MAX_CONSECUTIVE_ERRORS = 3;
+
 export const NotificationBell: React.FC<NotificationBellProps> = ({ userId }) => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [isOpen, setIsOpen] = useState(false);
+    const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+    const [consecutiveErrors, setConsecutiveErrors] = useState(0);
+    const [pollingPaused, setPollingPaused] = useState(false);
+
+    const pendingDeleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => {
         loadNotifications();
-
-        // Poll for new notifications every 30 seconds
-        const interval = setInterval(loadNotifications, 30000);
-        return () => clearInterval(interval);
+        startPolling();
+        return () => stopPolling();
     }, [userId]);
 
+    // Clean up pending-delete timer on unmount
+    useEffect(() => {
+        return () => {
+            if (pendingDeleteTimerRef.current) {
+                clearTimeout(pendingDeleteTimerRef.current);
+            }
+        };
+    }, []);
+
+    const startPolling = () => {
+        stopPolling();
+        intervalRef.current = setInterval(() => {
+            if (!pollingPaused) {
+                loadNotifications();
+            }
+        }, POLLING_INTERVAL_MS);
+    };
+
+    const stopPolling = () => {
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+        }
+    };
+
     const loadNotifications = () => {
-        const notifs = notificationService.getNotifications(userId);
-        setNotifications(notifs);
-        setUnreadCount(notificationService.getUnreadCount(userId));
+        try {
+            const notifs = notificationService.getNotifications(userId);
+            setNotifications(notifs);
+            setUnreadCount(notificationService.getUnreadCount(userId));
+            setConsecutiveErrors(0);
+        } catch {
+            setConsecutiveErrors(prev => {
+                const next = prev + 1;
+                if (next >= MAX_CONSECUTIVE_ERRORS) {
+                    setPollingPaused(true);
+                    stopPolling();
+                }
+                return next;
+            });
+        }
+    };
+
+    const handleReconnect = () => {
+        setPollingPaused(false);
+        setConsecutiveErrors(0);
+        loadNotifications();
+        startPolling();
     };
 
     const handleMarkAsRead = (notificationId: string) => {
@@ -39,8 +90,32 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ userId }) =>
     };
 
     const handleDelete = (notificationId: string) => {
-        notificationService.deleteNotification(notificationId);
-        loadNotifications();
+        // Cancel any existing pending delete and commit it immediately before starting new one
+        if (pendingDelete && pendingDelete !== notificationId) {
+            if (pendingDeleteTimerRef.current) {
+                clearTimeout(pendingDeleteTimerRef.current);
+                pendingDeleteTimerRef.current = null;
+            }
+            notificationService.deleteNotification(pendingDelete);
+            loadNotifications();
+        }
+
+        setPendingDelete(notificationId);
+
+        pendingDeleteTimerRef.current = setTimeout(() => {
+            notificationService.deleteNotification(notificationId);
+            setPendingDelete(null);
+            loadNotifications();
+            pendingDeleteTimerRef.current = null;
+        }, 5000);
+    };
+
+    const handleUndoDelete = () => {
+        if (pendingDeleteTimerRef.current) {
+            clearTimeout(pendingDeleteTimerRef.current);
+            pendingDeleteTimerRef.current = null;
+        }
+        setPendingDelete(null);
     };
 
     const getIcon = (type: Notification['type']) => {
@@ -58,16 +133,27 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ userId }) =>
         }
     };
 
+    // Visually hide the notification that is pending deletion
+    const visibleNotifications = notifications.filter(n => n.id !== pendingDelete);
+
+    const headerSubtext = (() => {
+        if (notifications.length === 0) return 'All caught up!';
+        if (unreadCount > 0) return `${unreadCount} unread`;
+        return 'All read — you\'re up to date.';
+    })();
+
     return (
         <div className="relative">
             {/* Bell Button */}
             <button
+                aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
                 onClick={() => setIsOpen(!isOpen)}
                 className="relative p-2 hover:bg-gray-100 rounded-full transition"
             >
                 <Bell size={24} className="text-gray-700" />
                 {unreadCount > 0 && (
                     <motion.span
+                        aria-hidden="true"
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
@@ -98,23 +184,31 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ userId }) =>
                             <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
                                 <div>
                                     <h3 className="font-bold text-gray-900">Notifications</h3>
-                                    <p className="text-xs text-gray-500">
-                                        {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up!'}
-                                    </p>
+                                    <p className="text-xs text-gray-500">{headerSubtext}</p>
                                 </div>
-                                {unreadCount > 0 && (
-                                    <button
-                                        onClick={handleMarkAllAsRead}
-                                        className="text-xs text-teal-600 font-semibold hover:underline"
-                                    >
-                                        Mark all read
-                                    </button>
-                                )}
+                                <div className="flex items-center gap-3">
+                                    {pollingPaused && (
+                                        <button
+                                            onClick={handleReconnect}
+                                            className="text-xs text-red-500 font-semibold hover:underline"
+                                        >
+                                            Reconnect
+                                        </button>
+                                    )}
+                                    {unreadCount > 0 && (
+                                        <button
+                                            onClick={handleMarkAllAsRead}
+                                            className="text-xs text-teal-600 font-semibold hover:underline"
+                                        >
+                                            Mark all read
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Notifications List */}
                             <div className="flex-1 overflow-y-auto">
-                                {notifications.length === 0 ? (
+                                {visibleNotifications.length === 0 ? (
                                     <div className="text-center py-12">
                                         <Bell className="mx-auto text-gray-300 mb-3" size={48} />
                                         <p className="text-gray-500 font-medium">No notifications yet</p>
@@ -122,7 +216,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ userId }) =>
                                     </div>
                                 ) : (
                                     <div className="divide-y divide-gray-100">
-                                        {notifications.map((notification) => (
+                                        {visibleNotifications.map((notification) => (
                                             <motion.div
                                                 key={notification.id}
                                                 initial={{ opacity: 0, x: -10 }}
@@ -140,6 +234,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ userId }) =>
                                                                 {notification.title}
                                                             </h4>
                                                             <button
+                                                                aria-label="Delete notification"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     handleDelete(notification.id);
@@ -175,6 +270,26 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ userId }) =>
                                     </div>
                                 )}
                             </div>
+
+                            {/* Undo delete toast */}
+                            <AnimatePresence>
+                                {pendingDelete && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 8 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 8 }}
+                                        className="flex items-center justify-between px-4 py-3 bg-gray-800 text-white text-sm"
+                                    >
+                                        <span>Notification deleted.</span>
+                                        <button
+                                            onClick={handleUndoDelete}
+                                            className="ml-3 font-semibold text-teal-300 hover:text-teal-200 underline"
+                                        >
+                                            Undo
+                                        </button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </motion.div>
                     </>
                 )}

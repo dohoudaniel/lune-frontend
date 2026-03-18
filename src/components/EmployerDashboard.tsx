@@ -47,6 +47,8 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
    const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
    const [postedJobs, setPostedJobs] = useState<Job[]>([]);
    const [loading, setLoading] = useState(true);
+   const [candidateError, setCandidateError] = useState<string | null>(null);
+   const [matchingLoading, setMatchingLoading] = useState(false);
 
    // Load Data
    useEffect(() => {
@@ -59,7 +61,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
              ]);
              setCandidates(fetchedCandidates);
              setPostedJobs(fetchedJobs);
-             
+
              if (fetchedProfile) {
                  const newProfile = {
                     companyName: (fetchedProfile as any).company_name || 'TechCorp Global',
@@ -75,6 +77,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
           } catch (error) {
             console.error('Failed to load dashboard data:', error);
             toast.error('Failed to load dashboard data');
+            setCandidateError('Failed to load candidates.');
          } finally {
             setLoading(false);
          }
@@ -177,6 +180,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
 
    const handlePostJob = async () => {
       setIsMatching(true);
+      setMatchingLoading(true);
 
       // 1. Create and Save Job
       const newJob: Job = {
@@ -194,33 +198,39 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
       // Save job to DB (optional, fire and forget for responsiveness or await)
       dataService.createJob(newJob as any);
 
-      // 2. Call Gemini to rank candidates
-      const rankings = await matchCandidatesToJob(jobDescription, candidates);
+      try {
+         // 2. Call Gemini to rank candidates
+         const rankings = await matchCandidatesToJob(jobDescription, candidates);
 
-      // Merge ranking data with candidate data
-      const enrichedCandidates = rankings.map(r => {
-         const candidate = candidates.find(c => c.id === r.candidateId);
-         return { ...candidate, ...r };
-      }).sort((a, b) => (b.score || 0) - (a.score || 0));
+         // Merge ranking data with candidate data
+         const enrichedCandidates = rankings.map(r => {
+            const candidate = candidates.find(c => c.id === r.candidateId);
+            return { ...candidate, ...r };
+         }).sort((a, b) => (b.score || 0) - (a.score || 0));
 
-      setRankedCandidates(enrichedCandidates);
-      setIsMatching(false);
-      setShowPostJob(false);
+         setRankedCandidates(enrichedCandidates);
+         setShowPostJob(false);
 
-      // 3. Reset Form
-      setJobTitle('');
-      setJobCompany('');
-      setJobLocation('');
-      setJobSalary('');
-      setJobType('Remote');
-      setJobDescription('');
+         // 3. Reset Form
+         setJobTitle('');
+         setJobCompany('');
+         setJobLocation('');
+         setJobSalary('');
+         setJobType('Remote');
+         setJobDescription('');
 
-      // 4. Switch view to candidates to show results
-      setActiveTab('candidates');
-      setSelectedIndustry('All');
+         // 4. Switch view to candidates to show results
+         setActiveTab('candidates');
+         setSelectedIndustry('All');
 
-      // 5. Show success toast
-      toast.success(`💼 Job posted! Found ${enrichedCandidates.length} matching candidates.`);
+         // 5. Show success toast
+         toast.success(`💼 Job posted! Found ${enrichedCandidates.length} matching candidates.`);
+      } catch (err: any) {
+         toast.error(err?.message || 'AI matching failed. Please try again.');
+      } finally {
+         setIsMatching(false);
+         setMatchingLoading(false);
+      }
    };
 
    const deleteJob = (id: string) => {
@@ -265,6 +275,14 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
       return 0;
    });
 
+
+   const clearFilters = () => {
+      setSkillSearch('');
+      setMinExperience(0);
+      setVerifiedOnly(false);
+      setSelectedIndustry('All');
+      setRankedCandidates([]);
+   };
 
    // Filter Jobs
    const displayedJobs = postedJobs.filter(job =>
@@ -582,6 +600,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
                            whileHover={{ scale: 1.1 }}
                            whileTap={{ scale: 0.9 }}
                            onClick={() => setViewingCandidate(null)}
+                           aria-label="Close candidate profile"
                            className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full transition backdrop-blur-sm z-10"
                         >
                            <X size={20} />
@@ -896,10 +915,14 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
                         </button>
                         <button
                            onClick={handlePostJob}
-                           disabled={isMatching || !jobTitle || !jobDescription}
+                           disabled={matchingLoading || isMatching || !jobTitle || !jobDescription}
                            className="bg-black text-white px-6 py-2 rounded-lg font-bold hover:bg-gray-800 disabled:opacity-50 flex items-center gap-2 shadow-lg"
                         >
-                           {isMatching ? 'Analyzing...' : 'Post & Find Candidates'}
+                           {matchingLoading ? (
+                              <><Loader size={16} className="animate-spin" /> Matching candidates...</>
+                           ) : (
+                              'Post & Find Candidates'
+                           )}
                         </button>
                      </div>
                   </motion.div>
@@ -911,7 +934,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
          <motion.header
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="bg-white border-b border-gray-200 px-8 py-4 sticky top-0 z-10 shadow-sm"
+            className="bg-white/95 backdrop-blur-md border-b border-gray-200 px-6 py-4 sticky top-0 z-30 shadow-md"
          >
             <div className="max-w-7xl mx-auto flex justify-between items-center">
                <div className="flex items-center gap-2">
@@ -926,14 +949,6 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
                   <span className="font-bold text-xl">lune <span className="text-gray-400 font-normal">| Employer</span></span>
                </div>
                <div className="flex items-center gap-4">
-                  <motion.button
-                     whileHover={{ scale: 1.05 }}
-                     whileTap={{ scale: 0.95 }}
-                     onClick={() => setShowVerification(true)}
-                     className="flex items-center gap-2 text-sm font-medium text-teal-700 hover:bg-teal-50 px-3 py-2 rounded-lg transition"
-                  >
-                     <ShieldCheck size={16} /> Verify Hash
-                  </motion.button>
                   <motion.button
                      whileHover={{ scale: 1.05 }}
                      whileTap={{ scale: 0.95 }}
@@ -960,8 +975,15 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
                   >
                      <Plus size={16} /> Post Job
                   </motion.button>
-                  <div className="w-8 h-8 bg-orange rounded-full flex items-center justify-center text-white font-bold text-xs">C</div>
-                  <button onClick={onLogout} className="text-sm font-medium hover:text-red-600">Log out</button>
+                  <motion.button
+                     whileHover={{ scale: 1.05 }}
+                     onClick={() => setShowProfileSettings(true)}
+                     className="w-8 h-8 bg-orange rounded-full flex items-center justify-center text-white font-bold text-xs shadow-md shadow-orange/20 cursor-pointer"
+                     title="Company Settings"
+                  >
+                     {userName.charAt(0).toUpperCase()}
+                  </motion.button>
+                  <button onClick={onLogout} className="text-sm font-medium text-gray-600 hover:text-red-600 transition">Log out</button>
                </div>
             </div>
          </motion.header>
@@ -991,14 +1013,18 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
                   </div>
 
                   {/* Tab Switcher */}
-                  <div className="bg-white p-1 rounded-xl border border-gray-200 shadow-sm flex">
+                  <div role="tablist" className="bg-white p-1 rounded-xl border border-gray-200 shadow-sm flex">
                      <button
+                        role="tab"
+                        aria-selected={activeTab === 'candidates'}
                         onClick={() => setActiveTab('candidates')}
                         className={`px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2 ${activeTab === 'candidates' ? 'bg-teal text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
                      >
                         <Search size={16} /> Find Talent
                      </button>
                      <button
+                        role="tab"
+                        aria-selected={activeTab === 'jobs'}
                         onClick={() => setActiveTab('jobs')}
                         className={`px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2 ${activeTab === 'jobs' ? 'bg-teal text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
                      >
@@ -1006,98 +1032,6 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
                      </button>
                   </div>
                </div>
-
-               {/* CANDIDATE FILTERS */}
-               {activeTab === 'candidates' && (
-                  <motion.div
-                     initial={{ opacity: 0, y: -10 }}
-                     animate={{ opacity: 1, y: 0 }}
-                     className="space-y-4"
-                  >
-                     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                        {['All', 'Software Engineering', 'Data Science', 'Virtual Assistant', 'Product Design', 'Cloud Architecture'].map(ind => (
-                           <button
-                              key={ind}
-                              onClick={() => {
-                                 setSelectedIndustry(ind);
-                                 setRankedCandidates([]);
-                              }}
-                              className={`px-4 py-2 rounded-full text-sm font-medium transition whitespace-nowrap ${selectedIndustry === ind ? 'bg-teal text-white' : 'bg-white text-slate-600 hover:bg-gray-100'} ${ind === 'Virtual Assistant' ? 'border-2 border-purple-300' : ''}`}
-                           >
-                              {ind === 'Virtual Assistant' && '✨ '}{ind}
-                           </button>
-                        ))}
-                     </div>
-
-
-                     <div className="flex flex-wrap gap-4 items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                        <div className="flex gap-4 flex-1">
-                           <div className="relative flex-1 max-w-md">
-                              <Search className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
-                              <input
-                                 type="text"
-                                 placeholder="Search by name, skill, or role..."
-                                 value={skillSearch}
-                                 onChange={(e) => setSkillSearch(e.target.value)}
-                                 className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-teal focus:border-transparent text-sm"
-                              />
-                           </div>
-                           <button
-                              onClick={() => setShowFilters(!showFilters)}
-                              className={`p-2 rounded-lg border border-gray-200 flex items-center gap-2 text-sm font-semibold transition ${showFilters ? 'bg-gray-100 text-black' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                           >
-                              <Sliders size={18} /> <span className="hidden sm:inline">Filters</span>
-                           </button>
-                        </div>
-
-                        <AnimatePresence>
-                           {showFilters && (
-                              <motion.div
-                                 initial={{ height: 0, opacity: 0 }}
-                                 animate={{ height: 'auto', opacity: 1 }}
-                                 exit={{ height: 0, opacity: 0 }}
-                                 className="w-full overflow-hidden"
-                              >
-                                 <div className="pt-4 mt-2 border-t border-gray-100 flex flex-wrap gap-6">
-                                    <div className="flex items-center gap-4">
-                                       <span className="text-sm font-bold text-gray-700 flex items-center gap-2"><Clock size={16} /> Min Experience:</span>
-                                       <div className="flex items-center gap-3">
-                                          <input
-                                             type="range"
-                                             min="0"
-                                             max="10"
-                                             value={minExperience}
-                                             onChange={(e) => setMinExperience(parseInt(e.target.value))}
-                                             className="w-32 accent-teal-600"
-                                          />
-                                          <span className="text-sm font-mono bg-gray-100 px-2 py-0.5 rounded">{minExperience}+ Years</span>
-                                       </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-4">
-                                       <span className="text-sm font-bold text-gray-700 flex items-center gap-2"><Award size={16} /> Certification:</span>
-                                       <label className="flex items-center gap-2 cursor-pointer">
-                                          <input
-                                             type="checkbox"
-                                             checked={verifiedOnly}
-                                             onChange={(e) => setVerifiedOnly(e.target.checked)}
-                                             className="w-4 h-4 accent-teal-600 rounded"
-                                          />
-                                          <span className="text-sm text-gray-600">Verified Only</span>
-                                       </label>
-                                    </div>
-                                 </div>
-                              </motion.div>
-                           )}
-                        </AnimatePresence>
-                     </div>
-                     {rankedCandidates.length > 0 && (
-                        <p className="text-teal-600 text-sm font-medium flex items-center gap-2 mt-2 animate-pulse">
-                           <Sparkles size={14} /> Showing top AI matches
-                        </p>
-                     )}
-                  </motion.div>
-               )}
 
                {/* JOB SEARCH */}
                {activeTab === 'jobs' && (
@@ -1120,158 +1054,282 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
                )}
             </div>
 
-            {/* Verified Talent Pool Banner */}
+            {/* CONTENT GRID */}
             {activeTab === 'candidates' && (
-               <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-gradient-to-r from-teal-500 to-emerald-500 p-6 rounded-xl mb-6 shadow-lg"
-               >
-                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                     <div>
-                        <h3 className="text-white font-bold text-xl mb-1 flex items-center gap-2">
-                           <ShieldCheck size={24} />
-                           Verified Talent Pool
-                        </h3>
-                        <p className="text-white/90 text-sm">
-                           {candidates.filter(c => c.verified).length} candidates with verified skills ready to hire
+               <div className="flex gap-8 items-start">
+                  {/* Filter Sidebar — desktop only */}
+                  <aside className="w-64 flex-shrink-0 hidden lg:block sticky top-24 self-start rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden">
+                     {/* Compact verified pool banner */}
+                     <div className="bg-gradient-to-br from-teal-500 to-emerald-600 p-5">
+                        <div className="flex items-center gap-2 text-white font-bold mb-1">
+                           <ShieldCheck size={18} />
+                           <span>Verified Talent Pool</span>
+                        </div>
+                        <p className="text-white/85 text-xs">
+                           {candidates.filter(c => c.verified).length} certified candidates
                         </p>
                      </div>
-                     <button
-                        onClick={() => {
-                           setVerifiedOnly(true);
-                           setShowFilters(true);
-                        }}
-                        className="bg-white text-teal-700 px-5 py-2.5 rounded-lg font-bold hover:bg-teal-50 transition flex items-center gap-2 shadow-md whitespace-nowrap"
-                     >
-                        <ShieldCheck size={16} />
-                        View All Verified
-                     </button>
+
+                     <div className="p-5 space-y-6">
+                        {/* Industry */}
+                        <div>
+                           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Industry</h3>
+                           <div className="space-y-0.5">
+                              {['All', 'Software Engineering', 'Data Science', 'Virtual Assistant', 'Product Design', 'Cloud Architecture'].map(ind => (
+                                 <button
+                                    key={ind}
+                                    onClick={() => { setSelectedIndustry(ind); setRankedCandidates([]); }}
+                                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition flex items-center justify-between ${selectedIndustry === ind ? 'bg-teal-50 text-teal-700' : 'text-gray-600 hover:bg-gray-50'}`}
+                                 >
+                                    <span>{ind === 'Virtual Assistant' ? '✨ ' : ''}{ind}</span>
+                                    {selectedIndustry === ind && <CheckCircle size={14} className="text-teal-600 flex-shrink-0" />}
+                                 </button>
+                              ))}
+                           </div>
+                        </div>
+
+                        {/* Min Experience */}
+                        <div>
+                           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Min. Experience</h3>
+                           <input
+                              type="range" min="0" max="10" value={minExperience}
+                              onChange={(e) => setMinExperience(parseInt(e.target.value))}
+                              className="w-full accent-teal-600 mb-2"
+                           />
+                           <div className="flex justify-between items-center">
+                              <span className="text-xs text-gray-400">0 yrs</span>
+                              <span className="text-sm font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded">{minExperience}+ yrs</span>
+                              <span className="text-xs text-gray-400">10 yrs</span>
+                           </div>
+                        </div>
+
+                        {/* Verified Only */}
+                        <div>
+                           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Certification</h3>
+                           <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition">
+                              <input
+                                 type="checkbox" checked={verifiedOnly}
+                                 onChange={(e) => setVerifiedOnly(e.target.checked)}
+                                 className="w-4 h-4 accent-teal-600 rounded"
+                              />
+                              <div>
+                                 <p className="text-sm font-medium text-gray-800">Verified Only</p>
+                                 <p className="text-xs text-gray-500">Certified candidates</p>
+                              </div>
+                           </label>
+                        </div>
+
+                        {/* Clear all */}
+                        {(selectedIndustry !== 'All' || minExperience > 0 || verifiedOnly) && (
+                           <button
+                              onClick={clearFilters}
+                              className="w-full text-sm text-gray-500 hover:text-red-600 flex items-center justify-center gap-2 py-2 rounded-lg hover:bg-red-50 transition font-medium"
+                           >
+                              <X size={14} /> Clear all filters
+                           </button>
+                        )}
+                     </div>
+                  </aside>
+
+                  {/* Main Content Area */}
+                  <div className="flex-1 min-w-0 space-y-5">
+                     {/* Search + mobile filter toggle */}
+                     <div className="flex gap-3">
+                        <div className="relative flex-1">
+                           <Search className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
+                           <input
+                              type="text"
+                              placeholder="Search by name, skill, or role..."
+                              value={skillSearch}
+                              onChange={(e) => setSkillSearch(e.target.value)}
+                              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm shadow-sm"
+                           />
+                        </div>
+                        <button
+                           onClick={() => setShowFilters(!showFilters)}
+                           aria-label="Toggle filters"
+                           className={`lg:hidden p-2.5 rounded-xl border border-gray-200 flex items-center gap-2 text-sm font-semibold transition shadow-sm ${showFilters ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                        >
+                           <Sliders size={18} />
+                        </button>
+                     </div>
+
+                     {/* Mobile filters panel */}
+                     <AnimatePresence>
+                        {showFilters && (
+                           <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="lg:hidden overflow-hidden"
+                           >
+                              <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-4">
+                                 <div>
+                                    <p className="text-xs font-bold text-gray-500 uppercase mb-2">Industry</p>
+                                    <div className="flex gap-2 flex-wrap">
+                                       {['All', 'Software Engineering', 'Data Science', 'Virtual Assistant', 'Product Design', 'Cloud Architecture'].map(ind => (
+                                          <button
+                                             key={ind}
+                                             onClick={() => { setSelectedIndustry(ind); setRankedCandidates([]); }}
+                                             className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${selectedIndustry === ind ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                          >
+                                             {ind}
+                                          </button>
+                                       ))}
+                                    </div>
+                                 </div>
+                                 <div className="flex flex-wrap gap-6 items-center">
+                                    <div className="flex items-center gap-3">
+                                       <span className="text-sm font-bold text-gray-700">Min Exp:</span>
+                                       <input type="range" min="0" max="10" value={minExperience} onChange={(e) => setMinExperience(parseInt(e.target.value))} className="w-24 accent-teal-600" />
+                                       <span className="text-sm font-mono bg-gray-100 px-2 py-0.5 rounded">{minExperience}+ yrs</span>
+                                    </div>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                       <input type="checkbox" checked={verifiedOnly} onChange={(e) => setVerifiedOnly(e.target.checked)} className="w-4 h-4 accent-teal-600" />
+                                       <span className="text-sm text-gray-700 font-medium">Verified Only</span>
+                                    </label>
+                                 </div>
+                                 {(selectedIndustry !== 'All' || minExperience > 0 || verifiedOnly) && (
+                                    <button onClick={clearFilters} className="text-xs text-red-500 hover:underline">Clear filters</button>
+                                 )}
+                              </div>
+                           </motion.div>
+                        )}
+                     </AnimatePresence>
+
+                     {rankedCandidates.length > 0 && (
+                        <p className="text-teal-600 text-sm font-medium flex items-center gap-2 animate-pulse">
+                           <Sparkles size={14} /> Showing top AI matches
+                        </p>
+                     )}
+
+                     {/* Candidate grid or states */}
+                     {candidateError ? (
+                        <div className="text-center py-20 bg-white rounded-2xl border border-red-100 border-dashed">
+                           <div className="bg-red-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                              <XCircle className="text-red-400" size={24} />
+                           </div>
+                           <h3 className="text-lg font-bold text-gray-900">Unable to load candidates</h3>
+                           <p className="text-red-500 text-sm mt-1">{candidateError}</p>
+                           <button onClick={() => window.location.reload()} className="mt-4 text-teal-600 font-semibold text-sm hover:underline">
+                              Try again
+                           </button>
+                        </div>
+                     ) : displayedCandidates.length === 0 ? (
+                        <div className="text-center py-12 text-gray-400">
+                           <Search className="mx-auto mb-3" size={40} />
+                           <p className="font-medium">No candidates match your filters</p>
+                           <button onClick={clearFilters} className="mt-2 text-sm text-teal-600 hover:underline">Clear filters</button>
+                        </div>
+                     ) : (
+                        <motion.div
+                           variants={containerVariants}
+                           initial="hidden"
+                           animate="visible"
+                           className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5"
+                        >
+                           {displayedCandidates.map((candidate) => (
+                              <motion.div
+                                 key={candidate.id}
+                                 variants={itemVariants}
+                                 className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition border border-gray-100 group flex flex-col"
+                              >
+                                 <div className="relative h-48 bg-gray-200">
+                                    <img src={candidate.image} alt={candidate.name} className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                       <button
+                                          onClick={() => openProfile(candidate, 'overview')}
+                                          className="bg-white/90 text-black px-4 py-2 rounded-full flex items-center gap-2 text-sm font-bold transform scale-95 group-hover:scale-100 transition"
+                                       >
+                                          <Play size={16} fill="black" /> View Intro
+                                       </button>
+                                    </div>
+                                    {candidate.verified && (
+                                       <>
+                                          <button
+                                             onClick={() => openProfile(candidate, 'credentials')}
+                                             className="absolute top-4 right-4 bg-teal text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm backdrop-blur-md bg-opacity-90 hover:scale-105 transition"
+                                          >
+                                             <Award size={12} /> Verified
+                                          </button>
+                                          {candidate.certifications.length > 0 && (
+                                             <button
+                                                onClick={(e) => {
+                                                   e.stopPropagation();
+                                                   let cert = candidate.certifications[0];
+                                                   try {
+                                                      const parsed = JSON.parse(cert);
+                                                      if (parsed.hash) cert = parsed.hash;
+                                                   } catch (e) { }
+                                                   setVerifyHash(cert);
+                                                   setShowVerification(true);
+                                                }}
+                                                className="absolute top-4 left-4 bg-white/90 text-teal-700 p-2 rounded-lg hover:bg-white hover:scale-110 transition shadow-md"
+                                                title="Quick Verify Certificate"
+                                             >
+                                                <ShieldCheck size={16} />
+                                             </button>
+                                          )}
+                                       </>
+                                    )}
+                                    {candidate.matchScore && (
+                                       <div className="absolute bottom-4 left-4 bg-white text-teal-700 text-xs font-bold px-2 py-1 rounded-full shadow-lg border border-teal-100">
+                                          {candidate.matchScore}% Match
+                                       </div>
+                                    )}
+                                 </div>
+
+                                 <div className="p-6 flex-1 flex flex-col">
+                                    <div className="flex justify-between items-start mb-2">
+                                       <div>
+                                          <h3 className="font-bold text-lg text-slate-900">{candidate.name}</h3>
+                                          <p className="text-slate-500 text-sm">{candidate.title}</p>
+                                       </div>
+                                       <div className="text-right">
+                                          <div className="text-slate-400 text-xs flex items-center justify-end gap-1 mb-1">
+                                             <MapPin size={12} /> {candidate.location}
+                                          </div>
+                                          <div className="text-slate-600 text-xs font-semibold bg-gray-100 px-2 py-0.5 rounded inline-block">
+                                             {candidate.yearsOfExperience} Yrs Exp
+                                          </div>
+                                       </div>
+                                    </div>
+
+                                    {candidate.matchReason && (
+                                       <div className="mb-4 p-2.5 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-800 italic">
+                                          "{candidate.matchReason}"
+                                       </div>
+                                    )}
+
+                                    <div className="mt-4 flex flex-wrap gap-2">
+                                       {Object.entries(candidate.skills).slice(0, 3).map(([skill, score]) => (
+                                          <span key={skill} className="bg-gray-50 text-gray-600 text-xs px-2 py-1 rounded border border-gray-200">
+                                             {skill} <span className={`font-semibold ${getScoreTextColor(score as number)}`}>{score as number}%</span>
+                                          </span>
+                                       ))}
+                                    </div>
+
+                                    <div className="mt-auto pt-6 flex gap-3">
+                                       <button
+                                          onClick={() => openProfile(candidate)}
+                                          className="flex-1 bg-black text-white py-2 rounded-lg text-sm font-bold hover:bg-gray-800 transition"
+                                       >
+                                          View Profile
+                                       </button>
+                                       <button aria-label="Contact candidate" className="px-3 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">
+                                          <Mail size={18} />
+                                       </button>
+                                    </div>
+                                 </div>
+                              </motion.div>
+                           ))}
+                        </motion.div>
+                     )}
                   </div>
-               </motion.div>
+               </div>
             )}
 
-            {/* CONTENT GRID */}
-            {activeTab === 'candidates' ? (
-               displayedCandidates.length === 0 ? (
-                  <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 border-dashed">
-                     <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Search className="text-gray-400" size={24} />
-                     </div>
-                     <h3 className="text-lg font-bold text-gray-900">No candidates found</h3>
-                     <p className="text-gray-500 text-sm">Try adjusting your filters or search terms.</p>
-                     <button
-                        onClick={() => { setSkillSearch(''); setMinExperience(0); setVerifiedOnly(false); setSelectedIndustry('All'); }}
-                        className="mt-4 text-teal-600 font-semibold text-sm hover:underline"
-                     >
-                        Clear all filters
-                     </button>
-                  </div>
-               ) : (
-                  <motion.div
-                     variants={containerVariants}
-                     initial="hidden"
-                     animate="visible"
-                     className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                  >
-                     {displayedCandidates.map((candidate) => (
-                        <motion.div
-                           key={candidate.id}
-                           variants={itemVariants}
-                           className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition border border-gray-100 group flex flex-col"
-                        >
-                           <div className="relative h-48 bg-gray-200">
-                              <img src={candidate.image} alt={candidate.name} className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                 <button
-                                    onClick={() => openProfile(candidate, 'overview')}
-                                    className="bg-white/90 text-black px-4 py-2 rounded-full flex items-center gap-2 text-sm font-bold transform scale-95 group-hover:scale-100 transition"
-                                 >
-                                    <Play size={16} fill="black" /> View Intro
-                                 </button>
-                              </div>
-                              {candidate.verified && (
-                                 <>
-                                    <button
-                                       onClick={() => openProfile(candidate, 'credentials')}
-                                       className="absolute top-4 right-4 bg-teal text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm backdrop-blur-md bg-opacity-90 hover:scale-105 transition"
-                                    >
-                                       <Award size={12} /> Verified
-                                    </button>
-                                    {candidate.certifications.length > 0 && (
-                                       <button
-                                          onClick={(e) => {
-                                             e.stopPropagation();
-                                             let cert = candidate.certifications[0];
-                                             try {
-                                                const parsed = JSON.parse(cert);
-                                                if (parsed.hash) cert = parsed.hash;
-                                             } catch (e) { }
-                                             setVerifyHash(cert);
-                                             setShowVerification(true);
-                                          }}
-                                          className="absolute top-4 left-4 bg-white/90 text-teal-700 p-2 rounded-lg hover:bg-white hover:scale-110 transition shadow-md"
-                                          title="Quick Verify Certificate"
-                                       >
-                                          <ShieldCheck size={16} />
-                                       </button>
-                                    )}
-                                 </>
-                              )}
-                              {candidate.matchScore && (
-                                 <div className="absolute bottom-4 left-4 bg-white text-teal-700 text-xs font-bold px-2 py-1 rounded-full shadow-lg border border-teal-100">
-                                    {candidate.matchScore}% Match
-                                 </div>
-                              )}
-                           </div>
-
-                           <div className="p-6 flex-1 flex flex-col">
-                              <div className="flex justify-between items-start mb-2">
-                                 <div>
-                                    <h3 className="font-bold text-lg text-slate-900">{candidate.name}</h3>
-                                    <p className="text-slate-500 text-sm">{candidate.title}</p>
-                                 </div>
-                                 <div className="text-right">
-                                    <div className="text-slate-400 text-xs flex items-center justify-end gap-1 mb-1">
-                                       <MapPin size={12} /> {candidate.location}
-                                    </div>
-                                    <div className="text-slate-600 text-xs font-semibold bg-gray-100 px-2 py-0.5 rounded inline-block">
-                                       {candidate.yearsOfExperience} Yrs Exp
-                                    </div>
-                                 </div>
-                              </div>
-
-                              {candidate.matchReason && (
-                                 <div className="mb-4 p-2.5 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-800 italic">
-                                    "{candidate.matchReason}"
-                                 </div>
-                              )}
-
-                              <div className="mt-4 flex flex-wrap gap-2">
-                                 {Object.entries(candidate.skills).slice(0, 3).map(([skill, score]) => (
-                                    <span key={skill} className="bg-gray-50 text-gray-600 text-xs px-2 py-1 rounded border border-gray-200">
-                                       {skill} <span className={`font-semibold ${getScoreTextColor(score as number)}`}>{score as number}%</span>
-                                    </span>
-                                 ))}
-                              </div>
-
-                              <div className="mt-auto pt-6 flex gap-3">
-                                 <button
-                                    onClick={() => openProfile(candidate)}
-                                    className="flex-1 bg-black text-white py-2 rounded-lg text-sm font-bold hover:bg-gray-800 transition"
-                                 >
-                                    View Profile
-                                 </button>
-                                 <button className="px-3 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">
-                                    <Mail size={18} />
-                                 </button>
-                              </div>
-                           </div>
-                        </motion.div>
-                     ))}
-                  </motion.div>
-               )
-            ) : (
+            {activeTab === 'jobs' && (
                <div className="space-y-4">
                   <AnimatePresence>
                      {displayedJobs.map((job) => (

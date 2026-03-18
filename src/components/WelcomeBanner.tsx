@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
     Sparkles, ArrowRight, CheckCircle, Circle,
@@ -7,11 +7,16 @@ import {
 } from 'lucide-react';
 import { onboardingService, OnboardingProgress } from '../services/onboardingService';
 
+const DISMISSED_KEY = 'lune_welcome_banner_dismissed';
+
 interface WelcomeBannerProps {
     userName: string;
     userRole: 'candidate' | 'employer';
     onStartTour?: () => void;
     onDismiss?: () => void;
+    onCompleteProfile?: () => void;
+    onStartAssessment?: () => void;
+    onOpenVideoAnalyzer?: () => void;
     className?: string;
 }
 
@@ -20,8 +25,19 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
     userRole,
     onStartTour,
     onDismiss,
+    onCompleteProfile,
+    onStartAssessment,
+    onOpenVideoAnalyzer,
     className = ''
 }) => {
+    const [dismissed, setDismissed] = useState<boolean>(false);
+
+    useEffect(() => {
+        if (localStorage.getItem(DISMISSED_KEY) === 'true') {
+            setDismissed(true);
+        }
+    }, []);
+
     const progress = onboardingService.getProgress();
     const completionPercentage = onboardingService.getCompletionPercentage();
     const nextAction = onboardingService.getNextRecommendedAction();
@@ -34,6 +50,41 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
         if (hour < 17) return 'Good afternoon';
         return 'Good evening';
     };
+
+    const handleDismiss = () => {
+        localStorage.setItem(DISMISSED_KEY, 'true');
+        setDismissed(true);
+        onDismiss?.();
+    };
+
+    const getCtaLabel = (action: string) => {
+        switch (action) {
+            case 'complete_tour': return 'Start Tour';
+            case 'complete_profile': return 'Complete Profile';
+            case 'take_assessment': return 'Take Assessment';
+            case 'upload_video': return 'Record Video';
+            default: return 'Continue';
+        }
+    };
+
+    const handleCtaClick = (action: string) => {
+        switch (action) {
+            case 'complete_tour':
+                onStartTour?.();
+                break;
+            case 'complete_profile':
+                onCompleteProfile?.();
+                break;
+            case 'take_assessment':
+                onStartAssessment?.();
+                break;
+            case 'upload_video':
+                onOpenVideoAnalyzer?.();
+                break;
+        }
+    };
+
+    if (dismissed) return null;
 
     return (
         <motion.div
@@ -54,7 +105,8 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
             {/* Dismiss Button */}
             {onDismiss && (
                 <button
-                    onClick={onDismiss}
+                    aria-label="Dismiss welcome banner"
+                    onClick={handleDismiss}
                     className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 transition text-white/60 hover:text-white"
                 >
                     <X size={18} />
@@ -105,7 +157,11 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
                     >
                         <div className="relative w-20 h-20">
                             {/* Background Circle */}
-                            <svg className="w-full h-full -rotate-90">
+                            <svg
+                                className="w-full h-full -rotate-90"
+                                aria-label={`Profile completion: ${completionPercentage}%`}
+                                role="img"
+                            >
                                 <circle
                                     cx="40"
                                     cy="40"
@@ -202,14 +258,10 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => {
-                                if (nextAction.action === 'complete_tour' && onStartTour) {
-                                    onStartTour();
-                                }
-                            }}
+                            onClick={() => handleCtaClick(nextAction.action)}
                             className="flex items-center justify-center gap-2 bg-white text-slate-900 px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-100 transition shadow-lg flex-shrink-0"
                         >
-                            {nextAction.action === 'complete_tour' ? 'Start Tour' : 'Continue'}
+                            {getCtaLabel(nextAction.action)}
                             <ChevronRight size={16} />
                         </motion.button>
                     </motion.div>

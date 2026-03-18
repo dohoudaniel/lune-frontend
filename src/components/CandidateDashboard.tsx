@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import { Code, Award, TrendingUp, Briefcase, MapPin, User, Play, Plus, Sparkles, CheckCircle, Loader, ArrowRight, Video, X, Upload, Edit2, Save, Bookmark, Star, Mic, Globe, Clock, Share2, Shield, ExternalLink, Eye, History, Search, Zap, Target } from 'lucide-react';
+import React, { useState, useEffect, useRef, lazy, Suspense, useMemo } from 'react';
+import { Code, Award, TrendingUp, Briefcase, MapPin, User, Play, Plus, Sparkles, CheckCircle, Loader, ArrowRight, Video, X, Upload, Edit2, Save, Bookmark, Star, Mic, Globe, Clock, Share2, Shield, ExternalLink, Eye, History, Search, Zap, Target, Home } from 'lucide-react';
 import { CandidateProfile, RecommendedCertification, Job } from '../types';
 import { getCareerRecommendations } from '../services/geminiService';
 import { notificationService } from '../services/notificationService';
@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 // Lazy load SkillPassport for performance
 const SkillPassport = lazy(() => import('./SkillPassport').then(m => ({ default: m.SkillPassport })));
 import { api } from '../lib/api';
+import { updateCandidateProfile } from '../services/profileService';
 
 
 interface CandidateDashboardProps {
@@ -49,9 +50,10 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
       jobs: Job[];
    } | null>(null);
    const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+   const [recommendationsError, setRecommendationsError] = useState<string | null>(null);
 
    // Filter assessments based on search query
-   const filteredAssessments = React.useMemo(() => {
+   const filteredAssessments = useMemo(() => {
       if (!searchQuery.trim()) return AVAILABLE_ASSESSMENTS;
 
       const query = searchQuery.toLowerCase();
@@ -122,9 +124,16 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
 
    const fetchRecommendations = async () => {
       setLoadingRecommendations(true);
-      const result = await getCareerRecommendations(candidate.skills);
-      setRecommendations(result);
-      setLoadingRecommendations(false);
+      setRecommendationsError(null);
+      try {
+         const result = await getCareerRecommendations(candidate.skills);
+         setRecommendations(result);
+      } catch (err) {
+         console.error('Failed to fetch career recommendations:', err);
+         setRecommendationsError('Failed to load recommendations. Please try again.');
+      } finally {
+         setLoadingRecommendations(false);
+      }
    };
 
    // Generate Skill Passport
@@ -228,10 +237,14 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
       }
    };
 
-   const handleSaveProfile = () => {
+   const handleSaveProfile = async () => {
       onUpdateProfile(formData);
       setIsEditing(false);
       toast.success("✨ Profile saved successfully!");
+      // Persist to backend (fire-and-forget; local state already updated)
+      updateCandidateProfile(candidate.id, formData).catch(() => {
+         toast.warning("Profile saved locally. Sync to server failed — will retry on next save.");
+      });
    };
 
    const getMatchColor = (score: number) => {
@@ -274,12 +287,29 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
    const profileCompletion = calculateProfileCompletion();
 
    return (
-      <div className="min-h-screen bg-cream font-sans">
+      <div className="min-h-screen bg-cream font-sans pb-16 sm:pb-0">
+         {/* Mobile Bottom Navigation */}
+         <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 flex sm:hidden">
+            {[
+               { icon: <Home size={20} />, label: 'Home', tab: 'overview' as const },
+               { icon: <Mic size={20} />, label: 'Interview', tab: 'interview' as const },
+               { icon: <History size={20} />, label: 'Progress', tab: 'history' as const },
+            ].map(item => (
+               <button
+                  key={item.tab}
+                  onClick={() => setActiveTab(item.tab)}
+                  className={`flex-1 flex flex-col items-center py-2 text-xs font-medium transition ${activeTab === item.tab ? 'text-orange' : 'text-gray-400'}`}
+               >
+                  {item.icon}
+                  {item.label}
+               </button>
+            ))}
+         </nav>
          {/* Header */}
          <motion.header
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="bg-white border-b border-gray-200 px-4 md:px-8 py-4 sticky top-0 z-10 shadow-sm"
+            className="bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 md:px-8 py-4 sticky top-0 z-30 shadow-md"
          >
             <div className="max-w-7xl mx-auto flex justify-between items-center">
                <div className="flex items-center gap-2">
@@ -341,7 +371,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                      </div>
                   </div>
                   <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
-                     <div className="bg-purple/10 p-3 rounded-xl text-purple">
+                     <div className="bg-purple-100 p-3 rounded-xl text-purple-600">
                         <TrendingUp size={24} />
                      </div>
                      <div>
@@ -350,7 +380,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                      </div>
                   </div>
                   <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
-                     <div className="bg-red/10 p-3 rounded-xl text-red-500">
+                     <div className="bg-red-100 p-3 rounded-xl text-red-500">
                         <Zap size={24} />
                      </div>
                      <div>
@@ -361,74 +391,63 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                </motion.div>
             )}
 
-            <motion.div
-               variants={containerVariants}
-               initial="hidden"
-               animate="visible"
-               className="grid grid-cols-1 lg:grid-cols-12 gap-8"
-            >
-               {/* Left Sidebar: Profile Info */}
-               <motion.div variants={itemVariants} className="lg:col-span-4 space-y-6">
-                  {/* Profile Card */}
-                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center relative overflow-hidden group hover:shadow-lg transition-all">
-                     <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-orange to-red-500"></div>
-
-                     {/* Edit Toggle Button */}
-                     <button
-                        onClick={() => isEditing ? handleSaveProfile() : setIsEditing(true)}
-                        className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full text-white transition z-20 shadow-sm"
-                        title={isEditing ? "Save Profile" : "Edit Profile"}
+            {/* Horizontal Profile Hero Banner */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
+               {/* Cover gradient strip */}
+               <div className="h-28 bg-gradient-to-r from-orange to-red-500 relative">
+                  <button
+                     onClick={() => isEditing ? handleSaveProfile() : setIsEditing(true)}
+                     className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full text-white transition z-20 shadow-sm"
+                     aria-label={isEditing ? "Save Profile" : "Edit Profile"}
+                  >
+                     {isEditing ? <Save size={16} /> : <Edit2 size={16} />}
+                  </button>
+               </div>
+               {/* Profile info row */}
+               <div className="px-6 pb-6">
+                  <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-start sm:items-end -mt-12">
+                     {/* Avatar */}
+                     <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        className="w-24 h-24 rounded-2xl border-4 border-white shadow-lg bg-white overflow-hidden flex-shrink-0 relative group cursor-pointer"
+                        onClick={() => profilePicInputRef.current?.click()}
                      >
-                        {isEditing ? <Save size={16} /> : <Edit2 size={16} />}
-                     </button>
-
-                     <div className="relative z-10 mt-12">
-                        <motion.div
-                           whileHover={{ scale: 1.05 }}
-                           className="w-24 h-24 bg-white rounded-full p-1 mx-auto shadow-lg mb-4 relative group cursor-pointer"
-                           onClick={() => profilePicInputRef.current?.click()}
-                        >
-                           <img
-                              src={candidate.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(candidate.name)}&size=300&background=f97316&color=ffffff&bold=true`}
-                              alt="Profile"
-                              className="w-full h-full rounded-full object-cover"
-                           />
-                           {/* Upload overlay */}
-                           <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Upload className="w-6 h-6 text-white" />
-                           </div>
-                           {/* Remove button if custom image exists */}
-                           {candidate.image && (
-                              <button
-                                 onClick={(e) => {
-                                    e.stopPropagation();
-                                    onUpdateProfile({ image: undefined });
-                                    toast.success("Profile picture removed.");
-                                 }}
-                                 className="absolute -top-1 -right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-md"
-                                 title="Remove profile picture"
-                              >
-                                 <X size={12} />
-                              </button>
-                           )}
-                        </motion.div>
-                        <input
-                           type="file"
-                           ref={profilePicInputRef}
-                           className="hidden"
-                           accept="image/*"
-                           onChange={handleProfilePicUpload}
+                        <img
+                           src={candidate.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(candidate.name)}&size=300&background=f97316&color=ffffff&bold=true`}
+                           alt="Profile"
+                           className="w-full h-full object-cover"
                         />
+                        {/* Upload overlay */}
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                           <Upload className="w-6 h-6 text-white" />
+                        </div>
+                        {/* Remove button if custom image exists */}
+                        {candidate.image && (
+                           <button
+                              onClick={(e) => {
+                                 e.stopPropagation();
+                                 onUpdateProfile({ image: undefined });
+                                 toast.success("Profile picture removed.");
+                              }}
+                              className="absolute -top-1 -right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-md"
+                              title="Remove profile picture"
+                              aria-label="Remove profile picture"
+                           >
+                              <X size={12} />
+                           </button>
+                        )}
+                     </motion.div>
+                     {/* Name + title + location row */}
+                     <div className="flex-1 pt-2 sm:pb-1">
                         {isEditing ? (
                            <input
                               type="text"
                               value={formData.name}
                               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                              placeholder="Your full name"
-                              className="w-full text-center bg-white border border-gray-200 rounded-lg px-3 py-2 text-xl font-bold text-slate-900 mb-2 focus:ring-2 focus:ring-orange focus:border-transparent outline-none"
+                              className="text-2xl font-bold text-slate-900 bg-white border border-gray-200 rounded-lg px-3 py-1 w-full sm:w-auto mb-1 focus:ring-2 focus:ring-orange outline-none"
                            />
                         ) : (
-                           <h2 className="text-xl font-bold text-slate-900">{candidate.name}</h2>
+                           <h2 className="text-2xl font-bold text-slate-900">{candidate.name}</h2>
                         )}
                         {isEditing ? (
                            <input
@@ -436,181 +455,287 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                               value={formData.title}
                               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                               placeholder="Your job title (e.g., Virtual Assistant)"
-                              className="w-full text-center bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-slate-600 mb-4 focus:ring-2 focus:ring-orange focus:border-transparent outline-none"
+                              className="text-sm text-gray-500 bg-white border border-gray-200 rounded-lg px-3 py-1 w-full sm:w-auto focus:ring-2 focus:ring-orange outline-none"
                            />
                         ) : (
-                           <p className="text-slate-500 text-sm mb-4">{candidate.title || <span className="text-gray-400 italic">Add your job title</span>}</p>
+                           <p className="text-gray-500 text-sm mt-0.5">{candidate.title || <span className="italic text-gray-400">Add your job title</span>}</p>
                         )}
-
-                        {/* Video Intro Upload */}
-                        <div className="mb-6">
-                           {candidate.videoIntroUrl ? (
-                              <div className="relative rounded-xl overflow-hidden bg-black aspect-video shadow-sm group mx-auto max-w-[280px]">
-                                 <video src={candidate.videoIntroUrl} className="w-full h-full object-cover" controls />
-                                 <button
-                                    onClick={() => onUpdateProfile({ videoIntroUrl: undefined })}
-                                    className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition hover:bg-red-500 backdrop-blur-sm"
-                                    title="Remove Video"
-                                 >
-                                    <X size={14} />
-                                 </button>
+                        <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-gray-500">
+                           {isEditing ? (
+                              <input
+                                 type="text"
+                                 value={formData.location}
+                                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                                 placeholder="Location"
+                                 className="bg-white border border-gray-200 rounded px-2 py-1 text-xs"
+                              />
+                           ) : (
+                              candidate.location && <span className="flex items-center gap-1"><MapPin size={13} /> {candidate.location}</span>
+                           )}
+                           {isEditing ? (
+                              <div className="flex items-center gap-1">
+                                 <input
+                                    type="number"
+                                    value={formData.yearsOfExperience}
+                                    onChange={(e) => setFormData({ ...formData, yearsOfExperience: parseInt(e.target.value) })}
+                                    className="w-14 bg-white border border-gray-200 rounded px-2 py-1 text-xs"
+                                 />
+                                 <span className="text-xs text-gray-500">yrs exp</span>
                               </div>
                            ) : (
-                              <motion.button
-                                 whileHover={{ scale: 1.02 }}
-                                 whileTap={{ scale: 0.98 }}
-                                 onClick={() => fileInputRef.current?.click()}
-                                 className="text-orange text-xs font-bold flex items-center justify-center gap-2 mx-auto hover:bg-orange/10 px-4 py-2 rounded-full transition border border-orange/20 bg-orange/5"
-                              >
-                                 <Video size={14} /> Add Video Intro
-                              </motion.button>
+                              <span className="flex items-center gap-1"><Clock size={13} /> {candidate.yearsOfExperience || 0} yrs exp</span>
                            )}
-                           <input
-                              type="file"
-                              ref={fileInputRef}
-                              className="hidden"
-                              accept="video/*"
-                              onChange={handleVideoUpload}
-                           />
-                           {/* AI Video Analyzer Button */}
-                           {onOpenVideoAnalyzer && (
-                              <motion.button
-                                 whileHover={{ scale: 1.02 }}
-                                 whileTap={{ scale: 0.98 }}
-                                 onClick={onOpenVideoAnalyzer}
-                                 className="mt-3 text-purple-600 text-xs font-bold flex items-center justify-center gap-2 mx-auto hover:bg-purple-50 px-4 py-2 rounded-full transition border border-purple-100 bg-purple-50/50"
+                           {isEditing ? (
+                              <select
+                                 value={formData.preferredWorkMode}
+                                 onChange={(e) => setFormData({ ...formData, preferredWorkMode: e.target.value as any })}
+                                 className="bg-white border border-gray-200 rounded px-2 py-1 text-xs"
                               >
-                                 <Sparkles size={14} /> Analyze with AI
-                              </motion.button>
+                                 <option value="Remote">Remote</option>
+                                 <option value="Hybrid">Hybrid</option>
+                                 <option value="On-site">On-site</option>
+                              </select>
+                           ) : (
+                              <span className="flex items-center gap-1"><Globe size={13} /> {candidate.preferredWorkMode || 'Remote'}</span>
                            )}
                         </div>
-
-                        {/* Profile Metadata Grid */}
-                        <div className="grid grid-cols-2 gap-3 text-left mb-6">
-                           <div className="bg-gray-50 p-2 rounded-lg">
-                              <div className="text-xs text-gray-400 mb-1 flex items-center gap-1"><MapPin size={10} /> Location</div>
-                              {isEditing ? (
-                                 <input
-                                    type="text"
-                                    value={formData.location}
-                                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                    className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-xs"
-                                 />
-                              ) : (
-                                 <div className="font-semibold text-sm text-slate-700 truncate">{candidate.location}</div>
-                              )}
-                           </div>
-                           <div className="bg-gray-50 p-2 rounded-lg">
-                              <div className="text-xs text-gray-400 mb-1 flex items-center gap-1"><Clock size={10} /> Experience</div>
-                              {isEditing ? (
-                                 <div className="flex items-center gap-1">
-                                    <input
-                                       type="number"
-                                       value={formData.yearsOfExperience}
-                                       onChange={(e) => setFormData({ ...formData, yearsOfExperience: parseInt(e.target.value) })}
-                                       className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-xs"
-                                    />
-                                    <span className="text-xs text-gray-500">Yrs</span>
-                                 </div>
-                              ) : (
-                                 <div className="font-semibold text-sm text-slate-700">{candidate.yearsOfExperience || 0} Years</div>
-                              )}
-                           </div>
-                           <div className="bg-gray-50 p-2 rounded-lg col-span-2">
-                              <div className="text-xs text-gray-400 mb-1 flex items-center gap-1"><Globe size={10} /> Preference</div>
-                              {isEditing ? (
-                                 <select
-                                    value={formData.preferredWorkMode}
-                                    onChange={(e) => setFormData({ ...formData, preferredWorkMode: e.target.value as any })}
-                                    className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-xs"
-                                 >
-                                    <option value="Remote">Remote</option>
-                                    <option value="Hybrid">Hybrid</option>
-                                    <option value="On-site">On-site</option>
-                                 </select>
-                              ) : (
-                                 <div className="font-semibold text-sm text-slate-700">{candidate.preferredWorkMode || 'Remote'}</div>
-                              )}
-                           </div>
-                        </div>
-
-                        {/* Bio & Experience Section */}
-                        <div className="text-left pt-4 border-t border-gray-100 space-y-4">
-                           <div>
-                              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">About Me</label>
-                              {isEditing ? (
-                                 <textarea
-                                    className="w-full text-sm p-2 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-orange focus:border-transparent outline-none resize-none"
-                                    rows={3}
-                                    placeholder="Tell us about yourself..."
-                                    value={formData.bio}
-                                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                                 />
-                              ) : (
-                                 <p className="text-sm text-slate-600 leading-relaxed">
-                                    {candidate.bio || <span className="text-gray-400 italic text-xs">No bio added yet.</span>}
-                                 </p>
-                              )}
-                           </div>
-                           <div>
-                              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Work Summary</label>
-                              {isEditing ? (
-                                 <textarea
-                                    className="w-full text-sm p-2 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-orange focus:border-transparent outline-none resize-none"
-                                    rows={3}
-                                    placeholder="Briefly describe your past roles..."
-                                    value={formData.experience}
-                                    onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
-                                 />
-                              ) : (
-                                 <p className="text-sm text-slate-600 leading-relaxed">
-                                    {candidate.experience || <span className="text-gray-400 italic text-xs">No details added.</span>}
-                                 </p>
-                              )}
-                           </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4 mt-4">
-                            <div>
-                                <div className="text-2xl font-bold text-slate-900">{Math.round(userStats?.average_score || 0)}%</div>
-                                <div className="text-xs text-slate-500">Avg. Score</div>
-                            </div>
-                            <div>
-                                <div className="text-2xl font-bold text-slate-900">{userStats?.passed_assessments || candidate.certifications.length}</div>
-                                <div className="text-xs text-slate-500">Passed</div>
-                            </div>
-                        </div>
-
-                        {/* Complete Profile Button */}
-                        {profileCompletion < 100 && !isEditing && (
-                           <motion.div
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              className="mt-4 pt-4 border-t border-gray-100"
+                     </div>
+                     {/* Right side: badges + action buttons */}
+                     <div className="flex flex-wrap gap-2 items-center sm:pb-1">
+                        <span className="flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-bold px-3 py-1.5 rounded-full border border-green-100">
+                           <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                           Open for Work
+                        </span>
+                        {candidate.videoIntroUrl ? (
+                           <span className="flex items-center gap-1.5 bg-blue-50 text-blue-700 text-xs font-bold px-3 py-1.5 rounded-full border border-blue-100">
+                              <Video size={12} /> Has Video Intro
+                           </span>
+                        ) : (
+                           <button
+                              onClick={() => fileInputRef.current?.click()}
+                              className="flex items-center gap-1.5 text-orange text-xs font-bold px-3 py-1.5 rounded-full border border-orange/20 bg-orange/5 hover:bg-orange/10 transition"
                            >
-                              <div className="flex items-center justify-between mb-2">
-                                 <span className="text-xs font-medium text-slate-500">Profile Completion</span>
-                                 <span className="text-xs font-bold text-orange">{profileCompletion}%</span>
+                              <Video size={12} /> Add Video
+                           </button>
+                        )}
+                        {onOpenVideoAnalyzer && (
+                           <button
+                              onClick={onOpenVideoAnalyzer}
+                              className="flex items-center gap-1.5 text-purple-600 text-xs font-bold px-3 py-1.5 rounded-full border border-purple-100 bg-purple-50 hover:bg-purple-100 transition"
+                           >
+                              <Sparkles size={12} /> AI Analyze
+                           </button>
+                        )}
+                     </div>
+                  </div>
+                  {/* Bio + experience */}
+                  {(candidate.bio || candidate.experience || isEditing) && (
+                     <div className="mt-4 grid sm:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+                        <div>
+                           <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">About Me</label>
+                           {isEditing ? (
+                              <textarea
+                                 rows={2}
+                                 value={formData.bio}
+                                 onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                                 placeholder="Tell us about yourself..."
+                                 className="w-full text-sm p-2 border border-gray-200 rounded-lg bg-gray-50 resize-none focus:ring-2 focus:ring-orange outline-none"
+                              />
+                           ) : (
+                              <p className="text-sm text-slate-600 leading-relaxed">{candidate.bio}</p>
+                           )}
+                        </div>
+                        <div>
+                           <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Work Summary</label>
+                           {isEditing ? (
+                              <textarea
+                                 rows={2}
+                                 value={formData.experience}
+                                 onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
+                                 placeholder="Briefly describe your roles..."
+                                 className="w-full text-sm p-2 border border-gray-200 rounded-lg bg-gray-50 resize-none focus:ring-2 focus:ring-orange outline-none"
+                              />
+                           ) : (
+                              <p className="text-sm text-slate-600 leading-relaxed">{candidate.experience}</p>
+                           )}
+                        </div>
+                     </div>
+                  )}
+                  {/* Profile completion bar */}
+                  {profileCompletion < 100 && !isEditing && (
+                     <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-4">
+                        <div className="flex-1">
+                           <div className="flex justify-between text-xs mb-1.5">
+                              <span className="text-gray-500 font-medium">Profile Completion</span>
+                              <span className="font-bold text-orange">{profileCompletion}%</span>
+                           </div>
+                           <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <motion.div
+                                 initial={{ width: 0 }}
+                                 animate={{ width: `${profileCompletion}%` }}
+                                 transition={{ duration: 0.8 }}
+                                 className="h-full bg-gradient-to-r from-orange to-red-500 rounded-full"
+                              />
+                           </div>
+                        </div>
+                        <button
+                           onClick={() => setIsEditing(true)}
+                           className="flex items-center gap-1.5 text-sm font-semibold text-orange border border-orange/20 px-3 py-1.5 rounded-lg hover:bg-orange/5 transition whitespace-nowrap"
+                        >
+                           <Edit2 size={14} /> Complete Profile
+                        </button>
+                     </div>
+                  )}
+                  {isEditing && (
+                     <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end gap-3">
+                        <button
+                           onClick={() => {
+                              setIsEditing(false);
+                              setFormData({
+                                 name: candidate.name || '',
+                                 bio: candidate.bio || '',
+                                 experience: candidate.experience || '',
+                                 location: candidate.location || '',
+                                 yearsOfExperience: candidate.yearsOfExperience || 0,
+                                 preferredWorkMode: candidate.preferredWorkMode || 'Remote',
+                                 title: candidate.title || ''
+                              });
+                           }}
+                           className="text-sm font-medium text-gray-600 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition"
+                        >
+                           Cancel
+                        </button>
+                        <button
+                           onClick={handleSaveProfile}
+                           className="text-sm font-bold text-white bg-teal px-5 py-2 rounded-lg hover:opacity-90 transition flex items-center gap-2"
+                        >
+                           <Save size={14} /> Save Changes
+                        </button>
+                     </div>
+                  )}
+                  {/* Hidden file inputs */}
+                  <input type="file" ref={profilePicInputRef} className="hidden" accept="image/*" onChange={handleProfilePicUpload} />
+                  <input type="file" ref={fileInputRef} className="hidden" accept="video/*" onChange={handleVideoUpload} />
+               </div>
+            </div>
+
+            <motion.div
+               variants={containerVariants}
+               initial="hidden"
+               animate="visible"
+               className="grid grid-cols-1 lg:grid-cols-12 gap-8"
+            >
+               {/* Left Sidebar: Verified Skills + Skill Passport */}
+               <motion.div variants={itemVariants} className="lg:col-span-4 space-y-6">
+
+                  {/* Verified Skills Card */}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                     <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-bold text-slate-900 flex items-center gap-2"><Award className="text-teal-600" size={18} /> Verified Skills</h3>
+                     </div>
+                     <div className="space-y-4 mb-6">
+                        {Object.entries(candidate.skills).map(([skill, score]) => (
+                           <div key={skill}>
+                              <div className="flex justify-between text-xs mb-1.5">
+                                 <span className="font-medium text-slate-700">{skill}</span>
+                                 <span className={`font-bold ${(score as number) >= 80 ? 'text-green-600' : 'text-slate-600'}`}>{score as number}%</span>
                               </div>
-                              <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-3">
+                              <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden shadow-inner">
                                  <motion.div
                                     initial={{ width: 0 }}
-                                    animate={{ width: `${profileCompletion}%` }}
-                                    transition={{ duration: 0.8 }}
-                                    className="h-full bg-gradient-to-r from-orange to-red-500 rounded-full"
-                                 />
+                                    animate={{ width: `${score}%` }}
+                                    transition={{ duration: 1, ease: "easeOut" }}
+                                    className={`h-full rounded-full ${(score as number) >= 80 ? 'bg-gradient-to-r from-teal-500 to-emerald-400' : 'bg-gradient-to-r from-orange-400 to-orange-500'}`}
+                                 ></motion.div>
                               </div>
-                              <motion.button
-                                 whileHover={{ scale: 1.02 }}
-                                 whileTap={{ scale: 0.98 }}
-                                 onClick={() => setIsEditing(true)}
-                                 className="w-full py-2.5 bg-gradient-to-r from-teal to-blue-600 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
-                              >
-                                 <Edit2 size={16} />
-                                 Complete Profile
-                              </motion.button>
-                           </motion.div>
+                           </div>
+                        ))}
+                        {Object.keys(candidate.skills).length === 0 && (
+                           <p className="text-xs text-gray-400 italic">No skills verified yet.</p>
                         )}
+                     </div>
+
+                     <div className="pt-4 border-t border-gray-100">
+                        <div className="flex items-center justify-between mb-3">
+                           <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Available Assessments</h4>
+                        </div>
+
+                        {/* Search Box */}
+                        <div className="mb-4">
+                           <div className="relative">
+                              <input
+                                 type="text"
+                                 value={searchQuery}
+                                 onChange={(e) => setSearchQuery(e.target.value)}
+                                 placeholder="Search for skills or categories..."
+                                 className="w-full px-4 py-2.5 pl-10 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange focus:border-transparent outline-none transition"
+                              />
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                              {searchQuery && (
+                                 <button
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                                    aria-label="Clear search"
+                                 >
+                                    <X size={16} />
+                                 </button>
+                              )}
+                           </div>
+                           {searchQuery && (
+                              <p className="text-xs text-gray-500 mt-2">
+                                 {Object.keys(filteredAssessments).length === 0
+                                    ? 'No results found'
+                                    : `Found ${Object.values(filteredAssessments).flat().length} skill(s)`
+                                 }
+                              </p>
+                           )}
+                        </div>
+
+                        {/* Results */}
+                        {Object.keys(filteredAssessments).length > 0 ? (
+                           <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                              {Object.entries(filteredAssessments).map(([category, skills]: [string, string[]]) => (
+                                 <div key={category}>
+                                    <h5 className="text-xs font-bold text-slate-800 mb-2">{category}</h5>
+                                    <div className="flex flex-wrap gap-2">
+                                       {skills.map(skill => (
+                                          <motion.button
+                                             key={skill}
+                                             whileHover={{ scale: 1.05, backgroundColor: "#000", color: "#fff", borderColor: "#000" }}
+                                             whileTap={{ scale: 0.95 }}
+                                             onClick={() => onStartAssessment(skill)}
+                                             className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs font-medium text-gray-600 transition"
+                                          >
+                                             {skill}
+                                          </motion.button>
+                                       ))}
+                                    </div>
+                                 </div>
+                              ))}
+                           </div>
+                        ) : (
+                           <div className="text-center py-8">
+                              <p className="text-sm text-gray-500">No assessments match your search.</p>
+                              <button
+                                 onClick={() => setSearchQuery('')}
+                                 className="mt-2 text-xs text-orange hover:underline"
+                              >
+                                 Clear search
+                              </button>
+                           </div>
+                        )}
+                     </div>
+
+                     {/* Avg Score / Passed quick stats */}
+                     <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4 mt-4">
+                        <div>
+                           <div className="text-2xl font-bold text-slate-900">{Math.round(userStats?.average_score || 0)}%</div>
+                           <div className="text-xs text-slate-500">Avg. Score</div>
+                        </div>
+                        <div>
+                           <div className="text-2xl font-bold text-slate-900">{userStats?.passed_assessments || candidate.certifications.length}</div>
+                           <div className="text-xs text-slate-500">Passed</div>
+                        </div>
                      </div>
                   </div>
 
@@ -691,112 +816,16 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                      </div>
                   </div>
 
-                  {/* Get Verified / Skills Card */}
-                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-bold text-slate-900 flex items-center gap-2"><Award className="text-teal-600" size={18} /> Verified Skills</h3>
-                     </div>
-                     <div className="space-y-4 mb-6">
-                        {Object.entries(candidate.skills).map(([skill, score]) => (
-                           <div key={skill}>
-                              <div className="flex justify-between text-xs mb-1.5">
-                                 <span className="font-medium text-slate-700">{skill}</span>
-                                 <span className={`font-bold ${(score as number) >= 80 ? 'text-green-600' : 'text-slate-600'}`}>{score as number}%</span>
-                              </div>
-                              <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden shadow-inner">
-                                 <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${score}%` }}
-                                    transition={{ duration: 1, ease: "easeOut" }}
-                                    className={`h-full rounded-full ${(score as number) >= 80 ? 'bg-gradient-to-r from-teal-500 to-emerald-400' : 'bg-gradient-to-r from-orange-400 to-orange-500'}`}
-                                 ></motion.div>
-                              </div>
-                           </div>
-                        ))}
-                        {Object.keys(candidate.skills).length === 0 && (
-                           <p className="text-xs text-gray-400 italic">No skills verified yet.</p>
-                        )}
-                     </div>
-
-                     <div className="pt-4 border-t border-gray-100">
-                        <div className="flex items-center justify-between mb-3">
-                           <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Available Assessments</h4>
-                        </div>
-
-                        {/* Search Box */}
-                        <div className="mb-4">
-                           <div className="relative">
-                              <input
-                                 type="text"
-                                 value={searchQuery}
-                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                 placeholder="Search for skills or categories..."
-                                 className="w-full px-4 py-2.5 pl-10 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange focus:border-transparent outline-none transition"
-                              />
-                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                              {searchQuery && (
-                                 <button
-                                    onClick={() => setSearchQuery('')}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
-                                 >
-                                    <X size={16} />
-                                 </button>
-                              )}
-                           </div>
-                           {searchQuery && (
-                              <p className="text-xs text-gray-500 mt-2">
-                                 {Object.keys(filteredAssessments).length === 0
-                                    ? 'No results found'
-                                    : `Found ${Object.values(filteredAssessments).flat().length} skill(s)`
-                                 }
-                              </p>
-                           )}
-                        </div>
-
-                        {/* Results */}
-                        {Object.keys(filteredAssessments).length > 0 ? (
-                           <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                              {Object.entries(filteredAssessments).map(([category, skills]: [string, string[]]) => (
-                                 <div key={category}>
-                                    <h5 className="text-xs font-bold text-slate-800 mb-2">{category}</h5>
-                                    <div className="flex flex-wrap gap-2">
-                                       {skills.map(skill => (
-                                          <motion.button
-                                             key={skill}
-                                             whileHover={{ scale: 1.05, backgroundColor: "#000", color: "#fff", borderColor: "#000" }}
-                                             whileTap={{ scale: 0.95 }}
-                                             onClick={() => onStartAssessment(skill)}
-                                             className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs font-medium text-gray-600 transition"
-                                          >
-                                             {skill}
-                                          </motion.button>
-                                       ))}
-                                    </div>
-                                 </div>
-                              ))}
-                           </div>
-                        ) : (
-                           <div className="text-center py-8">
-                              <p className="text-sm text-gray-500">No assessments match your search.</p>
-                              <button
-                                 onClick={() => setSearchQuery('')}
-                                 className="mt-2 text-xs text-orange hover:underline"
-                              >
-                                 Clear search
-                              </button>
-                           </div>
-                        )}
-                     </div>
-                  </div>
-
                </motion.div>
 
                {/* Right Content */}
                <motion.div variants={itemVariants} className="lg:col-span-8">
 
                   {/* Tab Navigation */}
-                  <div className="flex gap-6 mb-6 border-b border-gray-200 pb-1">
+                  <div role="tablist" className="flex gap-6 mb-6 border-b border-gray-200 pb-1">
                      <button
+                        role="tab"
+                        aria-selected={activeTab === 'overview'}
                         onClick={() => setActiveTab('overview')}
                         className={`pb-3 px-2 font-bold text-sm transition relative ${activeTab === 'overview' ? 'text-orange' : 'text-gray-500 hover:text-gray-800'}`}
                      >
@@ -809,6 +838,8 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                         )}
                      </button>
                      <button
+                        role="tab"
+                        aria-selected={activeTab === 'interview'}
                         onClick={() => setActiveTab('interview')}
                         className={`pb-3 px-2 font-bold text-sm transition relative ${activeTab === 'interview' ? 'text-orange' : 'text-gray-500 hover:text-gray-800'}`}
                      >
@@ -821,6 +852,8 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                         )}
                      </button>
                      <button
+                        role="tab"
+                        aria-selected={activeTab === 'history'}
                         onClick={() => setActiveTab('history')}
                         className={`pb-3 px-2 font-bold text-sm transition relative ${activeTab === 'history' ? 'text-orange' : 'text-gray-500 hover:text-gray-800'}`}
                      >
@@ -884,8 +917,42 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                               </div>
                            </div>
 
+                           {/* Recommendations Error State */}
+                           {recommendationsError && !loadingRecommendations && (
+                              <div className="bg-red-50 border border-red-200 rounded-2xl p-6 mb-8 flex items-start gap-4">
+                                 <div className="text-red-500 mt-0.5">
+                                    <X size={20} />
+                                 </div>
+                                 <div className="flex-1">
+                                    <p className="text-red-700 font-semibold mb-1">Something went wrong</p>
+                                    <p className="text-red-600 text-sm mb-3">{recommendationsError}</p>
+                                    <button
+                                       onClick={fetchRecommendations}
+                                       className="text-sm font-bold text-red-700 border border-red-300 px-4 py-1.5 rounded-lg hover:bg-red-100 transition"
+                                    >
+                                       Retry
+                                    </button>
+                                 </div>
+                              </div>
+                           )}
+
+                           {/* Loading Skeleton */}
+                           {loadingRecommendations && (
+                              <div className="space-y-3 mb-8">
+                                 {[1,2,3].map(i => (
+                                    <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />
+                                 ))}
+                              </div>
+                           )}
+
                            {/* Recommendations Content */}
-                           {recommendations && (
+                           {recommendations && !loadingRecommendations && recommendations.jobs.length === 0 && recommendations.certifications.length === 0 && (
+                              <div className="text-center py-8 text-gray-400">
+                                 <Briefcase className="mx-auto mb-3" size={40} />
+                                 <p>No recommendations yet — complete more assessments to unlock personalized matches.</p>
+                              </div>
+                           )}
+                           {recommendations && !loadingRecommendations && (recommendations.jobs.length > 0 || recommendations.certifications.length > 0) && (
                               <motion.div
                                  initial="hidden"
                                  animate="visible"
@@ -974,6 +1041,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                                                       whileHover={{ scale: 1.1 }}
                                                       whileTap={{ scale: 0.9 }}
                                                       className="px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-600 transition"
+                                                      aria-label="Bookmark job"
                                                    >
                                                       <Bookmark size={20} />
                                                    </motion.button>
@@ -1021,7 +1089,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                            )}
 
                            {/* Empty State if no recommendations yet */}
-                           {!recommendations && (
+                           {!recommendations && !loadingRecommendations && !recommendationsError && (
                               <motion.div
                                  initial={{ opacity: 0 }}
                                  animate={{ opacity: 1 }}
@@ -1091,6 +1159,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                         <button
                            onClick={() => setShowPassportModal(false)}
                            className="p-2 bg-white/20 hover:bg-white/30 rounded-full text-white transition backdrop-blur-sm"
+                           aria-label="Close"
                         >
                            <X size={24} />
                         </button>
