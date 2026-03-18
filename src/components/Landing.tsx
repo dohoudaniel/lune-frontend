@@ -1,726 +1,753 @@
-import React, { useState } from 'react';
-import { ArrowRight, ShieldCheck, Users, Menu, X, Globe, Lock, Zap, Briefcase } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Menu,
+  X,
+  ArrowRight,
+  Briefcase,
+  TrendingUp,
+  Code,
+  CheckCircle,
+  Award,
+  Search,
+  ChevronRight,
+  Star,
+  Globe,
+  Shield,
+  Zap,
+  Users,
+} from 'lucide-react';
 import { ViewState, UserRole } from '../types';
-import { motion, AnimatePresence } from 'framer-motion';
-
+import { motion, AnimatePresence, useAnimationFrame } from 'framer-motion';
 import { SEO } from './SEO';
 
 interface LandingProps {
-    onNavigate: (view: ViewState, role?: UserRole) => void;
+  onNavigate: (view: ViewState, role?: UserRole) => void;
+}
+
+const roles = [
+  { label: 'Virtual Assistant', category: 'ops' },
+  { label: 'Customer Service', category: 'ops' },
+  { label: 'Sales Rep', category: 'sales' },
+  { label: 'Business Development', category: 'sales' },
+  { label: 'E-Commerce Specialist', category: 'ops' },
+  { label: 'Digital Marketing', category: 'marketing' },
+  { label: 'Content Creator', category: 'marketing' },
+  { label: 'SEO Specialist', category: 'marketing' },
+  { label: 'Frontend Developer', category: 'tech' },
+  { label: 'Backend Developer', category: 'tech' },
+  { label: 'Software Engineer', category: 'tech' },
+  { label: 'Mobile Developer', category: 'tech' },
+  { label: 'DevOps Engineer', category: 'tech' },
+  { label: 'DevRel', category: 'tech' },
+  { label: 'Project Manager', category: 'ops' },
+  { label: 'HR & Recruiting', category: 'ops' },
+  { label: 'Executive Assistant', category: 'ops' },
+  { label: 'Data Entry Specialist', category: 'ops' },
+];
+
+const categoryDot: Record<string, string> = {
+  tech: 'bg-teal-500',
+  ops: 'bg-orange-400',
+  sales: 'bg-orange-400',
+  marketing: 'bg-purple-500',
+};
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 32 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: 'easeOut' } },
+};
+
+const stagger = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.12 } },
+};
+
+function MarqueePills() {
+  const doubled = [...roles, ...roles];
+  const ref = useRef<HTMLDivElement>(null);
+  const xRef = useRef(0);
+  const speedRef = useRef(0.6);
+
+  useAnimationFrame(() => {
+    if (!ref.current) return;
+    const el = ref.current;
+    const half = el.scrollWidth / 2;
+    xRef.current -= speedRef.current;
+    if (Math.abs(xRef.current) >= half) xRef.current = 0;
+    el.style.transform = `translateX(${xRef.current}px)`;
+  });
+
+  return (
+    <div className="overflow-hidden w-full" aria-hidden="true">
+      <div ref={ref} className="flex gap-3 w-max py-3">
+        {doubled.map((role, i) => (
+          <span
+            key={i}
+            className="inline-flex items-center gap-2 bg-white border border-gray-200 shadow-sm rounded-full px-4 py-1.5 text-sm font-medium text-gray-700 whitespace-nowrap select-none"
+          >
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${categoryDot[role.category]}`} />
+            {role.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
-    // Structured Data for the Organization
-    const structuredData = {
-        "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        "name": "Lune",
-        "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Web",
-        "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "USD"
-        },
-        "description": "AI-driven skill verification and talent assessment platform.",
-        "aggregateRating": {
-            "@type": "AggregateRating",
-            "ratingValue": "4.8",
-            "ratingCount": "1250"
-        }
-    };
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
-    // Animation variants
-    const fadeInUp = {
-        initial: { opacity: 0, y: 20 },
-        animate: { opacity: 1, y: 0 },
-        transition: { duration: 0.5 }
-    };
+  const scrollTo = (id: string) => {
+    setMobileMenuOpen(false);
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
 
-    const staggerContainer = {
-        animate: {
-            transition: {
-                staggerChildren: 0.1
-            }
-        }
-    };
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Lune',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+    },
+    description:
+      'Lune is the only platform where VAs, Customer Service reps, Sales professionals, Engineers, and every major role can prove their skills — and employers can trust every credential.',
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: '4.8',
+      ratingCount: '1250',
+    },
+  };
 
-    const floatAnimation = {
-        animate: {
-            y: [0, -15, 0],
-            transition: {
-                duration: 6,
-                repeat: Infinity,
-                ease: "easeInOut" as const
-            }
-        }
-    };
+  return (
+    <>
+      <SEO
+        title="Lune — Hire Verified Talent. Get Verified. Get Hired."
+        description="Lune is the only platform where VAs, Customer Service reps, Sales professionals, Engineers, and every major role can prove their skills — and employers can trust every credential."
+        structuredData={structuredData}
+      />
 
-    return (
-        <div className="min-h-screen bg-cream font-sans selection:bg-teal selection:text-white flex flex-col overflow-x-hidden">
-            <SEO
-                title="Lune | AI-Verified Talent Platform"
-                description="Hire pre-vetted Virtual Assistants and Operations talent. Lune uses AI scenarios and strict verification to ensure 100% authentic skills."
-                keywords="hiring platform, virtual assistant, skill verification, verified credentials, AI assessment"
-                structuredData={structuredData}
-            />
-            {/* Header */}
-            <nav className="px-6 md:px-8 py-6 flex justify-between items-center max-w-7xl mx-auto w-full relative z-50">
-                <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center gap-2"
-                >
-                    <div className="bg-black text-white p-1.5 rounded-full">
-                        <div className="w-4 h-4 grid grid-cols-2 gap-0.5">
-                            <div className="bg-white rounded-full"></div>
-                            <div className="bg-white rounded-full"></div>
-                            <div className="bg-white rounded-full"></div>
-                            <div className="bg-white rounded-full"></div>
-                        </div>
-                    </div>
-                    <span className="font-bold text-2xl tracking-tight">lune</span>
-                </motion.div>
+      {/* ── NAVBAR ── */}
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 bg-cream/95 backdrop-blur-md border-b border-cream transition-shadow duration-200 ${
+          scrolled ? 'shadow-sm' : ''
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="flex items-center gap-2 focus:outline-none"
+              aria-label="Lune home"
+            >
+              <div className="w-8 h-8 bg-black rounded-md flex items-center justify-center flex-shrink-0">
+                <div className="grid grid-cols-2 gap-0.5">
+                  <div className="w-2.5 h-2.5 bg-white rounded-full" />
+                  <div className="w-2.5 h-2.5 bg-white rounded-full" />
+                  <div className="w-2.5 h-2.5 bg-white rounded-full" />
+                  <div className="w-2.5 h-2.5 bg-white rounded-full" />
+                </div>
+              </div>
+              <span className="text-xl font-bold text-gray-900 tracking-tight">lune</span>
+            </button>
 
-                {/* Desktop Nav */}
-                <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="hidden md:flex gap-8 text-sm font-medium text-slate-600"
-                >
-                    <a href="#features" className="hover:text-black transition">Features</a>
-                    <a href="#how-it-works" className="hover:text-black transition">How it Works</a>
-                    <a href="#solution" className="hover:text-black transition">For Business</a>
-                </motion.div>
-
-                <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="hidden md:flex gap-4"
-                >
-                    <button onClick={() => onNavigate(ViewState.LOGIN)} className="text-sm font-semibold px-4 py-2 hover:bg-gray-200 rounded-lg transition">Log in</button>
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => onNavigate(ViewState.SIGNUP)}
-                        className="bg-black text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition"
-                    >
-                        Sign up
-                    </motion.button>
-                </motion.div>
-
-                {/* Mobile Menu Toggle */}
-                <button className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-                    {mobileMenuOpen ? <X /> : <Menu />}
-                </button>
+            {/* Desktop Nav */}
+            <nav className="hidden md:flex items-center gap-7">
+              <button
+                onClick={() => scrollTo('roles')}
+                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                For Candidates
+              </button>
+              <button
+                onClick={() => scrollTo('dual-cta')}
+                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                For Employers
+              </button>
+              <button
+                onClick={() => scrollTo('how-it-works')}
+                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                How it Works
+              </button>
             </nav>
 
-            {/* Mobile Menu Overlay */}
-            <AnimatePresence>
-                {mobileMenuOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="md:hidden absolute top-20 left-0 w-full bg-white shadow-lg py-4 px-6 flex flex-col gap-4 z-40 border-b border-gray-100 overflow-hidden"
-                    >
-                        <a href="#features" onClick={() => setMobileMenuOpen(false)} className="text-slate-600 font-medium">Features</a>
-                        <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="text-slate-600 font-medium">How it Works</a>
-                        <hr className="border-gray-100" />
-                        <button onClick={() => onNavigate(ViewState.LOGIN)} className="text-left font-semibold py-2">Log in</button>
-                        <button onClick={() => onNavigate(ViewState.SIGNUP)} className="bg-black text-white font-semibold py-3 rounded-lg text-center">Sign up</button>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {/* Desktop CTA */}
+            <div className="hidden md:flex items-center gap-3">
+              <button
+                onClick={() => onNavigate(ViewState.LOGIN)}
+                className="text-sm font-medium text-gray-700 px-4 py-2 rounded-lg border border-transparent hover:border-gray-200 hover:bg-gray-50 transition-all"
+              >
+                Log In
+              </button>
+              <button
+                onClick={() => onNavigate(ViewState.SIGNUP)}
+                className="text-sm font-semibold text-white bg-black px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                Get Started Free
+              </button>
+            </div>
 
-            {/* Hero Section */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16 flex-1">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-
-                    {/* Left Geometric Grid - Animated */}
-                    <motion.div
-                        variants={staggerContainer}
-                        initial="initial"
-                        animate="animate"
-                        className="hidden lg:grid lg:col-span-5 grid-cols-2 gap-4"
-                    >
-                        {/* Card 1: Verification Badge */}
-                        <motion.div variants={floatAnimation} className="bg-[#8AA8A1] rounded-t-full rounded-b-2xl p-6 flex flex-col items-center justify-center text-center aspect-square shadow-lg">
-                            <ShieldCheck className="text-teal-900 w-16 h-16" />
-                        </motion.div>
-
-                        {/* Card 2: Orange Circle */}
-                        <motion.div
-                            variants={floatAnimation}
-                            animate={{ y: [0, 15, 0] }} // Reverse float
-                            transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" as const }}
-                            className="bg-orange rounded-full aspect-square shadow-lg"
-                        ></motion.div>
-
-                        {/* Card 3: Pattern */}
-                        <motion.div
-                            variants={floatAnimation}
-                            animate={{ y: [0, -10, 0] }}
-                            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" as const, delay: 1 }}
-                            className="bg-white rounded-2xl aspect-square flex items-center justify-center p-4 relative overflow-hidden shadow-sm"
-                        >
-                            <div className="absolute inset-0 grid grid-cols-4 gap-2 p-4 opacity-20">
-                                {Array.from({ length: 16 }).map((_, i) => (
-                                    <div key={i} className="bg-orange h-full w-full rounded-full"></div>
-                                ))}
-                            </div>
-                            <ArrowRight className="text-orange w-12 h-12 -rotate-45 relative z-10" />
-                        </motion.div>
-
-                        {/* Card 4: Teal Squiggle */}
-                        <motion.div
-                            variants={floatAnimation}
-                            animate={{ y: [0, 20, 0] }}
-                            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" as const, delay: 0.5 }}
-                            className="bg-darkblue rounded-2xl aspect-square flex items-center justify-center rounded-tr-[100px] shadow-lg"
-                        >
-                            <svg className="w-24 h-24 text-white/50" viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="4">
-                                <path d="M10 50 C 30 20, 70 20, 90 50 C 70 80, 30 80, 10 50" />
-                                <path d="M10 30 C 30 0, 70 0, 90 30" className="opacity-50" />
-                                <path d="M10 70 C 30 100, 70 100, 90 70" className="opacity-50" />
-                            </svg>
-                        </motion.div>
-                    </motion.div>
-
-                    {/* Right Content */}
-                    <div className="lg:col-span-7 flex flex-col justify-center lg:pl-12">
-                        <motion.h1
-                            variants={fadeInUp}
-                            initial="initial"
-                            animate="animate"
-                            className="text-4xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] tracking-tight text-slate-900 mb-6 text-center lg:text-left"
-                        >
-                            Scale Your Team with <br />
-                            <span className="text-slate-700">Verified VAs & Ops</span>
-                        </motion.h1>
-
-                        <motion.p
-                            variants={fadeInUp}
-                            initial="initial"
-                            animate="animate"
-                            transition={{ delay: 0.2 }}
-                            className="text-slate-600 text-lg mb-8 text-center lg:text-left max-w-2xl mx-auto lg:mx-0"
-                        >
-                            Stop guessing soft skills. Hire Virtual Assistants, Customer Support, and Operations talent with AI-verified communication and scenario assessments.
-                        </motion.p>
-
-                        <motion.div
-                            variants={fadeInUp}
-                            initial="initial"
-                            animate="animate"
-                            transition={{ delay: 0.4 }}
-                            className="flex flex-col sm:flex-row gap-4 items-center justify-center lg:justify-start mb-12"
-                        >
-                            <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => onNavigate(ViewState.SIGNUP)}
-                                className="bg-black text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-gray-800 transition w-full sm:w-auto shadow-xl shadow-orange/10 hover:shadow-2xl hover:shadow-orange/20"
-                            >
-                                Get Started
-                            </motion.button>
-                            <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className="px-8 py-4 rounded-xl font-semibold text-lg border border-slate-300 hover:bg-white hover:border-slate-400 transition w-full sm:w-auto"
-                            >
-                                Book Demo
-                            </motion.button>
-                        </motion.div>
-
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.6, duration: 0.8 }}
-                            className="flex items-center gap-4 mb-12 justify-center lg:justify-start"
-                        >
-                            <div className="flex -space-x-4">
-                                <img src="https://picsum.photos/60/60?1" className="w-12 h-12 rounded-full border-2 border-cream object-cover" alt="User" />
-                                <img src="https://picsum.photos/60/60?2" className="w-12 h-12 rounded-full border-2 border-cream object-cover" alt="User" />
-                                <img src="https://picsum.photos/60/60?3" className="w-12 h-12 rounded-full border-2 border-cream object-cover" alt="User" />
-                                <div className="w-12 h-12 rounded-full border-2 border-cream bg-teal text-white flex items-center justify-center text-xs font-bold">+5k</div>
-                            </div>
-                            <div>
-                                <p className="text-slate-900 font-bold text-sm">Verified Professionals</p>
-                                <p className="text-slate-500 text-xs">Ready to work immediately</p>
-                            </div>
-                        </motion.div>
-                    </div>
-                </div>
-
-                {/* Trusted Companies Section */}
-                <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.2 }}
-                    className="mt-16 border-t border-gray-200 pt-10"
-                >
-                    <p className="text-center text-slate-500 text-sm font-semibold uppercase tracking-widest mb-8">Trusted by leading innovators</p>
-                    <div className="flex flex-wrap justify-center gap-12 md:gap-20 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
-                        {['Google', 'Airbnb', 'Stripe', 'Vercel', 'Shopify'].map((company, index) => (
-                            <motion.span
-                                key={company}
-                                initial={{ opacity: 0 }}
-                                whileInView={{ opacity: 1 }}
-                                transition={{ delay: index * 0.1 }}
-                                className="text-2xl font-bold text-slate-800"
-                            >
-                                {company}
-                            </motion.span>
-                        ))}
-                    </div>
-                </motion.div>
-
-                {/* How It Works Section */}
-                <div id="how-it-works" className="mt-32 scroll-mt-24">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        className="text-center max-w-3xl mx-auto mb-16"
-                    >
-                        <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">How Lune Works</h2>
-                        <p className="text-slate-600 text-lg">We verify the skills that matter most for remote roles: communication, organization, and reliability.</p>
-                    </motion.div>
-
-                    <div className="grid md:grid-cols-2 gap-12 max-w-6xl mx-auto">
-                        {/* For Candidates */}
-                        <motion.div
-                            initial={{ opacity: 0, x: -50 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ duration: 0.6 }}
-                            className="bg-white p-8 rounded-3xl shadow-lg border border-gray-100 relative overflow-hidden"
-                        >
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-orange/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-                            <div className="flex items-center gap-3 mb-8">
-                                <div className="bg-orange/10 p-2 rounded-lg">
-                                    <Users className="text-orange w-6 h-6" />
-                                </div>
-                                <h3 className="text-2xl font-bold text-slate-900">For Candidates</h3>
-                            </div>
-
-                            <div className="space-y-8 relative">
-                                <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-100"></div>
-
-                                {[
-                                    { title: 'Select a Role', desc: 'Choose from distinct tracks: Virtual Assistant, Customer Support, Sales, or Project Management.' },
-                                    { title: 'Scenario Assessment', desc: 'Face real-world inbox simulations, calendar management tasks, and detailed role-play scenarios.' },
-                                    { title: 'Get Verified', desc: 'Pass the assessment to mint your detailed Skill Passport on-chain, proving your soft skills instantly.' }
-                                ].map((step, i) => (
-                                    <motion.div
-                                        key={i}
-                                        initial={{ opacity: 0, x: -20 }}
-                                        whileInView={{ opacity: 1, x: 0 }}
-                                        viewport={{ once: true }}
-                                        transition={{ delay: 0.3 + (i * 0.2) }}
-                                        className="flex gap-6 relative"
-                                    >
-                                        <div className="w-8 h-8 rounded-full bg-orange text-white flex items-center justify-center font-bold text-sm flex-shrink-0 z-10">{i + 1}</div>
-                                        <div>
-                                            <h4 className="font-bold text-lg mb-1">{step.title}</h4>
-                                            <p className="text-gray-500 text-sm">{step.desc}</p>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
-                        </motion.div>
-
-                        {/* For Employers */}
-                        <motion.div
-                            initial={{ opacity: 0, x: 50 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ duration: 0.6 }}
-                            className="bg-white p-8 rounded-3xl shadow-lg border border-gray-100 relative overflow-hidden"
-                        >
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-teal/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-                            <div className="flex items-center gap-3 mb-8">
-                                <div className="bg-teal/10 p-2 rounded-lg">
-                                    <Briefcase className="text-teal w-6 h-6" />
-                                </div>
-                                <h3 className="text-2xl font-bold text-slate-900">For Employers</h3>
-                            </div>
-
-                            <div className="space-y-8 relative">
-                                <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-100"></div>
-
-                                {[
-                                    { title: 'Post a Requirement', desc: 'Specify needs like "English C1", "Zendesk Expert", or "Executive Calendar Management".' },
-                                    { title: 'Match by Temperament', desc: 'Our AI matches candidates not just on skills, but on communication style and situational judgment.' },
-                                    { title: 'Hire with Certainty', desc: 'View video intros and verified work samples before you even interview.' }
-                                ].map((step, i) => (
-                                    <motion.div
-                                        key={i}
-                                        initial={{ opacity: 0, x: -20 }}
-                                        whileInView={{ opacity: 1, x: 0 }}
-                                        viewport={{ once: true }}
-                                        transition={{ delay: 0.3 + (i * 0.2) }}
-                                        className="flex gap-6 relative"
-                                    >
-                                        <div className="w-8 h-8 rounded-full bg-teal text-white flex items-center justify-center font-bold text-sm flex-shrink-0 z-10">{i + 1}</div>
-                                        <div>
-                                            <h4 className="font-bold text-lg mb-1">{step.title}</h4>
-                                            <p className="text-gray-500 text-sm">{step.desc}</p>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
-                        </motion.div>
-                    </div>
-                </div>
-
-                {/* Why Lune? / Simulations Section */}
-                <div className="mt-24 md:mt-32">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        className="text-center max-w-3xl mx-auto mb-16"
-                    >
-                        <h2 className="text-3xl font-bold text-slate-900 mb-4">Beyond the Resume: Real-World Simulations</h2>
-                        <p className="text-slate-600">We don't ask hypothetical questions. We put candidates in the driver's seat of their future role.</p>
-                    </motion.div>
-
-                    <div className="grid md:grid-cols-4 gap-6">
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            className="bg-cream rounded-3xl p-6 border border-indigo-100 relative overflow-hidden group hover:border-indigo-300 transition-colors"
-                        >
-                            <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
-                                <div className="w-20 h-20 bg-indigo-500 rounded-full blur-2xl"></div>
-                            </div>
-                            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mb-4 shadow-sm text-indigo-600">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /><path d="M12 17v-3" /></svg>
-                            </div>
-                            <h3 className="text-lg font-bold text-slate-900 mb-2">Typing Speed Test</h3>
-                            <p className="text-slate-600 text-sm leading-relaxed">
-                                Real-time WPM and accuracy tracking. Target: 40+ WPM with 95% accuracy.
-                            </p>
-                        </motion.div>
-
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: 0.1 }}
-                            className="bg-cream rounded-3xl p-6 border border-green-100 relative overflow-hidden group hover:border-green-300 transition-colors"
-                        >
-                            <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
-                                <div className="w-20 h-20 bg-green-500 rounded-full blur-2xl"></div>
-                            </div>
-                            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mb-4 shadow-sm text-green-600">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><path d="M8 13h8" /><path d="M8 17h8" /></svg>
-                            </div>
-                            <h3 className="text-lg font-bold text-slate-900 mb-2">Google Workspace</h3>
-                            <p className="text-slate-600 text-sm leading-relaxed">
-                                Docs, Sheets, Slides, Calendar & Gmail proficiency assessment.
-                            </p>
-                        </motion.div>
-
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: 0.2 }}
-                            className="bg-cream rounded-3xl p-6 border border-blue-100 relative overflow-hidden group hover:border-blue-300 transition-colors"
-                        >
-                            <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
-                                <div className="w-20 h-20 bg-blue-500 rounded-full blur-2xl"></div>
-                            </div>
-                            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mb-4 shadow-sm text-blue-600">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
-                            </div>
-                            <h3 className="text-lg font-bold text-slate-900 mb-2">Email Communication</h3>
-                            <p className="text-slate-600 text-sm leading-relaxed">
-                                Respond to real scenarios. AI scores tone, clarity, and professionalism.
-                            </p>
-                        </motion.div>
-
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: 0.3 }}
-                            className="bg-cream rounded-3xl p-6 border border-purple-100 relative overflow-hidden group hover:border-purple-300 transition-colors"
-                        >
-                            <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
-                                <div className="w-20 h-20 bg-purple-500 rounded-full blur-2xl"></div>
-                            </div>
-                            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mb-4 shadow-sm text-purple-600">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
-                            </div>
-                            <h3 className="text-lg font-bold text-slate-900 mb-2">Document Drafting</h3>
-                            <p className="text-slate-600 text-sm leading-relaxed">
-                                Write memos, summaries, and SOPs. Scored for clarity and format.
-                            </p>
-                        </motion.div>
-                    </div>
-                </div>
-
-                {/* Features Section */}
-                <div id="features" className="mt-24 md:mt-32 scroll-mt-24">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        className="text-center max-w-3xl mx-auto mb-16"
-                    >
-                        <h2 className="text-3xl font-bold text-slate-900 mb-4">The Future of Hiring is Verified</h2>
-                        <p className="text-slate-600">We combine AI's advanced reasoning with strict identity verification to create a hiring platform you can trust.</p>
-                    </motion.div>
-
-                    <div className="grid md:grid-cols-3 gap-8">
-                        {[
-                            { icon: Zap, color: 'purple', title: 'Situational Judgment', desc: 'We test how candidates handle angry customers, scheduling conflicts, and ethical dilemmas in real-time.' },
-                            { icon: Lock, color: 'blue', title: 'Verified Identity', desc: 'Multi-factor identity verification ensures the person you interview is the person you hire.' },
-                            { icon: Globe, color: 'green', title: 'Communication Analysis', desc: 'Our AI evaluates spoken and written English proficiency, tone, and empathy scores.' }
-                        ].map((feature, i) => (
-                            <motion.div
-                                key={i}
-                                initial={{ opacity: 0, y: 30 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: i * 0.2 }}
-                                whileHover={{ y: -10, transition: { duration: 0.2 } }}
-                                className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm group cursor-pointer"
-                            >
-                                <div className={`w-12 h-12 bg-${feature.color}-100 rounded-2xl flex items-center justify-center mb-6 text-${feature.color}-600 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300`}>
-                                    <feature.icon size={24} />
-                                </div>
-                                <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
-                                <p className="text-slate-500 leading-relaxed">{feature.desc}</p>
-                            </motion.div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Stats Section */}
-                <motion.div
-                    initial={{ scale: 0.95, opacity: 0 }}
-                    whileInView={{ scale: 1, opacity: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.8 }}
-                    className="mt-24 bg-darkblue rounded-[3rem] p-12 md:p-24 text-white text-center overflow-hidden relative"
-                >
-                    <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-                        <div className="grid grid-cols-6 gap-4 h-full">
-                            {Array.from({ length: 24 }).map((_, i) => <div key={i} className="bg-white rounded-full aspect-square"></div>)}
-                        </div>
-                    </div>
-
-                    <div className="relative z-10 max-w-4xl mx-auto">
-                        <h2 className="text-3xl md:text-5xl font-bold mb-12">Join the movement</h2>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-                            {[
-                                { val: '14k+', label: 'VAs Verified', color: 'text-orange' },
-                                { val: '48h', label: 'Time to Hire', color: 'text-teal-300' },
-                                { val: '92%', label: 'Retention Rate', color: 'text-orange' },
-                                { val: '24/7', label: 'Global Coverage', color: 'text-teal-300' }
-                            ].map((stat, i) => (
-                                <motion.div
-                                    key={i}
-                                    initial={{ opacity: 0, scale: 0.5 }}
-                                    whileInView={{ opacity: 1, scale: 1 }}
-                                    viewport={{ once: true }}
-                                    transition={{ delay: i * 0.1, type: "spring" }}
-                                >
-                                    <div className={`text-4xl font-bold mb-2 ${stat.color}`}>{stat.val}</div>
-                                    <div className="text-sm text-gray-300 uppercase tracking-wider">{stat.label}</div>
-                                </motion.div>
-                            ))}
-                        </div>
-                    </div>
-                </motion.div>
-                {/* Available Roles Section */}
-                <div className="mt-24 md:mt-32">
-                    <div className="text-center max-w-3xl mx-auto mb-16">
-                        <h2 className="text-3xl font-bold text-slate-900 mb-4">Roles We Verify</h2>
-                        <p className="text-slate-600">Comprehensive assessment tracks for both technical and operations talent.</p>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {[
-                            { name: 'Frontend Engineer', icon: Globe, color: 'blue' },
-                            { name: 'Backend Engineer', icon: Briefcase, color: 'purple' }, // Assuming Briefcase for backend
-                            { name: 'Data Scientist', icon: Zap, color: 'green' }, // Assuming Zap/Lightning for complex/data
-                            { name: 'UI/UX Designer', icon: Users, color: 'pink' }, // Users/Design team
-                            { name: 'Virtual Assistant', icon: Users, color: 'orange' },
-                            { name: 'Customer Support', icon: Users, color: 'teal' },
-                            { name: 'Project Manager', icon: Briefcase, color: 'yellow' },
-                            { name: 'QA Engineer', icon: ShieldCheck, color: 'red' }
-                        ].map((role, i) => (
-                            <motion.div
-                                key={i}
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                whileInView={{ opacity: 1, scale: 1 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: i * 0.05 }}
-                                className="bg-white p-6 rounded-2xl border border-gray-100 hover:border-black/10 hover:shadow-md transition cursor-pointer flex flex-col items-center text-center group"
-                            >
-                                <div className={`w-12 h-12 bg-${role.color}-50 rounded-xl flex items-center justify-center mb-4 text-${role.color}-600 group-hover:scale-110 transition`}>
-                                    <role.icon size={20} />
-                                </div>
-                                <h3 className="font-bold text-slate-900">{role.name}</h3>
-                            </motion.div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Technology Deep Dive: Anti-Cheating */}
-                <div className="mt-32">
-                    <div className="bg-slate-900 rounded-[3rem] p-8 md:p-20 text-white overflow-hidden relative">
-                        {/* Abstract background shapes */}
-                        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-teal/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2"></div>
-                        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-orange/10 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2"></div>
-
-                        <div className="relative z-10 grid lg:grid-cols-2 gap-16 items-center">
-                            <div>
-                                <h2 className="text-3xl md:text-5xl font-bold mb-8 leading-tight">Ironclad Integrity via <span className="text-teal-400">AI</span>.</h2>
-                                <p className="text-slate-300 text-lg mb-12 leading-relaxed">
-                                    We combine military-grade proctoring with rigid identity checks to create the world's most trusted skill verification system.
-                                </p>
-
-                                <div className="space-y-8">
-                                    <div className="flex gap-6">
-                                        <div className="w-12 h-12 rounded-full bg-teal/10 flex items-center justify-center flex-shrink-0 border border-teal/20">
-                                            <ShieldCheck className="text-teal-400" size={24} />
-                                        </div>
-                                        <div>
-                                            <h4 className="text-xl font-bold mb-2">Advanced Anti-Cheating</h4>
-                                            <p className="text-slate-400 text-sm">
-                                                Our AI monitors 50+ signals including gaze tracking, tab switching, copy-paste patterns, and unauthorized device presence to ensure 100% authentic results.
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex gap-6">
-                                        <div className="w-12 h-12 rounded-full bg-orange/10 flex items-center justify-center flex-shrink-0 border border-orange/20">
-                                            <Lock className="text-orange" size={24} />
-                                        </div>
-                                        <div>
-                                            <h4 className="text-xl font-bold mb-2">Secure Verification</h4>
-                                            <p className="text-slate-400 text-sm">
-                                                Passing scores are instantly paired with unique, secure digital certificates. These credentials are tamper-proof and universally verifiable by any employer.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <motion.div
-                                initial={{ opacity: 0, x: 50 }}
-                                whileInView={{ opacity: 1, x: 0 }}
-                                viewport={{ once: true }}
-                                className="bg-white/5 backdrop-blur-xl rounded-2xl p-8 border border-white/10"
-                            >
-                                <div className="flex items-center justify-between mb-8 border-b border-white/10 pb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                                        <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                                    </div>
-                                    <div className="text-xs font-mono text-slate-400">Proctoring_Log.json</div>
-                                </div>
-                                <div className="space-y-4 font-mono text-xs">
-                                    <div className="flex justify-between text-green-400">
-                                        <span>[14:20:01]</span>
-                                        <span>Assessment Started</span>
-                                    </div>
-                                    <div className="flex justify-between text-slate-300">
-                                        <span>[14:22:15]</span>
-                                        <span>Gaze Tracking Active</span>
-                                    </div>
-                                    <div className="flex justify-between text-red-400">
-                                        <span>[14:25:30]</span>
-                                        <span>⚠ Alt-Tab Detected (Warning 1/3)</span>
-                                    </div>
-                                    <div className="flex justify-between text-slate-300">
-                                        <span>[14:28:45]</span>
-                                        <span>Typing Pattern Analysis: Normal</span>
-                                    </div>
-                                    <div className="flex justify-between text-teal-400">
-                                        <span>[14:45:00]</span>
-                                        <span>Assessment Submitted</span>
-                                    </div>
-                                    <div className="border-t border-white/10 pt-4 mt-4">
-                                        <div className="flex items-center gap-2 text-orange mb-2">
-                                            <Lock size={12} />
-                                            <span>Minting to Block #892910...</span>
-                                        </div>
-                                        <div className="bg-black/30 p-3 rounded text-slate-500 break-all">
-                                            0x7f9a...3b2d
-                                        </div>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        </div>
-                    </div>
-                </div>
-
-            </main>
-
-            {/* Footer */}
-            <footer className="bg-white pt-16 pb-8 px-8 border-t border-gray-100">
-                <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-                    <div className="col-span-1 md:col-span-1">
-                        <div className="flex items-center gap-2 mb-6">
-                            <div className="bg-black text-white p-1.5 rounded-full">
-                                <div className="w-4 h-4 grid grid-cols-2 gap-0.5">
-                                    <div className="bg-white rounded-full"></div>
-                                    <div className="bg-white rounded-full"></div>
-                                    <div className="bg-white rounded-full"></div>
-                                    <div className="bg-white rounded-full"></div>
-                                </div>
-                            </div>
-                            <span className="font-bold text-xl">lune</span>
-                        </div>
-                        <p className="text-gray-500 text-sm">Empowering the world's workforce through transparent skill verification.</p>
-                    </div>
-
-                    <div>
-                        <h4 className="font-bold mb-4">Platform</h4>
-                        <ul className="space-y-2 text-sm text-gray-500">
-                            <li><a href="#" className="hover:text-black">For Candidates</a></li>
-                            <li><a href="#" className="hover:text-black">For Employers</a></li>
-                            <li><a href="#" className="hover:text-black">Pricing</a></li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 className="font-bold mb-4">Company</h4>
-                        <ul className="space-y-2 text-sm text-gray-500">
-                            <li><a href="#" className="hover:text-black">About Us</a></li>
-                            <li><a href="#" className="hover:text-black">Careers</a></li>
-                            <li><a href="#" className="hover:text-black">Blog</a></li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 className="font-bold mb-4">Legal</h4>
-                        <ul className="space-y-2 text-sm text-gray-500">
-                            <li><a href="#" className="hover:text-black">Privacy Policy</a></li>
-                            <li><a href="#" className="hover:text-black">Terms of Service</a></li>
-                        </ul>
-                    </div>
-                </div>
-                <div className="max-w-7xl mx-auto pt-8 border-t border-gray-100 flex flex-col md:flex-row justify-between text-xs text-gray-400">
-                    <p>© 2026 Lune Inc. All rights reserved.</p>
-                    <div className="flex gap-4 mt-4 md:mt-0">
-                        <span>Twitter</span>
-                        <span>LinkedIn</span>
-                        <span>GitHub</span>
-                    </div>
-                </div>
-            </footer>
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setMobileMenuOpen((v) => !v)}
+              className="md:hidden p-2 rounded-md text-gray-600 hover:bg-gray-100 transition-colors"
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
-    );
+
+        {/* Mobile menu */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.22 }}
+              className="md:hidden overflow-hidden border-t border-gray-100 bg-white"
+            >
+              <div className="px-4 py-4 flex flex-col gap-3">
+                <button
+                  onClick={() => scrollTo('roles')}
+                  className="text-sm font-medium text-gray-700 text-left py-2 hover:text-black transition-colors"
+                >
+                  For Candidates
+                </button>
+                <button
+                  onClick={() => scrollTo('dual-cta')}
+                  className="text-sm font-medium text-gray-700 text-left py-2 hover:text-black transition-colors"
+                >
+                  For Employers
+                </button>
+                <button
+                  onClick={() => scrollTo('how-it-works')}
+                  className="text-sm font-medium text-gray-700 text-left py-2 hover:text-black transition-colors"
+                >
+                  How it Works
+                </button>
+                <div className="pt-2 flex flex-col gap-2">
+                  <button
+                    onClick={() => { setMobileMenuOpen(false); onNavigate(ViewState.LOGIN); }}
+                    className="w-full text-sm font-medium text-gray-700 px-4 py-2.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                  >
+                    Log In
+                  </button>
+                  <button
+                    onClick={() => { setMobileMenuOpen(false); onNavigate(ViewState.SIGNUP); }}
+                    className="w-full text-sm font-semibold text-white bg-black px-4 py-2.5 rounded-lg hover:bg-gray-800 transition-colors"
+                  >
+                    Get Started Free
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </header>
+
+      <main className="pt-16">
+        {/* ── HERO ── */}
+        <section id="hero" className="relative bg-cream overflow-hidden min-h-screen flex items-center">
+          {/* Background blobs */}
+          <div
+            className="absolute -top-32 -left-32 w-96 h-96 rounded-full opacity-30 pointer-events-none"
+            style={{ background: 'radial-gradient(circle, #2dd4bf 0%, transparent 70%)', filter: 'blur(60px)' }}
+          />
+          <div
+            className="absolute -bottom-20 -right-20 w-80 h-80 rounded-full opacity-25 pointer-events-none"
+            style={{ background: 'radial-gradient(circle, #fb923c 0%, transparent 70%)', filter: 'blur(60px)' }}
+          />
+
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 w-full">
+            <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+              {/* Left — copy */}
+              <motion.div
+                variants={stagger}
+                initial="hidden"
+                animate="visible"
+                className="flex flex-col gap-6"
+              >
+                <motion.div variants={fadeInUp}>
+                  <span className="inline-flex items-center gap-1.5 bg-orange-50 border border-orange-200 text-orange-700 text-xs font-semibold px-3 py-1 rounded-full">
+                    <Shield size={11} /> AI-Powered Skill Verification
+                  </span>
+                </motion.div>
+
+                <motion.h1
+                  variants={fadeInUp}
+                  className="text-4xl sm:text-5xl lg:text-[3.4rem] font-extrabold text-gray-900 leading-tight tracking-tight"
+                >
+                  Hire{' '}
+                  <span className="text-orange-500">Verified</span>{' '}
+                  Talent.
+                  <br />
+                  Get{' '}
+                  <span className="text-orange-500">Verified</span>
+                  . Get Hired.
+                </motion.h1>
+
+                <motion.p
+                  variants={fadeInUp}
+                  className="text-base sm:text-lg text-gray-600 leading-relaxed max-w-xl"
+                >
+                  Lune is the only platform where VAs, Customer Service reps, Sales professionals,
+                  Engineers, and every major role can prove their skills — and employers can trust
+                  every credential.
+                </motion.p>
+
+                <motion.div variants={fadeInUp} className="flex flex-wrap gap-3">
+                  <button
+                    onClick={() => onNavigate(ViewState.SIGNUP)}
+                    className="inline-flex items-center gap-2 bg-black text-white font-semibold px-6 py-3 rounded-xl hover:bg-gray-800 transition-colors text-sm"
+                  >
+                    Find Talent <ArrowRight size={16} />
+                  </button>
+                  <button
+                    onClick={() => onNavigate(ViewState.SIGNUP)}
+                    className="inline-flex items-center gap-2 border-2 border-orange-500 text-orange-600 font-semibold px-6 py-3 rounded-xl hover:bg-orange-50 transition-colors text-sm"
+                  >
+                    Get Certified Free
+                  </button>
+                </motion.div>
+
+                <motion.div variants={fadeInUp} className="flex items-center gap-4 pt-2">
+                  <div className="flex -space-x-2">
+                    {['bg-orange-400', 'bg-teal-400', 'bg-purple-400', 'bg-blue-400'].map((c, i) => (
+                      <div key={i} className={`w-7 h-7 rounded-full ${c} border-2 border-white`} />
+                    ))}
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    <span className="font-semibold text-gray-800">12,000+</span> professionals verified
+                  </p>
+                </motion.div>
+              </motion.div>
+
+              {/* Right — mockup cards */}
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.25 }}
+                className="relative flex flex-col items-center lg:items-end gap-4"
+              >
+                {/* Verified Profile card */}
+                <motion.div
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+                  className="bg-white rounded-2xl shadow-xl border border-gray-100 p-5 w-full max-w-sm"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                      S
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900 text-sm">Sarah K.</p>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-gray-500">Virtual Assistant</span>
+                        <span className="inline-flex items-center gap-0.5 bg-teal-50 text-teal-700 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border border-teal-200">
+                          <CheckCircle size={9} /> Verified
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2.5">
+                    {[
+                      { label: 'Customer Service', pct: 94, color: 'bg-teal-500' },
+                      { label: 'Microsoft Excel', pct: 88, color: 'bg-orange-400' },
+                      { label: 'Communication', pct: 91, color: 'bg-purple-500' },
+                    ].map((skill) => (
+                      <div key={skill.label}>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-600">{skill.label}</span>
+                          <span className="font-semibold text-gray-800">{skill.pct}%</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <motion.div
+                            className={`h-full rounded-full ${skill.color}`}
+                            initial={{ width: 0 }}
+                            animate={{ width: `${skill.pct}%` }}
+                            transition={{ duration: 1.1, delay: 0.6, ease: 'easeOut' }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+
+                {/* Match Found notification */}
+                <motion.div
+                  animate={{ y: [0, 6, 0] }}
+                  transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+                  className="bg-white rounded-xl shadow-lg border border-gray-100 px-4 py-3 flex items-center gap-3 self-start ml-6 lg:ml-12"
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-green-400 flex-shrink-0 animate-pulse" />
+                  <p className="text-xs font-medium text-gray-700">3 employers viewed your profile today</p>
+                </motion.div>
+              </motion.div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── ROLES ── */}
+        <section id="roles" className="bg-white py-20 overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="text-center mb-10"
+            >
+              <motion.h2 variants={fadeInUp} className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-3">
+                Built for Every Professional
+              </motion.h2>
+              <motion.p variants={fadeInUp} className="text-gray-500 text-base max-w-xl mx-auto">
+                From non-tech to deep tech — if you have a skill, we verify it.
+              </motion.p>
+            </motion.div>
+          </div>
+
+          {/* Marquee pills */}
+          <MarqueePills />
+
+          {/* Role category cards */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="grid grid-cols-1 md:grid-cols-3 gap-5"
+            >
+              {[
+                {
+                  icon: <Briefcase size={22} />,
+                  accent: 'text-orange-500',
+                  bg: 'bg-orange-50',
+                  border: 'border-orange-100',
+                  title: 'Operations & Support',
+                  desc: 'VAs, Customer Service, E-Commerce Specialists, Executive Assistants, HR & Recruiting, Project Managers',
+                },
+                {
+                  icon: <TrendingUp size={22} />,
+                  accent: 'text-purple-500',
+                  bg: 'bg-purple-50',
+                  border: 'border-purple-100',
+                  title: 'Sales & Growth',
+                  desc: 'SDRs, Account Executives, Business Development, Digital Marketers, Content Creators, SEO Specialists',
+                },
+                {
+                  icon: <Code size={22} />,
+                  accent: 'text-teal-600',
+                  bg: 'bg-teal-50',
+                  border: 'border-teal-100',
+                  title: 'Tech & Engineering',
+                  desc: 'Frontend, Backend, Mobile, DevOps, DevRel, Software Engineers — all skill-verified with precision',
+                },
+              ].map((card) => (
+                <motion.div
+                  key={card.title}
+                  variants={fadeInUp}
+                  className={`rounded-2xl border ${card.border} ${card.bg} p-6 flex flex-col gap-3`}
+                >
+                  <div className={`w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm ${card.accent}`}>
+                    {card.icon}
+                  </div>
+                  <h3 className="font-bold text-gray-900 text-base">{card.title}</h3>
+                  <p className="text-gray-500 text-sm leading-relaxed">{card.desc}</p>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ── HOW IT WORKS ── */}
+        <section id="how-it-works" className="bg-cream py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="text-center mb-14"
+            >
+              <motion.h2 variants={fadeInUp} className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-3">
+                How Lune Works
+              </motion.h2>
+            </motion.div>
+
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="grid grid-cols-1 md:grid-cols-3 gap-6 relative"
+            >
+              {[
+                {
+                  step: '1',
+                  icon: <Zap size={24} />,
+                  title: 'Take the Assessment',
+                  desc: 'AI-proctored tests tailored to your exact role — fair, rigorous, and trusted by employers.',
+                },
+                {
+                  step: '2',
+                  icon: <Award size={24} />,
+                  title: 'Earn Your Certificate',
+                  desc: 'A tamper-proof credential is added to your Skill Passport, shareable anywhere.',
+                },
+                {
+                  step: '3',
+                  icon: <Search size={24} />,
+                  title: 'Get Discovered',
+                  desc: 'Employers search verified talent by role, score, and skill — you rise to the top.',
+                },
+              ].map((item, i) => (
+                <React.Fragment key={item.step}>
+                  <motion.div
+                    variants={fadeInUp}
+                    className="relative bg-white rounded-2xl border border-gray-100 shadow-sm p-7 flex flex-col gap-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="w-8 h-8 rounded-full bg-black text-white text-sm font-bold flex items-center justify-center flex-shrink-0">
+                        {item.step}
+                      </span>
+                      <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-700">
+                        {item.icon}
+                      </div>
+                    </div>
+                    <h3 className="font-bold text-gray-900 text-lg">{item.title}</h3>
+                    <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
+                  </motion.div>
+
+                  {/* Arrow connector (desktop only, not after last) */}
+                  {i < 2 && (
+                    <div className="hidden md:flex absolute items-center" style={{ left: `calc(${(i + 1) * 33.333}% - 12px)`, top: '50%', transform: 'translateY(-50%)' }}>
+                      <ChevronRight size={22} className="text-gray-300" />
+                    </div>
+                  )}
+                </React.Fragment>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ── TRUST / SOCIAL PROOF ── */}
+        <section className="bg-slate-900 text-white py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="text-center mb-12"
+            >
+              <motion.h2 variants={fadeInUp} className="text-3xl sm:text-4xl font-extrabold mb-3">
+                Trusted by professionals across 30+ countries
+              </motion.h2>
+              <motion.p variants={fadeInUp} className="text-slate-400 text-base max-w-xl mx-auto">
+                Real results for real people, from Lagos to London to Los Angeles.
+              </motion.p>
+            </motion.div>
+
+            {/* Stats */}
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12"
+            >
+              {[
+                { stat: '12,000+', label: 'Professionals Certified', icon: <Users size={18} /> },
+                { stat: '500+', label: 'Hiring Companies', icon: <Briefcase size={18} /> },
+                { stat: '98%', label: 'Credential Accuracy', icon: <Shield size={18} /> },
+                { stat: '30+', label: 'Countries', icon: <Globe size={18} /> },
+              ].map((item) => (
+                <motion.div
+                  key={item.label}
+                  variants={fadeInUp}
+                  className="bg-slate-800 rounded-2xl p-5 flex flex-col gap-2 border border-slate-700"
+                >
+                  <div className="text-slate-400">{item.icon}</div>
+                  <p className="text-2xl font-extrabold text-white">{item.stat}</p>
+                  <p className="text-sm text-slate-400 leading-snug">{item.label}</p>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            {/* Testimonials */}
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-5"
+            >
+              {[
+                {
+                  quote:
+                    "I got hired within 2 weeks of earning my Lune certificate. My employer said the verified score was the deciding factor. This platform is a game-changer for remote workers.",
+                  name: 'Amara O.',
+                  role: 'Virtual Assistant · Nigeria',
+                  color: 'from-orange-500 to-orange-600',
+                },
+                {
+                  quote:
+                    "We used to spend 3 weeks screening candidates. With Lune, we find verified talent in hours. The credential accuracy is unmatched — we've made 47 hires through the platform.",
+                  name: 'James T.',
+                  role: 'Head of Talent · SaaS Company',
+                  color: 'from-teal-500 to-teal-600',
+                },
+              ].map((t) => (
+                <motion.div
+                  key={t.name}
+                  variants={fadeInUp}
+                  className="bg-slate-800 rounded-2xl p-6 border border-slate-700 flex flex-col gap-4"
+                >
+                  <div className="flex gap-1">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} size={14} className="text-orange-400 fill-orange-400" />
+                    ))}
+                  </div>
+                  <p className="text-slate-300 text-sm leading-relaxed">"{t.quote}"</p>
+                  <div className="flex items-center gap-3 mt-auto">
+                    <div
+                      className={`w-9 h-9 rounded-full bg-gradient-to-br ${t.color} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}
+                    >
+                      {t.name[0]}
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold text-sm">{t.name}</p>
+                      <p className="text-slate-500 text-xs">{t.role}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ── DUAL CTA ── */}
+        <section id="dual-cta" className="bg-cream py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-6"
+            >
+              {/* Candidates */}
+              <motion.div
+                variants={fadeInUp}
+                className="relative overflow-hidden rounded-2xl p-8 flex flex-col gap-5"
+                style={{ background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)' }}
+              >
+                <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/10" />
+                <div className="absolute -bottom-6 -left-6 w-28 h-28 rounded-full bg-white/10" />
+                <div className="relative">
+                  <span className="inline-block bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full mb-4">
+                    For Candidates
+                  </span>
+                  <h3 className="text-2xl font-extrabold text-white leading-tight mb-2">
+                    Prove your skills.
+                    <br />
+                    Get hired faster.
+                  </h3>
+                  <p className="text-orange-100 text-sm mb-5">
+                    Take a free AI-proctored assessment and earn a credential employers actually trust.
+                  </p>
+                  <button
+                    onClick={() => onNavigate(ViewState.SIGNUP)}
+                    className="inline-flex items-center gap-2 bg-white text-orange-600 font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-orange-50 transition-colors"
+                  >
+                    Start Free Assessment <ArrowRight size={15} />
+                  </button>
+                </div>
+              </motion.div>
+
+              {/* Employers */}
+              <motion.div
+                variants={fadeInUp}
+                className="relative overflow-hidden rounded-2xl p-8 flex flex-col gap-5 bg-slate-900"
+              >
+                <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-teal-500/10" />
+                <div className="absolute -bottom-6 -left-6 w-28 h-28 rounded-full bg-teal-500/10" />
+                <div className="relative">
+                  <span className="inline-block bg-teal-500/20 text-teal-400 text-xs font-semibold px-3 py-1 rounded-full mb-4">
+                    For Employers
+                  </span>
+                  <h3 className="text-2xl font-extrabold text-white leading-tight mb-2">
+                    Skip the noise.
+                    <br />
+                    Hire verified.
+                  </h3>
+                  <p className="text-slate-400 text-sm mb-5">
+                    Browse a curated pool of skill-verified professionals ready to contribute from day one.
+                  </p>
+                  <button
+                    onClick={() => onNavigate(ViewState.SIGNUP)}
+                    className="inline-flex items-center gap-2 bg-teal-500 text-white font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-teal-400 transition-colors"
+                  >
+                    Browse Talent <ArrowRight size={15} />
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ── FOOTER ── */}
+        <footer className="bg-white border-t border-gray-100 py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-black rounded-md flex items-center justify-center flex-shrink-0">
+                <div className="grid grid-cols-2 gap-0.5">
+                  <div className="w-2 h-2 bg-white rounded-full" />
+                  <div className="w-2 h-2 bg-white rounded-full" />
+                  <div className="w-2 h-2 bg-white rounded-full" />
+                  <div className="w-2 h-2 bg-white rounded-full" />
+                </div>
+              </div>
+              <span className="font-bold text-gray-900">lune</span>
+              <span className="text-gray-400 text-sm ml-2">© 2026 Lune Inc.</span>
+            </div>
+            <div className="flex items-center gap-5">
+              <a href="#" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">
+                Privacy
+              </a>
+              <a href="#" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">
+                Terms
+              </a>
+              <a
+                href="https://linkedin.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-gray-500 hover:text-gray-800 transition-colors"
+              >
+                LinkedIn
+              </a>
+            </div>
+          </div>
+        </footer>
+      </main>
+    </>
+  );
 };

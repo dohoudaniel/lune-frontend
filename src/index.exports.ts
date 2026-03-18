@@ -76,6 +76,15 @@ export { default as AICareerCoach } from './components/AICareerCoach';
 // =====================================================
 
 export { default as QuestionBankManager } from './components/QuestionBankManager';
+export { AdminDashboard } from './components/AdminDashboard';
+export type { AdminDashboardProps } from './components/AdminDashboard';
+
+// =====================================================
+// PROFILE
+// =====================================================
+
+export { ProfilePage } from './components/ProfilePage';
+export type { ProfilePageProps } from './components/ProfilePage';
 
 // =====================================================
 // PRIVACY & CONSENT

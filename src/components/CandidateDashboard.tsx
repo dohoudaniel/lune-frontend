@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 // Lazy load SkillPassport for performance
 const SkillPassport = lazy(() => import('./SkillPassport').then(m => ({ default: m.SkillPassport })));
 import { api } from '../lib/api';
-import { updateCandidateProfile } from '../services/profileService';
+import { updateCandidateProfile, uploadProfileImage, generatePassport } from '../services/profileService';
 
 
 interface CandidateDashboardProps {
@@ -23,25 +23,35 @@ interface CandidateDashboardProps {
    onUpdateProfile: (profile: Partial<CandidateProfile>) => void;
    onOpenVideoAnalyzer?: () => void;
    onStartTour?: () => void;
+   onNavigateProfile?: () => void;
 }
 
 const AVAILABLE_ASSESSMENTS = {
-   // Technical Categories
-   'Frontend': ['React', 'Vue', 'CSS', 'Angular'],
-   'Backend': ['Node.js', 'Python', 'Java', 'Go'],
-   'Cloud & DevOps': ['AWS', 'Docker', 'Kubernetes', 'Terraform'],
+   // Tech — Core Engineering
+   'Frontend Development': ['React', 'Vue', 'Angular', 'CSS / Tailwind', 'TypeScript', 'Next.js'],
+   'Backend Development': ['Node.js', 'Python', 'Java', 'Go', 'Django / FastAPI', 'REST API Design'],
+   'Mobile Development': ['React Native', 'Flutter', 'iOS (Swift)', 'Android (Kotlin)', 'Expo'],
+   'Cloud & DevOps': ['AWS', 'Google Cloud', 'Azure', 'Docker', 'Kubernetes', 'Terraform', 'CI/CD Pipelines'],
+   'Software Engineering': ['System Design', 'Data Structures & Algorithms', 'Microservices', 'Security Best Practices'],
+   'Developer Relations': ['Technical Writing', 'API Documentation', 'Community Management', 'Developer Advocacy'],
 
-   // Non-Tech Categories
-   'Customer Service': ['Customer Support Representative', 'Call Center Agent', 'Help Desk Support', 'Client Success Manager'],
-   'Sales': ['Sales Representative', 'Business Development', 'Account Executive', 'Lead Generation'],
-   'Marketing': ['Digital Marketing', 'Social Media Manager', 'Content Creator', 'SEO Specialist'],
-   'Administrative': ['Virtual Assistant', 'Executive Assistant', 'Data Entry Specialist', 'Office Administrator'],
-   'Generalist': ['Project Manager', 'HR Coordinator', 'Recruiter', 'Quality Assurance'],
-   'Communication': ['Public Speaking', 'Presentation Skills', 'Negotiation', 'Active Listening'],
-   'Office Tools': ['Microsoft Word', 'Microsoft Excel', 'Microsoft PowerPoint', 'Google Workspace']
+   // Operations & Support
+   'Virtual Assistant': ['Executive Virtual Assistant', 'Administrative VA', 'Research & Data VA', 'Calendar & Email Management', 'Client Onboarding VA'],
+   'Customer Service': ['Customer Support Representative', 'Call Center Agent', 'Help Desk / IT Support', 'Client Success Manager', 'Live Chat Support'],
+   'E-Commerce': ['Shopify Management', 'Amazon Seller Central', 'Product Listing Optimization', 'Order Fulfilment & Logistics', 'Customer Returns Handling'],
+
+   // Sales & Growth
+   'Sales': ['Sales Development Representative (SDR)', 'Account Executive', 'Business Development', 'Lead Generation', 'Cold Outreach / Email Sales'],
+   'Digital Marketing': ['Social Media Management', 'SEO & SEM', 'Content Creation & Strategy', 'Email Marketing', 'Paid Advertising (Meta/Google)', 'Influencer Marketing'],
+
+   // Management & Soft Skills
+   'Project Management': ['Project Manager', 'Scrum Master / Agile', 'Operations Manager', 'Program Coordinator'],
+   'HR & Recruiting': ['HR Coordinator', 'Talent Sourcing', 'Technical Recruiter', 'Onboarding Specialist'],
+   'Communication': ['Public Speaking', 'Presentation Skills', 'Business Writing', 'Negotiation', 'Active Listening'],
+   'Office Productivity': ['Microsoft Word', 'Microsoft Excel', 'Microsoft PowerPoint', 'Google Workspace', 'Notion / Airtable'],
 };
 
-export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidate, onStartAssessment, onLogout, onUpdateProfile, onOpenVideoAnalyzer, onStartTour }) => {
+export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidate, onStartAssessment, onLogout, onUpdateProfile, onOpenVideoAnalyzer, onStartTour, onNavigateProfile }) => {
    const toast = useToast();
    const [activeTab, setActiveTab] = useState<'overview' | 'interview' | 'history'>('overview');
    const [searchQuery, setSearchQuery] = useState(''); // Search state
@@ -91,6 +101,9 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
    const [isGeneratingPassport, setIsGeneratingPassport] = useState(false);
    const [passportData, setPassportData] = useState<{ txHash: string; passportId: string } | null>(null);
    const [showPassportModal, setShowPassportModal] = useState(false);
+   const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set());
+
+   const getJobKey = (job: Job) => `${job.title}-${job.company}`;
 
    const fileInputRef = useRef<HTMLInputElement>(null);
    const profilePicInputRef = useRef<HTMLInputElement>(null);
@@ -145,13 +158,10 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
 
       setIsGeneratingPassport(true);
       try {
-         const passportId = `passport_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-         const txHash = `cert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-         const result = { passportId, txHash };
+         const result = await generatePassport();
+         if (!result) throw new Error('No result from server');
          setPassportData(result);
          toast.success("🎉 Skill Passport generated successfully!");
-
-         // Update candidate profile with passport info
          onUpdateProfile({
             certifications: [...(candidate.certifications || []), result.txHash],
             passportId: result.passportId,
@@ -214,26 +224,32 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
 
    const handleProfilePicUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
-      if (file) {
-         // Validate file type
-         if (!file.type.startsWith('image/')) {
-            toast.error("Please upload an image file.");
-            return;
-         }
-         // Validate file size (max 2MB for better localStorage efficiency)
-         if (file.size > 2 * 1024 * 1024) {
-            toast.error("Image must be less than 2MB.");
-            return;
-         }
+      if (!file) return;
 
-         try {
+      if (!file.type.startsWith('image/')) {
+         toast.error("Please upload an image file.");
+         return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+         toast.error("Image must be less than 5MB.");
+         return;
+      }
+
+      toast.info("Uploading image…");
+      try {
+         const remoteUrl = await uploadProfileImage(file);
+         if (remoteUrl) {
+            onUpdateProfile({ image: remoteUrl });
+            toast.success("Profile picture updated!");
+         } else {
+            // Fallback: store as base64 locally if Supabase isn't configured yet
             const base64Url = await fileToBase64(file);
             onUpdateProfile({ image: base64Url });
-            toast.success("Profile picture updated!");
-         } catch (error) {
-            toast.error("Failed to upload image.");
-            console.error(error);
+            toast.warning("Image saved locally. Configure Supabase storage for cloud sync.");
          }
+      } catch (error) {
+         toast.error("Failed to upload image.");
+         console.error(error);
       }
    };
 
@@ -333,16 +349,23 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                      Open for Work
                   </div>
                   <button onClick={onLogout} className="text-sm font-medium text-gray-600 hover:text-red-600 transition">Log out</button>
-                  <div className="w-8 h-8 bg-orange rounded-full flex items-center justify-center text-white font-bold text-xs shadow-md shadow-orange/20">
-                     {candidate.name.substring(0, 2).toUpperCase()}
-                  </div>
+                  <button
+                    onClick={onNavigateProfile}
+                    title="View Profile"
+                    className="w-8 h-8 bg-orange rounded-full flex items-center justify-center text-white font-bold text-xs shadow-md shadow-orange/20 hover:ring-2 hover:ring-orange/50 transition"
+                  >
+                     {candidate.image
+                       ? <img src={candidate.image} alt={candidate.name} className="w-full h-full rounded-full object-cover" />
+                       : candidate.name.substring(0, 2).toUpperCase()
+                     }
+                  </button>
                </div>
             </div>
          </motion.header>
 
-         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
             {/* Welcome Banner */}
-            <WelcomeBanner userName={candidate.name} userRole="candidate" onStartTour={onStartTour} className="mb-8" />
+            <WelcomeBanner userName={candidate.name} userRole="candidate" onStartTour={onStartTour} className="mb-0" />
 
             {/* Stats Overview */}
             {userStats && (
@@ -350,51 +373,51 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
                >
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
-                     <div className="bg-orange/10 p-3 rounded-xl text-orange">
+                  <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md hover:border-orange/30 transition-shadow group">
+                     <div className="bg-orange/10 p-3.5 rounded-xl text-orange">
                         <Target size={24} />
                      </div>
                      <div>
-                        <div className="text-2xl font-bold text-slate-900">{userStats.total_assessments}</div>
-                        <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Total Attempts</div>
+                        <div className="text-3xl font-bold text-slate-900">{userStats.total_assessments}</div>
+                        <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">Total Attempts</div>
                      </div>
                   </div>
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
-                     <div className="bg-teal/10 p-3 rounded-xl text-teal">
+                  <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md hover:border-orange/30 transition-shadow group">
+                     <div className="bg-teal/10 p-3.5 rounded-xl text-teal">
                         <Award size={24} />
                      </div>
                      <div>
-                        <div className="text-2xl font-bold text-slate-900">{userStats.passed_assessments}</div>
-                        <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Certifications</div>
+                        <div className="text-3xl font-bold text-slate-900">{userStats.passed_assessments}</div>
+                        <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">Certifications</div>
                      </div>
                   </div>
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
-                     <div className="bg-purple-100 p-3 rounded-xl text-purple-600">
+                  <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md hover:border-orange/30 transition-shadow group">
+                     <div className="bg-purple-100 p-3.5 rounded-xl text-purple-600">
                         <TrendingUp size={24} />
                      </div>
                      <div>
-                        <div className="text-2xl font-bold text-slate-900">{userStats.total_points.toLocaleString()}</div>
-                        <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Total Points</div>
+                        <div className="text-3xl font-bold text-slate-900">{userStats.total_points.toLocaleString()}</div>
+                        <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">Total Points</div>
                      </div>
                   </div>
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
-                     <div className="bg-red-100 p-3 rounded-xl text-red-500">
+                  <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md hover:border-orange/30 transition-shadow group">
+                     <div className="bg-red-100 p-3.5 rounded-xl text-red-500">
                         <Zap size={24} />
                      </div>
                      <div>
-                        <div className="text-2xl font-bold text-slate-900">{userStats.current_streak} Day{userStats.current_streak !== 1 ? 's' : ''}</div>
-                        <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Streak (Best: {userStats.longest_streak})</div>
+                        <div className="text-3xl font-bold text-slate-900">{userStats.current_streak} Day{userStats.current_streak !== 1 ? 's' : ''}</div>
+                        <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">Streak (Best: {userStats.longest_streak})</div>
                      </div>
                   </div>
                </motion.div>
             )}
 
             {/* Horizontal Profile Hero Banner */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                {/* Cover gradient strip */}
-               <div className="h-28 bg-gradient-to-r from-orange to-red-500 relative">
+               <div className="h-32 bg-gradient-to-r from-orange via-red-400 to-slate-800 relative">
                   <button
                      onClick={() => isEditing ? handleSaveProfile() : setIsEditing(true)}
                      className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full text-white transition z-20 shadow-sm"
@@ -579,7 +602,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                            </div>
                         </div>
                         <button
-                           onClick={() => setIsEditing(true)}
+                           onClick={() => onNavigateProfile ? onNavigateProfile() : setIsEditing(true)}
                            className="flex items-center gap-1.5 text-sm font-semibold text-orange border border-orange/20 px-3 py-1.5 rounded-lg hover:bg-orange/5 transition whitespace-nowrap"
                         >
                            <Edit2 size={14} /> Complete Profile
@@ -629,18 +652,18 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                <motion.div variants={itemVariants} className="lg:col-span-4 space-y-6">
 
                   {/* Verified Skills Card */}
-                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-bold text-slate-900 flex items-center gap-2"><Award className="text-teal-600" size={18} /> Verified Skills</h3>
+                        <h3 className="font-bold text-slate-900 flex items-center gap-2"><Award className="text-teal-600" size={20} /> Verified Skills</h3>
                      </div>
                      <div className="space-y-4 mb-6">
                         {Object.entries(candidate.skills).map(([skill, score]) => (
-                           <div key={skill}>
+                           <div key={skill} className={(score as number) >= 80 ? 'ring-1 ring-teal-100 rounded-xl p-2 -mx-2' : ''}>
                               <div className="flex justify-between text-xs mb-1.5">
                                  <span className="font-medium text-slate-700">{skill}</span>
                                  <span className={`font-bold ${(score as number) >= 80 ? 'text-green-600' : 'text-slate-600'}`}>{score as number}%</span>
                               </div>
-                              <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden shadow-inner">
+                              <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden shadow-inner">
                                  <motion.div
                                     initial={{ width: 0 }}
                                     animate={{ width: `${score}%` }}
@@ -822,49 +845,26 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                <motion.div variants={itemVariants} className="lg:col-span-8">
 
                   {/* Tab Navigation */}
-                  <div role="tablist" className="flex gap-6 mb-6 border-b border-gray-200 pb-1">
-                     <button
-                        role="tab"
-                        aria-selected={activeTab === 'overview'}
-                        onClick={() => setActiveTab('overview')}
-                        className={`pb-3 px-2 font-bold text-sm transition relative ${activeTab === 'overview' ? 'text-orange' : 'text-gray-500 hover:text-gray-800'}`}
-                     >
-                        <span className="flex items-center gap-2"><Briefcase size={16} /> Career Path</span>
-                        {activeTab === 'overview' && (
-                           <motion.div
-                              layoutId="activeTab"
-                              className="absolute bottom-0 left-0 w-full h-0.5 bg-orange rounded-t-full"
-                           />
-                        )}
-                     </button>
-                     <button
-                        role="tab"
-                        aria-selected={activeTab === 'interview'}
-                        onClick={() => setActiveTab('interview')}
-                        className={`pb-3 px-2 font-bold text-sm transition relative ${activeTab === 'interview' ? 'text-orange' : 'text-gray-500 hover:text-gray-800'}`}
-                     >
-                        <span className="flex items-center gap-2"><Mic size={16} /> Mock Interview</span>
-                        {activeTab === 'interview' && (
-                           <motion.div
-                              layoutId="activeTab"
-                              className="absolute bottom-0 left-0 w-full h-0.5 bg-orange rounded-t-full"
-                           />
-                        )}
-                     </button>
-                     <button
-                        role="tab"
-                        aria-selected={activeTab === 'history'}
-                        onClick={() => setActiveTab('history')}
-                        className={`pb-3 px-2 font-bold text-sm transition relative ${activeTab === 'history' ? 'text-orange' : 'text-gray-500 hover:text-gray-800'}`}
-                     >
-                        <span className="flex items-center gap-2"><History size={16} /> Progress</span>
-                        {activeTab === 'history' && (
-                           <motion.div
-                              layoutId="activeTab"
-                              className="absolute bottom-0 left-0 w-full h-0.5 bg-orange rounded-t-full"
-                           />
-                        )}
-                     </button>
+                  <div role="tablist" className="flex bg-white rounded-2xl p-1.5 shadow-sm border border-gray-100 mb-6 gap-1">
+                     {[
+                        { id: 'overview', label: 'Career Path', icon: <Briefcase size={15} /> },
+                        { id: 'interview', label: 'Mock Interview', icon: <Mic size={15} /> },
+                        { id: 'history', label: 'Progress', icon: <History size={15} /> },
+                     ].map(tab => (
+                        <button
+                           key={tab.id}
+                           role="tab"
+                           aria-selected={activeTab === tab.id}
+                           onClick={() => setActiveTab(tab.id as any)}
+                           className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all ${
+                              activeTab === tab.id
+                                 ? 'bg-orange text-white shadow-sm shadow-orange/30'
+                                 : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                           }`}
+                        >
+                           {tab.icon} {tab.label}
+                        </button>
+                     ))}
                   </div>
 
                   <AnimatePresence mode="wait">
@@ -877,7 +877,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                            transition={{ duration: 0.3 }}
                         >
                            {/* AI Recommendation Banner */}
-                           <div className="bg-gradient-to-br from-orange to-slate-900 rounded-2xl p-8 text-white mb-8 relative overflow-hidden">
+                           <div className="bg-gradient-to-br from-orange to-slate-900 rounded-2xl p-8 text-white mb-8 relative overflow-hidden shadow-2xl shadow-orange/20">
                               <motion.div
                                  animate={{ scale: [1, 1.2, 1], rotate: [0, 10, 0] }}
                                  transition={{ duration: 10, repeat: Infinity }}
@@ -898,7 +898,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                                              whileTap={{ scale: 0.95 }}
                                              onClick={fetchRecommendations}
                                              disabled={loadingRecommendations}
-                                             className="bg-white text-orange-900 px-6 py-3 rounded-lg font-bold hover:bg-orange-50 transition flex items-center gap-2 shadow-md disabled:opacity-80"
+                                             className="bg-white text-slate-900 px-6 py-3 rounded-lg font-bold hover:bg-gray-50 transition flex items-center gap-2 shadow-xl disabled:opacity-80"
                                           >
                                              {loadingRecommendations ? <Loader className="animate-spin" size={18} /> : <Sparkles size={18} className="animate-wiggle" />}
                                              {loadingRecommendations ? 'Analyzing Profile...' : 'Generate Recommendations'}
@@ -1034,6 +1034,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                                                       whileHover={{ scale: 1.02 }}
                                                       whileTap={{ scale: 0.98 }}
                                                       className="flex-1 bg-black text-white py-3 rounded-xl text-sm font-bold hover:bg-gray-800 transition"
+                                                      onClick={() => window.open(`https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(job.title + ' ' + job.company)}`, '_blank')}
                                                    >
                                                       Apply Now
                                                    </motion.button>
@@ -1042,8 +1043,9 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                                                       whileTap={{ scale: 0.9 }}
                                                       className="px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-600 transition"
                                                       aria-label="Bookmark job"
+                                                      onClick={() => { const key = getJobKey(job); setSavedJobs(prev => { const next = new Set(prev); if (next.has(key)) { next.delete(key); toast.info('Job removed from saved list'); } else { next.add(key); toast.success('Job saved!'); } return next; }); }}
                                                    >
-                                                      <Bookmark size={20} />
+                                                      <Bookmark size={20} fill={savedJobs.has(getJobKey(job)) ? 'currentColor' : 'none'} className={savedJobs.has(getJobKey(job)) ? 'text-orange' : ''} />
                                                    </motion.button>
                                                 </div>
                                              </div>
@@ -1077,7 +1079,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                                                 <p className="text-sm text-gray-500 leading-relaxed mb-4">{cert.reason}</p>
                                              </div>
 
-                                             <button className="mt-auto w-full py-2.5 rounded-lg border border-orange-100 text-orange-700 text-sm font-bold hover:bg-orange-50 transition flex items-center justify-center gap-2 group-hover:border-orange-200">
+                                             <button className="mt-auto w-full py-2.5 rounded-lg border border-orange-100 text-orange-700 text-sm font-bold hover:bg-orange-50 transition flex items-center justify-center gap-2 group-hover:border-orange-200" onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent(cert.name + ' ' + cert.provider + ' course')}`, '_blank')}>
                                                 Start Learning <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                                              </button>
                                           </motion.div>

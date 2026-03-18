@@ -147,9 +147,12 @@ export const SkillPassport: React.FC<SkillPassportProps> = ({
     if (loading) {
         return (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-                <Loader className="w-12 h-12 text-indigo-500 animate-spin mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Generating Your Skill Passport</h3>
-                <p className="text-gray-500">Analyzing your assessments and certifications...</p>
+                <div className="relative w-16 h-16 mx-auto mb-5">
+                    <img src="/icons/icon.svg" alt="Lune" className="w-16 h-16 rounded-2xl shadow-md" />
+                    <div className="absolute -inset-2 rounded-[28px] border-[3px] border-teal/20 border-t-teal animate-spin" style={{ animationDuration: '1s' }} />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 mb-1">Generating Your Skill Passport</h3>
+                <p className="text-slate-500 text-sm">Analyzing your assessments and certifications…</p>
             </div>
         );
     }
@@ -157,12 +160,12 @@ export const SkillPassport: React.FC<SkillPassportProps> = ({
     if (error) {
         return (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-                <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Unable to Generate Passport</h3>
-                <p className="text-gray-500 mb-4">{error}</p>
+                <AlertTriangle className="w-12 h-12 text-orange mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-slate-900 mb-2">Unable to Generate Passport</h3>
+                <p className="text-slate-500 mb-4">{error}</p>
                 <button
                     onClick={generatePassport}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition flex items-center gap-2 mx-auto"
+                    className="px-4 py-2 bg-teal text-white rounded-xl font-semibold hover:opacity-90 transition flex items-center gap-2 mx-auto"
                 >
                     <RefreshCw className="w-4 h-4" />
                     Try Again
@@ -212,7 +215,7 @@ export const SkillPassport: React.FC<SkillPassportProps> = ({
                     className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden"
                 >
                     {/* Header */}
-                    <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-white relative">
+                    <div className="bg-gradient-to-r from-teal to-teal/80 p-6 text-white relative">
                         <button
                             onClick={() => setSelectedSkill(null)}
                             aria-label="Close skill details"
@@ -288,7 +291,7 @@ export const SkillPassport: React.FC<SkillPassportProps> = ({
                         {selectedSkill.certificateId ? (
                             <button
                                 onClick={() => onViewJob?.(undefined as any)}
-                                className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition shadow-lg"
+                                className="w-full py-3 bg-teal text-white font-semibold rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition shadow-lg"
                             >
                                 <Award className="w-5 h-5" />
                                 View Certificate
@@ -320,7 +323,7 @@ export const SkillPassport: React.FC<SkillPassportProps> = ({
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-2xl p-6 text-white relative overflow-hidden"
+                className="bg-gradient-to-r from-teal via-teal/90 to-slate-800 rounded-2xl p-6 text-white relative overflow-hidden"
             >
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
@@ -367,8 +370,8 @@ export const SkillPassport: React.FC<SkillPassportProps> = ({
                     <button
                         key={tab.id}
                         onClick={() => setActiveSection(tab.id as any)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition ${activeSection === tab.id
-                            ? 'bg-indigo-600 text-white'
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition ${activeSection === tab.id
+                            ? 'bg-teal text-white shadow-sm'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                     >
@@ -414,7 +417,7 @@ export const SkillPassport: React.FC<SkillPassportProps> = ({
                         {/* Growth Areas */}
                         <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                             <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                <Target className="w-5 h-5 text-indigo-500" />
+                                <Target className="w-5 h-5 text-teal" />
                                 Focus Areas
                             </h3>
                             <div className="space-y-3">
@@ -438,7 +441,7 @@ export const SkillPassport: React.FC<SkillPassportProps> = ({
                                 </h3>
                                 <button
                                     onClick={() => setActiveSection('strengths')}
-                                    className="text-indigo-600 text-sm font-medium hover:text-indigo-700 flex items-center gap-1"
+                                    className="text-teal text-sm font-medium hover:opacity-80 flex items-center gap-1"
                                 >
                                     View All <ChevronRight className="w-4 h-4" />
                                 </button>

@@ -46,23 +46,37 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, onNavigate, ti
                     >
                         <ShieldCheck className="text-teal-400" size={28} />
                     </motion.div>
-                    <motion.h1 
+                    <motion.h1
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6, delay: 0.1 }}
                         className="text-4xl font-bold leading-[1.15] mb-4 tracking-tight"
                     >
-                        Scale Your Team with <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-emerald-300">Verified Talent.</span>
+                        Your Skills, <br />
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-emerald-300">Verified & Visible.</span>
                     </motion.h1>
-                    <motion.p 
+                    <motion.p
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6, delay: 0.2 }}
-                        className="text-slate-400 text-base mb-12 max-w-[90%] leading-relaxed"
+                        className="text-slate-400 text-base mb-8 max-w-[90%] leading-relaxed"
                     >
-                        Join thousands of companies and professionals on the world's most trusted skill verification platform.
+                        From Virtual Assistants and Customer Service to Frontend Engineers and DevOps — Lune certifies professionals across every major role.
                     </motion.p>
+
+                    {/* Role tags */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.25 }}
+                        className="flex flex-wrap gap-2 mb-10"
+                    >
+                        {['Virtual Assistant', 'Customer Service', 'Sales', 'Digital Marketing', 'Frontend', 'Backend', 'DevOps', 'Mobile Dev', 'DevRel', 'E-Commerce', 'Software Engineer'].map(role => (
+                            <span key={role} className="px-2.5 py-1 bg-white/5 border border-white/10 rounded-full text-xs text-slate-300 font-medium">
+                                {role}
+                            </span>
+                        ))}
+                    </motion.div>
 
                     <div className="space-y-6">
                         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.3 }} className="flex items-start gap-4">
@@ -71,7 +85,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, onNavigate, ti
                             </div>
                             <div>
                                 <h3 className="font-semibold text-white text-base mb-0.5">AI-Verified Skills</h3>
-                                <p className="text-sm text-slate-400 leading-relaxed">Military-grade proctoring ensures all assessment results are 100% authentic.</p>
+                                <p className="text-sm text-slate-400 leading-relaxed">Proctored assessments ensure every result is 100% authentic — no shortcuts.</p>
                             </div>
                         </motion.div>
                         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.4 }} className="flex items-start gap-4">
@@ -79,8 +93,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, onNavigate, ti
                                 <Lock className="text-orange" size={18} />
                             </div>
                             <div>
-                                <h3 className="font-semibold text-white text-base mb-0.5">Secure Identity</h3>
-                                <p className="text-sm text-slate-400 leading-relaxed">Verified credentials permanently available on your profile.</p>
+                                <h3 className="font-semibold text-white text-base mb-0.5">Permanent Credentials</h3>
+                                <p className="text-sm text-slate-400 leading-relaxed">Earn a Skill Passport employers can verify instantly — across any role.</p>
                             </div>
                         </motion.div>
                     </div>

@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+// In development, use a relative path so requests go through the Vite proxy
+// (localhost:3000/api → proxy → localhost:8000/api). This keeps auth cookies
+// same-origin and avoids SameSite=Lax blocking cross-origin cookie sends.
+// In production, set VITE_API_URL to your full backend URL.
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const apiInstance = axios.create({
     baseURL: API_URL,
@@ -22,7 +26,7 @@ apiInstance.interceptors.response.use(
 
             try {
                 // The refresh token lives in an HttpOnly cookie — just POST to the endpoint
-                await axios.post(`${API_URL}/auth/refresh/`, {}, { withCredentials: true });
+                await apiInstance.post('/auth/refresh/', {});
                 // New access cookie has been set; retry the original request
                 return apiInstance(originalRequest);
             } catch {
@@ -42,4 +46,8 @@ export const api = {
     post: (endpoint: string, data?: unknown) => apiInstance.post(endpoint, data).then(res => res.data),
     put: (endpoint: string, data?: unknown) => apiInstance.put(endpoint, data).then(res => res.data),
     delete: (endpoint: string) => apiInstance.delete(endpoint).then(res => res.data),
+    postForm: (endpoint: string, data: FormData) =>
+        apiInstance.post(endpoint, data, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        }).then(res => res.data),
 };

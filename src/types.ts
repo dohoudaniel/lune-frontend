@@ -13,11 +13,14 @@ export enum ViewState {
   EMPLOYER_DASHBOARD = 'EMPLOYER_DASHBOARD',
   VERIFY_EMAIL = 'VERIFY_EMAIL',
   CHECK_EMAIL = 'CHECK_EMAIL',
+  ADMIN_DASHBOARD = 'ADMIN_DASHBOARD',
+  PROFILE = 'PROFILE',
 }
 
 export enum UserRole {
   CANDIDATE = 'CANDIDATE',
   EMPLOYER = 'EMPLOYER',
+  ADMIN = 'ADMIN',
 }
 
 export type DifficultyLevel = 'Beginner' | 'Mid-Level' | 'Advanced';
@@ -148,7 +151,7 @@ export interface AuthUser {
     id: string;
     email: string;
     name: string;
-    role: 'candidate' | 'employer';
+    role: 'candidate' | 'employer' | 'admin';
 }
 
 export interface AuthSession {

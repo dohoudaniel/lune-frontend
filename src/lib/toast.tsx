@@ -24,47 +24,64 @@ const ToastContext = createContext<ToastContextType | null>(null);
 
 export const useToast = () => {
   const context = useContext(ToastContext);
-  if (!context) {
-    throw new Error('useToast must be used within a ToastProvider');
-  }
+  if (!context) throw new Error('useToast must be used within a ToastProvider');
   return context;
 };
 
-const TOAST_LIMIT = 3;
+const TOAST_LIMIT = 4;
 
+// Lune brand-aligned config — white card with colored left accent
 const toastConfig = {
   success: {
     icon: CheckCircle,
-    bg: 'bg-gradient-to-r from-emerald-500 to-green-500',
-    border: 'border-emerald-400',
-    iconColor: 'text-white',
+    accent: '#1F4D48',          // teal
+    accentClass: 'bg-teal',
+    iconClass: 'text-teal',
+    iconBgClass: 'bg-teal/10',
+    label: 'Success',
   },
   error: {
     icon: XCircle,
-    bg: 'bg-gradient-to-r from-red-500 to-rose-500',
-    border: 'border-red-400',
-    iconColor: 'text-white',
+    accent: '#ef4444',
+    accentClass: 'bg-red-500',
+    iconClass: 'text-red-500',
+    iconBgClass: 'bg-red-50',
+    label: 'Error',
   },
   warning: {
     icon: AlertTriangle,
-    bg: 'bg-gradient-to-r from-amber-500 to-orange-500',
-    border: 'border-amber-400',
-    iconColor: 'text-white',
+    accent: '#F26430',          // orange
+    accentClass: 'bg-orange',
+    iconClass: 'text-orange',
+    iconBgClass: 'bg-orange/10',
+    label: 'Warning',
   },
   info: {
     icon: Info,
-    bg: 'bg-gradient-to-r from-blue-500 to-indigo-500',
-    border: 'border-blue-400',
-    iconColor: 'text-white',
+    accent: '#1F4D48',          // teal (same as success, different icon)
+    accentClass: 'bg-teal/80',
+    iconClass: 'text-teal',
+    iconBgClass: 'bg-teal/10',
+    label: 'Info',
   },
 };
+
+/** Lune logo mark — 4-dot 2×2 grid */
+const LuneMark: React.FC<{ className?: string }> = ({ className = '' }) => (
+  <div className={`w-5 h-5 grid grid-cols-2 gap-[2.5px] ${className}`}>
+    <div className="bg-current rounded-full" />
+    <div className="bg-current rounded-full" />
+    <div className="bg-current rounded-full" />
+    <div className="bg-current rounded-full" />
+  </div>
+);
 
 const ToastItem: React.FC<{ toast: Toast; onRemove: () => void }> = ({ toast, onRemove }) => {
   const [isExiting, setIsExiting] = useState(false);
   const [progress, setProgress] = useState(100);
   const config = toastConfig[toast.type];
   const Icon = config.icon;
-  const duration = toast.duration || 4000;
+  const duration = toast.duration ?? 4500;
 
   useEffect(() => {
     const startTime = Date.now();
@@ -72,67 +89,76 @@ const ToastItem: React.FC<{ toast: Toast; onRemove: () => void }> = ({ toast, on
       const elapsed = Date.now() - startTime;
       const remaining = Math.max(0, 100 - (elapsed / duration) * 100);
       setProgress(remaining);
-      
       if (remaining <= 0) {
         clearInterval(interval);
         handleRemove();
       }
-    }, 50);
-
+    }, 40);
     return () => clearInterval(interval);
   }, [duration]);
 
   const handleRemove = () => {
     setIsExiting(true);
-    setTimeout(onRemove, 300);
+    setTimeout(onRemove, 280);
   };
 
   return (
     <div
+      role="alert"
+      aria-live="polite"
       className={`
-        relative overflow-hidden
-        ${config.bg} ${config.border}
-        text-white px-5 py-4 rounded-2xl shadow-2xl
-        border-2 backdrop-blur-sm
-        flex items-center gap-3 min-w-[320px] max-w-[420px]
-        transform transition-all duration-300 ease-out
-        ${isExiting 
-          ? 'animate-toast-exit opacity-0 translate-x-full scale-95' 
-          : 'animate-toast-enter'
+        relative overflow-hidden bg-white
+        rounded-2xl shadow-lg border border-gray-100
+        flex items-stretch
+        min-w-[320px] max-w-[400px]
+        cursor-pointer select-none
+        transition-all duration-280 ease-out
+        ${isExiting
+          ? 'opacity-0 translate-x-6 scale-95'
+          : 'opacity-100 translate-x-0 scale-100 animate-in slide-in-from-right-4 fade-in duration-300'
         }
-        hover:scale-105 hover:shadow-3xl cursor-pointer
-        group
+        hover:shadow-xl hover:-translate-y-0.5
       `}
       onClick={handleRemove}
     >
-      {/* Animated Icon */}
-      <div className="animate-bounce-in">
-        <Icon size={24} className={`${config.iconColor} drop-shadow-lg`} />
-      </div>
-      
-      {/* Message */}
-      <p className="flex-1 font-semibold text-sm drop-shadow-sm">{toast.message}</p>
-      
-      {/* Close Button */}
-      <button 
-        onClick={(e) => { e.stopPropagation(); handleRemove(); }}
-        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/20 rounded-full"
-      >
-        <X size={16} />
-      </button>
+      {/* Colored left accent bar */}
+      <div className={`w-1 flex-shrink-0 rounded-l-2xl ${config.accentClass}`} />
 
-      {/* Progress Bar */}
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
-        <div 
-          className="h-full bg-white/50 transition-all duration-100 ease-linear rounded-full"
+      {/* Content */}
+      <div className="flex items-center gap-3 px-4 py-3.5 flex-1 min-w-0">
+        {/* Icon */}
+        <div className={`w-9 h-9 rounded-xl ${config.iconBgClass} flex items-center justify-center flex-shrink-0`}>
+          <Icon size={18} className={config.iconClass} />
+        </div>
+
+        {/* Text */}
+        <div className="flex-1 min-w-0">
+          {/* Lune brand row */}
+          <div className={`flex items-center gap-1.5 mb-0.5 ${config.iconClass}`}>
+            <LuneMark />
+            <span className="text-[10px] font-bold uppercase tracking-widest opacity-70">lune</span>
+          </div>
+          <p className="text-slate-800 font-semibold text-sm leading-snug truncate">{toast.message}</p>
+        </div>
+
+        {/* Close */}
+        <button
+          onClick={(e) => { e.stopPropagation(); handleRemove(); }}
+          aria-label="Dismiss notification"
+          className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition flex-shrink-0"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      {/* Progress bar */}
+      <div
+        className={`absolute bottom-0 left-1 right-0 h-[2px] bg-gray-100 rounded-br-2xl overflow-hidden`}
+      >
+        <div
+          className={`h-full ${config.accentClass} transition-all duration-75 ease-linear rounded-full`}
           style={{ width: `${progress}%` }}
         />
-      </div>
-
-      {/* Particle Effect */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
-        <div className="absolute -top-1 -right-1 w-20 h-20 bg-white/10 rounded-full blur-xl animate-pulse" />
-        <div className="absolute -bottom-2 -left-2 w-16 h-16 bg-white/5 rounded-full blur-lg animate-pulse delay-75" />
       </div>
     </div>
   );
@@ -143,12 +169,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const addToast = useCallback((type: ToastType, message: string, duration?: number) => {
     const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
-    setToasts(prev => {
-      const newToasts = [...prev, { id, type, message, duration }];
-      // Keep only the last TOAST_LIMIT toasts
-      return newToasts.slice(-TOAST_LIMIT);
-    });
+    setToasts(prev => [...prev, { id, type, message, duration }].slice(-TOAST_LIMIT));
   }, []);
 
   const removeToast = useCallback((id: string) => {
@@ -156,25 +177,22 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const success = useCallback((message: string) => addToast('success', message), [addToast]);
-  const error = useCallback((message: string) => addToast('error', message), [addToast]);
+  const error   = useCallback((message: string) => addToast('error', message), [addToast]);
   const warning = useCallback((message: string) => addToast('warning', message), [addToast]);
-  const info = useCallback((message: string) => addToast('info', message), [addToast]);
+  const info    = useCallback((message: string) => addToast('info', message), [addToast]);
 
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast, success, error, warning, info }}>
       {children}
-      
-      {/* Toast Container */}
-      <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none">
-        {toasts.map((toast, index) => (
-          <div 
-            key={toast.id} 
-            className="pointer-events-auto"
-            style={{ 
-              transform: `translateY(${(toasts.length - 1 - index) * -8}px) scale(${1 - (toasts.length - 1 - index) * 0.02})`,
-              opacity: 1 - (toasts.length - 1 - index) * 0.1
-            }}
-          >
+
+      {/* Toast container — bottom-right, stacked */}
+      <div
+        role="region"
+        aria-label="Notifications"
+        className="fixed bottom-6 right-6 z-[9999] flex flex-col-reverse gap-2.5 pointer-events-none"
+      >
+        {toasts.map((toast) => (
+          <div key={toast.id} className="pointer-events-auto">
             <ToastItem toast={toast} onRemove={() => removeToast(toast.id)} />
           </div>
         ))}

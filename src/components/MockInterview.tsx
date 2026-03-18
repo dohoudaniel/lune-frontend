@@ -340,13 +340,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
                 </div>
               )}
 
-              <textarea
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                placeholder="Type your answer here or use the microphone to transcribe..."
-                aria-label="Your interview answer"
-                className="w-full h-40 p-4 rounded-xl bg-gray-50 border border-gray-200 focus:ring-2 focus:ring-orange focus:border-transparent outline-none resize-none font-sans text-slate-700 leading-relaxed mb-4"
-              />
+              <p className="text-xs text-gray-400 mt-2 mb-4 text-center">Speak clearly into your microphone. Your response is captured automatically.</p>
 
               {/* Submit error */}
               {submitError && (

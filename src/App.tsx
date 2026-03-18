@@ -54,13 +54,28 @@ const PermissionCheckModal = lazy(() => import('./components/PermissionCheckModa
 const LiveAssessmentViewer = lazy(() => import('./components/LiveAssessmentViewer').then(m => ({ default: m.LiveAssessmentViewer })));
 const QuestionBankManager = lazy(() => import('./components/QuestionBankManager').then(m => ({ default: m.QuestionBankManager })));
 const DataConsentModal = lazy(() => import('./components/DataConsentModal').then(m => ({ default: m.DataConsentModal })));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const ProfilePage = lazy(() => import('./components/ProfilePage').then(m => ({ default: m.ProfilePage })));
 
 // Loading fallback component
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-cream">
-    <div className="text-center">
-      <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-      <p className="text-gray-500">Loading...</p>
+    <div className="flex flex-col items-center gap-5">
+      <div className="relative">
+        <img
+          src="/icons/icon.svg"
+          alt="Lune"
+          className="w-16 h-16 rounded-2xl shadow-lg"
+        />
+        <div
+          className="absolute -inset-2 rounded-[28px] border-[3px] border-teal/20 border-t-teal animate-spin"
+          style={{ animationDuration: '1s' }}
+        />
+      </div>
+      <div className="text-center">
+        <p className="text-slate-700 font-semibold text-sm tracking-wide">lune</p>
+        <p className="text-slate-400 text-xs mt-0.5">Loading your workspace…</p>
+      </div>
     </div>
   </div>
 );
@@ -122,6 +137,8 @@ const getViewFromPath = (): ViewState => {
   if (path === '/check-email') return ViewState.CHECK_EMAIL;
   if (path === '/dashboard') return ViewState.CANDIDATE_DASHBOARD;
   if (path === '/employer') return ViewState.EMPLOYER_DASHBOARD;
+  if (path === '/admin') return ViewState.ADMIN_DASHBOARD;
+  if (path === '/profile') return ViewState.PROFILE;
   return ViewState.LANDING;
 };
 
@@ -172,6 +189,10 @@ function AppContent() {
 
   // Permission modal state for assessments
   const [showPermissionModal, setShowPermissionModal] = useState(false);
+
+  // Admin impersonation state
+  const [impersonationToken, setImpersonationToken] = useState<string | null>(null);
+  const [impersonatedUser, setImpersonatedUser] = useState<{ id: string; name: string; email: string; role: 'candidate' | 'employer' } | null>(null);
 
   // Update profile when user changes and check for onboarding
   // Handle initial routing based on URL path
@@ -227,7 +248,7 @@ function AppContent() {
         initializeNotifications(user.id);
       }
 
-      setUserRole(user.role === 'candidate' ? UserRole.CANDIDATE : UserRole.EMPLOYER);
+      setUserRole(user.role === 'candidate' ? UserRole.CANDIDATE : user.role === 'employer' ? UserRole.EMPLOYER : UserRole.ADMIN);
 
       // Handle login redirect - if modal was open and user just authenticated
       // This ensures we use the actual user role from the database, not form state
@@ -236,6 +257,8 @@ function AppContent() {
         // Redirect to appropriate dashboard based on actual user role
         if (user.role === 'employer') {
           setCurrentView(ViewState.EMPLOYER_DASHBOARD);
+        } else if (user.role === 'admin') {
+          setCurrentView(ViewState.ADMIN_DASHBOARD);
         } else {
           setCurrentView(ViewState.CANDIDATE_DASHBOARD);
         }
@@ -244,13 +267,14 @@ function AppContent() {
 
       // Session restore on page refresh: if user is authenticated but still on LANDING,
       // redirect to their dashboard automatically
-      // OR if we were on a verification page and just finished, we want to go home (which will be dashboard)
-      // Session restore: if user is on Landing or Login/Signup but authenticated, send to dashboard.
       // We explicitly EXCLUDE verification/reset pages so they work even if a session exists.
       if (currentView === ViewState.LANDING || currentView === ViewState.LOGIN || currentView === ViewState.SIGNUP) {
         if (user.role === 'employer') {
           setCurrentView(ViewState.EMPLOYER_DASHBOARD);
           window.history.replaceState({}, '', '/employer');
+        } else if (user.role === 'admin') {
+          setCurrentView(ViewState.ADMIN_DASHBOARD);
+          window.history.replaceState({}, '', '/admin');
         } else {
           setCurrentView(ViewState.CANDIDATE_DASHBOARD);
           window.history.replaceState({}, '', '/dashboard');
@@ -284,6 +308,8 @@ function AppContent() {
       case ViewState.CHECK_EMAIL: path = '/check-email'; break;
       case ViewState.CANDIDATE_DASHBOARD: path = '/dashboard'; break;
       case ViewState.EMPLOYER_DASHBOARD: path = '/employer'; break;
+      case ViewState.ADMIN_DASHBOARD: path = '/admin'; break;
+      case ViewState.PROFILE: path = '/profile'; break;
       case ViewState.LANDING: path = '/'; break;
       default: path = window.location.pathname; // Keep current path for nested views
     }
@@ -300,14 +326,32 @@ function AppContent() {
     }
   };
 
-  const handleAuthSuccess = (role: 'candidate' | 'employer') => {
+  const handleAuthSuccess = (role: 'candidate' | 'employer' | 'admin') => {
     if (role === 'candidate') {
         handleNavigate(ViewState.CANDIDATE_DASHBOARD, UserRole.CANDIDATE);
-    } else {
+    } else if (role === 'employer') {
         handleNavigate(ViewState.EMPLOYER_DASHBOARD, UserRole.EMPLOYER);
+    } else {
+        handleNavigate(ViewState.ADMIN_DASHBOARD, UserRole.ADMIN);
     }
     // Show welcome banner for new users
     setShowWelcomeBanner(true);
+  };
+
+  const handleImpersonate = (token: string, targetUser: { id: string; name: string; email: string; role: 'candidate' | 'employer' }) => {
+    setImpersonationToken(token);
+    setImpersonatedUser(targetUser);
+    if (targetUser.role === 'candidate') {
+      handleNavigate(ViewState.CANDIDATE_DASHBOARD);
+    } else {
+      handleNavigate(ViewState.EMPLOYER_DASHBOARD);
+    }
+  };
+
+  const handleStopImpersonation = () => {
+    setImpersonationToken(null);
+    setImpersonatedUser(null);
+    handleNavigate(ViewState.ADMIN_DASHBOARD);
   };
 
   // Onboarding handlers
@@ -762,23 +806,45 @@ Verify my certificate: ${certificateUrl}
         return <Landing onNavigate={handleNavigate} />;
       case ViewState.CANDIDATE_DASHBOARD:
         return (
-          <CandidateDashboard
-            candidate={candidateProfile}
-            onStartAssessment={handleStartAssessment}
-            onLogout={handleLogout}
-            onUpdateProfile={(updates) => setCandidateProfile(prev => ({ ...prev, ...updates }))}
-            onOpenVideoAnalyzer={() => startTransition(() => setShowVideoAnalyzer(true))}
-            onStartTour={handleStartTour}
-          />
+          <>
+            {impersonatedUser && (
+              <div className="fixed top-0 left-0 right-0 z-[9999] bg-orange text-white text-center text-xs py-2 font-semibold flex items-center justify-center gap-3">
+                <span>Admin view: impersonating <strong>{impersonatedUser.name}</strong> ({impersonatedUser.email})</span>
+                <button onClick={handleStopImpersonation} className="underline hover:no-underline">Exit impersonation</button>
+              </div>
+            )}
+            <div className={impersonatedUser ? 'pt-8' : ''}>
+              <CandidateDashboard
+                candidate={candidateProfile}
+                onStartAssessment={handleStartAssessment}
+                onLogout={impersonatedUser ? handleStopImpersonation : handleLogout}
+                onUpdateProfile={(updates) => setCandidateProfile(prev => ({ ...prev, ...updates }))}
+                onOpenVideoAnalyzer={() => startTransition(() => setShowVideoAnalyzer(true))}
+                onStartTour={handleStartTour}
+                onNavigateProfile={!impersonatedUser ? () => handleNavigate(ViewState.PROFILE) : undefined}
+              />
+            </div>
+          </>
         );
       case ViewState.EMPLOYER_DASHBOARD:
         return (
-          <EmployerDashboard
-            onLogout={handleLogout}
-            onOpenEnterpriseDashboard={() => startTransition(() => setShowEnterpriseDashboard(true))}
-            onStartTour={handleStartTour}
-            userName={user?.name || 'Employer'}
-          />
+          <>
+            {impersonatedUser && (
+              <div className="fixed top-0 left-0 right-0 z-[9999] bg-orange text-white text-center text-xs py-2 font-semibold flex items-center justify-center gap-3">
+                <span>Admin view: impersonating <strong>{impersonatedUser.name}</strong> ({impersonatedUser.email})</span>
+                <button onClick={handleStopImpersonation} className="underline hover:no-underline">Exit impersonation</button>
+              </div>
+            )}
+            <div className={impersonatedUser ? 'pt-8' : ''}>
+              <EmployerDashboard
+                onLogout={impersonatedUser ? handleStopImpersonation : handleLogout}
+                onOpenEnterpriseDashboard={() => startTransition(() => setShowEnterpriseDashboard(true))}
+                onStartTour={handleStartTour}
+                userName={user?.name || 'Employer'}
+                onNavigateProfile={!impersonatedUser ? () => handleNavigate(ViewState.PROFILE) : undefined}
+              />
+            </div>
+          </>
         );
       case ViewState.SKILL_SELECTION:
         return renderSkillSelection();
@@ -787,19 +853,44 @@ Verify my certificate: ${certificateUrl}
       case ViewState.ASSESSMENT_RESULT:
         return renderResult();
       case ViewState.LOGIN:
+        if (isAuthenticated && user) return <LoadingFallback />;
         return <LoginPage onNavigate={handleNavigate} />;
       case ViewState.SIGNUP:
+        if (isAuthenticated && user) return <LoadingFallback />;
         return <SignupPage onNavigate={handleNavigate} onSuccess={handleAuthSuccess} />;
       case ViewState.FORGOT_PASSWORD:
+        if (isAuthenticated && user) return <LoadingFallback />;
         return <ForgotPasswordPage onNavigate={handleNavigate} />;
       case ViewState.RESET_PASSWORD:
         return <ResetPasswordPage onNavigate={handleNavigate} />;
       case ViewState.CHECK_EMAIL:
         return <CheckEmail onNavigate={handleNavigate} />;
       case ViewState.AUTH_SELECTION: // Fallback directly to signup
+        if (isAuthenticated && user) return <LoadingFallback />;
         return <SignupPage onNavigate={handleNavigate} onSuccess={handleAuthSuccess} />;
       case ViewState.VERIFY_EMAIL:
         return <VerifyEmail onNavigate={handleNavigate} />;
+      case ViewState.ADMIN_DASHBOARD:
+        if (!user || user.role !== 'admin') return <Landing onNavigate={handleNavigate} />;
+        return (
+          <AdminDashboard
+            onLogout={handleLogout}
+            onImpersonate={handleImpersonate}
+          />
+        );
+      case ViewState.PROFILE:
+        if (!user) return <Landing onNavigate={handleNavigate} />;
+        return (
+          <ProfilePage
+            user={user}
+            onBack={() => {
+              if (user.role === 'employer') handleNavigate(ViewState.EMPLOYER_DASHBOARD);
+              else if (user.role === 'admin') handleNavigate(ViewState.ADMIN_DASHBOARD);
+              else handleNavigate(ViewState.CANDIDATE_DASHBOARD);
+            }}
+            onLogout={handleLogout}
+          />
+        );
       default:
         return <Landing onNavigate={handleNavigate} />;
     }

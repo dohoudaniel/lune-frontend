@@ -14,6 +14,7 @@ interface EmployerDashboardProps {
    onOpenEnterpriseDashboard?: () => void;
    onStartTour?: () => void;
    userName?: string;
+   onNavigateProfile?: () => void;
 }
 
 
@@ -22,7 +23,8 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
    onLogout,
    onOpenEnterpriseDashboard,
    onStartTour,
-   userName = 'Employer'
+   userName = 'Employer',
+   onNavigateProfile,
 }) => {
    const toast = useToast();
    const [activeTab, setActiveTab] = useState<'candidates' | 'jobs'>('candidates');
@@ -977,9 +979,9 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
                   </motion.button>
                   <motion.button
                      whileHover={{ scale: 1.05 }}
-                     onClick={() => setShowProfileSettings(true)}
-                     className="w-8 h-8 bg-orange rounded-full flex items-center justify-center text-white font-bold text-xs shadow-md shadow-orange/20 cursor-pointer"
-                     title="Company Settings"
+                     onClick={onNavigateProfile ?? (() => setShowProfileSettings(true))}
+                     className="w-8 h-8 bg-orange rounded-full flex items-center justify-center text-white font-bold text-xs shadow-md shadow-orange/20 cursor-pointer hover:ring-2 hover:ring-orange/50 transition"
+                     title="View Profile"
                   >
                      {userName.charAt(0).toUpperCase()}
                   </motion.button>
