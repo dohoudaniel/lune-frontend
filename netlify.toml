@@ -9,6 +9,17 @@
   # and public Supabase anon keys naturally appear in code/docs and are safe.
   SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY,VITE_GEMINI_API_KEY,VITE_API_URL,NODE_ENV,PORT,GEMINI_API_KEY,SUPABASE_URL,SUPABASE_ANON_KEY,SUPABASE_SERVICE_KEY,JWT_SECRET,ALLOWED_ORIGINS,PWR_CHAIN_RPC_URL,PWR_CHAIN_ID,RATE_LIMIT_WINDOW_MS,RATE_LIMIT_MAX_REQUESTS,SEED_PHRASE"
 
+# Security response headers applied to every response
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.tailwindcss.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' https: http://localhost:8000 http://localhost:3001; worker-src 'self' blob:; frame-ancestors 'none';"
+
 # SPA: redirect all routes to index.html for client-side routing
 [[redirects]]
   from = "/*"

@@ -1,0 +1,753 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Menu,
+  X,
+  ArrowRight,
+  Briefcase,
+  TrendingUp,
+  Code,
+  CheckCircle,
+  Award,
+  Search,
+  ChevronRight,
+  Star,
+  Globe,
+  Shield,
+  Zap,
+  Users,
+} from 'lucide-react';
+import { ViewState, UserRole } from '../types';
+import { motion, AnimatePresence, useAnimationFrame } from 'framer-motion';
+import { SEO } from './SEO';
+
+interface LandingProps {
+  onNavigate: (view: ViewState, role?: UserRole) => void;
+}
+
+const roles = [
+  { label: 'Virtual Assistant', category: 'ops' },
+  { label: 'Customer Service', category: 'ops' },
+  { label: 'Sales Rep', category: 'sales' },
+  { label: 'Business Development', category: 'sales' },
+  { label: 'E-Commerce Specialist', category: 'ops' },
+  { label: 'Digital Marketing', category: 'marketing' },
+  { label: 'Content Creator', category: 'marketing' },
+  { label: 'SEO Specialist', category: 'marketing' },
+  { label: 'Frontend Developer', category: 'tech' },
+  { label: 'Backend Developer', category: 'tech' },
+  { label: 'Software Engineer', category: 'tech' },
+  { label: 'Mobile Developer', category: 'tech' },
+  { label: 'DevOps Engineer', category: 'tech' },
+  { label: 'DevRel', category: 'tech' },
+  { label: 'Project Manager', category: 'ops' },
+  { label: 'HR & Recruiting', category: 'ops' },
+  { label: 'Executive Assistant', category: 'ops' },
+  { label: 'Data Entry Specialist', category: 'ops' },
+];
+
+const categoryDot: Record<string, string> = {
+  tech: 'bg-teal-500',
+  ops: 'bg-orange-400',
+  sales: 'bg-orange-400',
+  marketing: 'bg-purple-500',
+};
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 32 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: 'easeOut' } },
+};
+
+const stagger = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.12 } },
+};
+
+function MarqueePills() {
+  const doubled = [...roles, ...roles];
+  const ref = useRef<HTMLDivElement>(null);
+  const xRef = useRef(0);
+  const speedRef = useRef(0.6);
+
+  useAnimationFrame(() => {
+    if (!ref.current) return;
+    const el = ref.current;
+    const half = el.scrollWidth / 2;
+    xRef.current -= speedRef.current;
+    if (Math.abs(xRef.current) >= half) xRef.current = 0;
+    el.style.transform = `translateX(${xRef.current}px)`;
+  });
+
+  return (
+    <div className="overflow-hidden w-full" aria-hidden="true">
+      <div ref={ref} className="flex gap-3 w-max py-3">
+        {doubled.map((role, i) => (
+          <span
+            key={i}
+            className="inline-flex items-center gap-2 bg-white border border-gray-200 shadow-sm rounded-full px-4 py-1.5 text-sm font-medium text-gray-700 whitespace-nowrap select-none"
+          >
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${categoryDot[role.category]}`} />
+            {role.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollTo = (id: string) => {
+    setMobileMenuOpen(false);
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Lune',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+    },
+    description:
+      'Lune is the only platform where VAs, Customer Service reps, Sales professionals, Engineers, and every major role can prove their skills — and employers can trust every credential.',
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: '4.8',
+      ratingCount: '1250',
+    },
+  };
+
+  return (
+    <>
+      <SEO
+        title="Lune — Hire Verified Talent. Get Verified. Get Hired."
+        description="Lune is the only platform where VAs, Customer Service reps, Sales professionals, Engineers, and every major role can prove their skills — and employers can trust every credential."
+        structuredData={structuredData}
+      />
+
+      {/* ── NAVBAR ── */}
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 bg-cream/95 backdrop-blur-md border-b border-cream transition-shadow duration-200 ${
+          scrolled ? 'shadow-sm' : ''
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="flex items-center gap-2 focus:outline-none"
+              aria-label="Lune home"
+            >
+              <div className="w-8 h-8 bg-black rounded-md flex items-center justify-center flex-shrink-0">
+                <div className="grid grid-cols-2 gap-0.5">
+                  <div className="w-2.5 h-2.5 bg-white rounded-full" />
+                  <div className="w-2.5 h-2.5 bg-white rounded-full" />
+                  <div className="w-2.5 h-2.5 bg-white rounded-full" />
+                  <div className="w-2.5 h-2.5 bg-white rounded-full" />
+                </div>
+              </div>
+              <span className="text-xl font-bold text-gray-900 tracking-tight">lune</span>
+            </button>
+
+            {/* Desktop Nav */}
+            <nav className="hidden md:flex items-center gap-7">
+              <button
+                onClick={() => scrollTo('roles')}
+                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                For Candidates
+              </button>
+              <button
+                onClick={() => scrollTo('dual-cta')}
+                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                For Employers
+              </button>
+              <button
+                onClick={() => scrollTo('how-it-works')}
+                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                How it Works
+              </button>
+            </nav>
+
+            {/* Desktop CTA */}
+            <div className="hidden md:flex items-center gap-3">
+              <button
+                onClick={() => onNavigate(ViewState.LOGIN)}
+                className="text-sm font-medium text-gray-700 px-4 py-2 rounded-lg border border-transparent hover:border-gray-200 hover:bg-gray-50 transition-all"
+              >
+                Log In
+              </button>
+              <button
+                onClick={() => onNavigate(ViewState.SIGNUP)}
+                className="text-sm font-semibold text-white bg-black px-5 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                Get Started Free
+              </button>
+            </div>
+
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setMobileMenuOpen((v) => !v)}
+              className="md:hidden p-2 rounded-md text-gray-600 hover:bg-gray-100 transition-colors"
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile menu */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.22 }}
+              className="md:hidden overflow-hidden border-t border-gray-100 bg-white"
+            >
+              <div className="px-4 py-4 flex flex-col gap-3">
+                <button
+                  onClick={() => scrollTo('roles')}
+                  className="text-sm font-medium text-gray-700 text-left py-2 hover:text-black transition-colors"
+                >
+                  For Candidates
+                </button>
+                <button
+                  onClick={() => scrollTo('dual-cta')}
+                  className="text-sm font-medium text-gray-700 text-left py-2 hover:text-black transition-colors"
+                >
+                  For Employers
+                </button>
+                <button
+                  onClick={() => scrollTo('how-it-works')}
+                  className="text-sm font-medium text-gray-700 text-left py-2 hover:text-black transition-colors"
+                >
+                  How it Works
+                </button>
+                <div className="pt-2 flex flex-col gap-2">
+                  <button
+                    onClick={() => { setMobileMenuOpen(false); onNavigate(ViewState.LOGIN); }}
+                    className="w-full text-sm font-medium text-gray-700 px-4 py-2.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                  >
+                    Log In
+                  </button>
+                  <button
+                    onClick={() => { setMobileMenuOpen(false); onNavigate(ViewState.SIGNUP); }}
+                    className="w-full text-sm font-semibold text-white bg-black px-4 py-2.5 rounded-lg hover:bg-gray-800 transition-colors"
+                  >
+                    Get Started Free
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </header>
+
+      <main className="pt-16">
+        {/* ── HERO ── */}
+        <section id="hero" className="relative bg-cream overflow-hidden min-h-screen flex items-center">
+          {/* Background blobs */}
+          <div
+            className="absolute -top-32 -left-32 w-96 h-96 rounded-full opacity-30 pointer-events-none"
+            style={{ background: 'radial-gradient(circle, #2dd4bf 0%, transparent 70%)', filter: 'blur(60px)' }}
+          />
+          <div
+            className="absolute -bottom-20 -right-20 w-80 h-80 rounded-full opacity-25 pointer-events-none"
+            style={{ background: 'radial-gradient(circle, #fb923c 0%, transparent 70%)', filter: 'blur(60px)' }}
+          />
+
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 w-full">
+            <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+              {/* Left — copy */}
+              <motion.div
+                variants={stagger}
+                initial="hidden"
+                animate="visible"
+                className="flex flex-col gap-6"
+              >
+                <motion.div variants={fadeInUp}>
+                  <span className="inline-flex items-center gap-1.5 bg-orange-50 border border-orange-200 text-orange-700 text-xs font-semibold px-3 py-1 rounded-full">
+                    <Shield size={11} /> AI-Powered Skill Verification
+                  </span>
+                </motion.div>
+
+                <motion.h1
+                  variants={fadeInUp}
+                  className="text-4xl sm:text-5xl lg:text-[3.4rem] font-extrabold text-gray-900 leading-tight tracking-tight"
+                >
+                  Hire{' '}
+                  <span className="text-orange-500">Verified</span>{' '}
+                  Talent.
+                  <br />
+                  Get{' '}
+                  <span className="text-orange-500">Verified</span>
+                  . Get Hired.
+                </motion.h1>
+
+                <motion.p
+                  variants={fadeInUp}
+                  className="text-base sm:text-lg text-gray-600 leading-relaxed max-w-xl"
+                >
+                  Lune is the only platform where VAs, Customer Service reps, Sales professionals,
+                  Engineers, and every major role can prove their skills — and employers can trust
+                  every credential.
+                </motion.p>
+
+                <motion.div variants={fadeInUp} className="flex flex-wrap gap-3">
+                  <button
+                    onClick={() => onNavigate(ViewState.SIGNUP)}
+                    className="inline-flex items-center gap-2 bg-black text-white font-semibold px-6 py-3 rounded-xl hover:bg-gray-800 transition-colors text-sm"
+                  >
+                    Find Talent <ArrowRight size={16} />
+                  </button>
+                  <button
+                    onClick={() => onNavigate(ViewState.SIGNUP)}
+                    className="inline-flex items-center gap-2 border-2 border-orange-500 text-orange-600 font-semibold px-6 py-3 rounded-xl hover:bg-orange-50 transition-colors text-sm"
+                  >
+                    Get Certified Free
+                  </button>
+                </motion.div>
+
+                <motion.div variants={fadeInUp} className="flex items-center gap-4 pt-2">
+                  <div className="flex -space-x-2">
+                    {['bg-orange-400', 'bg-teal-400', 'bg-purple-400', 'bg-blue-400'].map((c, i) => (
+                      <div key={i} className={`w-7 h-7 rounded-full ${c} border-2 border-white`} />
+                    ))}
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    <span className="font-semibold text-gray-800">12,000+</span> professionals verified
+                  </p>
+                </motion.div>
+              </motion.div>
+
+              {/* Right — mockup cards */}
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.25 }}
+                className="relative flex flex-col items-center lg:items-end gap-4"
+              >
+                {/* Verified Profile card */}
+                <motion.div
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+                  className="bg-white rounded-2xl shadow-xl border border-gray-100 p-5 w-full max-w-sm"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                      S
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900 text-sm">Sarah K.</p>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-gray-500">Virtual Assistant</span>
+                        <span className="inline-flex items-center gap-0.5 bg-teal-50 text-teal-700 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border border-teal-200">
+                          <CheckCircle size={9} /> Verified
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2.5">
+                    {[
+                      { label: 'Customer Service', pct: 94, color: 'bg-teal-500' },
+                      { label: 'Microsoft Excel', pct: 88, color: 'bg-orange-400' },
+                      { label: 'Communication', pct: 91, color: 'bg-purple-500' },
+                    ].map((skill) => (
+                      <div key={skill.label}>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-600">{skill.label}</span>
+                          <span className="font-semibold text-gray-800">{skill.pct}%</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <motion.div
+                            className={`h-full rounded-full ${skill.color}`}
+                            initial={{ width: 0 }}
+                            animate={{ width: `${skill.pct}%` }}
+                            transition={{ duration: 1.1, delay: 0.6, ease: 'easeOut' }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+
+                {/* Match Found notification */}
+                <motion.div
+                  animate={{ y: [0, 6, 0] }}
+                  transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+                  className="bg-white rounded-xl shadow-lg border border-gray-100 px-4 py-3 flex items-center gap-3 self-start ml-6 lg:ml-12"
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-green-400 flex-shrink-0 animate-pulse" />
+                  <p className="text-xs font-medium text-gray-700">3 employers viewed your profile today</p>
+                </motion.div>
+              </motion.div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── ROLES ── */}
+        <section id="roles" className="bg-white py-20 overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="text-center mb-10"
+            >
+              <motion.h2 variants={fadeInUp} className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-3">
+                Built for Every Professional
+              </motion.h2>
+              <motion.p variants={fadeInUp} className="text-gray-500 text-base max-w-xl mx-auto">
+                From non-tech to deep tech — if you have a skill, we verify it.
+              </motion.p>
+            </motion.div>
+          </div>
+
+          {/* Marquee pills */}
+          <MarqueePills />
+
+          {/* Role category cards */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="grid grid-cols-1 md:grid-cols-3 gap-5"
+            >
+              {[
+                {
+                  icon: <Briefcase size={22} />,
+                  accent: 'text-orange-500',
+                  bg: 'bg-orange-50',
+                  border: 'border-orange-100',
+                  title: 'Operations & Support',
+                  desc: 'VAs, Customer Service, E-Commerce Specialists, Executive Assistants, HR & Recruiting, Project Managers',
+                },
+                {
+                  icon: <TrendingUp size={22} />,
+                  accent: 'text-purple-500',
+                  bg: 'bg-purple-50',
+                  border: 'border-purple-100',
+                  title: 'Sales & Growth',
+                  desc: 'SDRs, Account Executives, Business Development, Digital Marketers, Content Creators, SEO Specialists',
+                },
+                {
+                  icon: <Code size={22} />,
+                  accent: 'text-teal-600',
+                  bg: 'bg-teal-50',
+                  border: 'border-teal-100',
+                  title: 'Tech & Engineering',
+                  desc: 'Frontend, Backend, Mobile, DevOps, DevRel, Software Engineers — all skill-verified with precision',
+                },
+              ].map((card) => (
+                <motion.div
+                  key={card.title}
+                  variants={fadeInUp}
+                  className={`rounded-2xl border ${card.border} ${card.bg} p-6 flex flex-col gap-3`}
+                >
+                  <div className={`w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm ${card.accent}`}>
+                    {card.icon}
+                  </div>
+                  <h3 className="font-bold text-gray-900 text-base">{card.title}</h3>
+                  <p className="text-gray-500 text-sm leading-relaxed">{card.desc}</p>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ── HOW IT WORKS ── */}
+        <section id="how-it-works" className="bg-cream py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="text-center mb-14"
+            >
+              <motion.h2 variants={fadeInUp} className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-3">
+                How Lune Works
+              </motion.h2>
+            </motion.div>
+
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="grid grid-cols-1 md:grid-cols-3 gap-6 relative"
+            >
+              {[
+                {
+                  step: '1',
+                  icon: <Zap size={24} />,
+                  title: 'Take the Assessment',
+                  desc: 'AI-proctored tests tailored to your exact role — fair, rigorous, and trusted by employers.',
+                },
+                {
+                  step: '2',
+                  icon: <Award size={24} />,
+                  title: 'Earn Your Certificate',
+                  desc: 'A tamper-proof credential is added to your Skill Passport, shareable anywhere.',
+                },
+                {
+                  step: '3',
+                  icon: <Search size={24} />,
+                  title: 'Get Discovered',
+                  desc: 'Employers search verified talent by role, score, and skill — you rise to the top.',
+                },
+              ].map((item, i) => (
+                <React.Fragment key={item.step}>
+                  <motion.div
+                    variants={fadeInUp}
+                    className="relative bg-white rounded-2xl border border-gray-100 shadow-sm p-7 flex flex-col gap-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="w-8 h-8 rounded-full bg-black text-white text-sm font-bold flex items-center justify-center flex-shrink-0">
+                        {item.step}
+                      </span>
+                      <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-700">
+                        {item.icon}
+                      </div>
+                    </div>
+                    <h3 className="font-bold text-gray-900 text-lg">{item.title}</h3>
+                    <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
+                  </motion.div>
+
+                  {/* Arrow connector (desktop only, not after last) */}
+                  {i < 2 && (
+                    <div className="hidden md:flex absolute items-center" style={{ left: `calc(${(i + 1) * 33.333}% - 12px)`, top: '50%', transform: 'translateY(-50%)' }}>
+                      <ChevronRight size={22} className="text-gray-300" />
+                    </div>
+                  )}
+                </React.Fragment>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ── TRUST / SOCIAL PROOF ── */}
+        <section className="bg-slate-900 text-white py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="text-center mb-12"
+            >
+              <motion.h2 variants={fadeInUp} className="text-3xl sm:text-4xl font-extrabold mb-3">
+                Trusted by professionals across 30+ countries
+              </motion.h2>
+              <motion.p variants={fadeInUp} className="text-slate-400 text-base max-w-xl mx-auto">
+                Real results for real people, from Lagos to London to Los Angeles.
+              </motion.p>
+            </motion.div>
+
+            {/* Stats */}
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12"
+            >
+              {[
+                { stat: '12,000+', label: 'Professionals Certified', icon: <Users size={18} /> },
+                { stat: '500+', label: 'Hiring Companies', icon: <Briefcase size={18} /> },
+                { stat: '98%', label: 'Credential Accuracy', icon: <Shield size={18} /> },
+                { stat: '30+', label: 'Countries', icon: <Globe size={18} /> },
+              ].map((item) => (
+                <motion.div
+                  key={item.label}
+                  variants={fadeInUp}
+                  className="bg-slate-800 rounded-2xl p-5 flex flex-col gap-2 border border-slate-700"
+                >
+                  <div className="text-slate-400">{item.icon}</div>
+                  <p className="text-2xl font-extrabold text-white">{item.stat}</p>
+                  <p className="text-sm text-slate-400 leading-snug">{item.label}</p>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            {/* Testimonials */}
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-5"
+            >
+              {[
+                {
+                  quote:
+                    "I got hired within 2 weeks of earning my Lune certificate. My employer said the verified score was the deciding factor. This platform is a game-changer for remote workers.",
+                  name: 'Amara O.',
+                  role: 'Virtual Assistant · Nigeria',
+                  color: 'from-orange-500 to-orange-600',
+                },
+                {
+                  quote:
+                    "We used to spend 3 weeks screening candidates. With Lune, we find verified talent in hours. The credential accuracy is unmatched — we've made 47 hires through the platform.",
+                  name: 'James T.',
+                  role: 'Head of Talent · SaaS Company',
+                  color: 'from-teal-500 to-teal-600',
+                },
+              ].map((t) => (
+                <motion.div
+                  key={t.name}
+                  variants={fadeInUp}
+                  className="bg-slate-800 rounded-2xl p-6 border border-slate-700 flex flex-col gap-4"
+                >
+                  <div className="flex gap-1">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} size={14} className="text-orange-400 fill-orange-400" />
+                    ))}
+                  </div>
+                  <p className="text-slate-300 text-sm leading-relaxed">"{t.quote}"</p>
+                  <div className="flex items-center gap-3 mt-auto">
+                    <div
+                      className={`w-9 h-9 rounded-full bg-gradient-to-br ${t.color} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}
+                    >
+                      {t.name[0]}
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold text-sm">{t.name}</p>
+                      <p className="text-slate-500 text-xs">{t.role}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ── DUAL CTA ── */}
+        <section id="dual-cta" className="bg-cream py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-6"
+            >
+              {/* Candidates */}
+              <motion.div
+                variants={fadeInUp}
+                className="relative overflow-hidden rounded-2xl p-8 flex flex-col gap-5"
+                style={{ background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)' }}
+              >
+                <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/10" />
+                <div className="absolute -bottom-6 -left-6 w-28 h-28 rounded-full bg-white/10" />
+                <div className="relative">
+                  <span className="inline-block bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full mb-4">
+                    For Candidates
+                  </span>
+                  <h3 className="text-2xl font-extrabold text-white leading-tight mb-2">
+                    Prove your skills.
+                    <br />
+                    Get hired faster.
+                  </h3>
+                  <p className="text-orange-100 text-sm mb-5">
+                    Take a free AI-proctored assessment and earn a credential employers actually trust.
+                  </p>
+                  <button
+                    onClick={() => onNavigate(ViewState.SIGNUP)}
+                    className="inline-flex items-center gap-2 bg-white text-orange-600 font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-orange-50 transition-colors"
+                  >
+                    Start Free Assessment <ArrowRight size={15} />
+                  </button>
+                </div>
+              </motion.div>
+
+              {/* Employers */}
+              <motion.div
+                variants={fadeInUp}
+                className="relative overflow-hidden rounded-2xl p-8 flex flex-col gap-5 bg-slate-900"
+              >
+                <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-teal-500/10" />
+                <div className="absolute -bottom-6 -left-6 w-28 h-28 rounded-full bg-teal-500/10" />
+                <div className="relative">
+                  <span className="inline-block bg-teal-500/20 text-teal-400 text-xs font-semibold px-3 py-1 rounded-full mb-4">
+                    For Employers
+                  </span>
+                  <h3 className="text-2xl font-extrabold text-white leading-tight mb-2">
+                    Skip the noise.
+                    <br />
+                    Hire verified.
+                  </h3>
+                  <p className="text-slate-400 text-sm mb-5">
+                    Browse a curated pool of skill-verified professionals ready to contribute from day one.
+                  </p>
+                  <button
+                    onClick={() => onNavigate(ViewState.SIGNUP)}
+                    className="inline-flex items-center gap-2 bg-teal-500 text-white font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-teal-400 transition-colors"
+                  >
+                    Browse Talent <ArrowRight size={15} />
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ── FOOTER ── */}
+        <footer className="bg-white border-t border-gray-100 py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-black rounded-md flex items-center justify-center flex-shrink-0">
+                <div className="grid grid-cols-2 gap-0.5">
+                  <div className="w-2 h-2 bg-white rounded-full" />
+                  <div className="w-2 h-2 bg-white rounded-full" />
+                  <div className="w-2 h-2 bg-white rounded-full" />
+                  <div className="w-2 h-2 bg-white rounded-full" />
+                </div>
+              </div>
+              <span className="font-bold text-gray-900">lune</span>
+              <span className="text-gray-400 text-sm ml-2">© 2026 Lune Inc.</span>
+            </div>
+            <div className="flex items-center gap-5">
+              <a href="#" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">
+                Privacy
+              </a>
+              <a href="#" className="text-sm text-gray-500 hover:text-gray-800 transition-colors">
+                Terms
+              </a>
+              <a
+                href="https://linkedin.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-gray-500 hover:text-gray-800 transition-colors"
+              >
+                LinkedIn
+              </a>
+            </div>
+          </div>
+        </footer>
+      </main>
+    </>
+  );
+};

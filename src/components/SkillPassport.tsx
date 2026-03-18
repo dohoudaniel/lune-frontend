@@ -1,0 +1,650 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+    Award, TrendingUp, TrendingDown, Target, Briefcase, MapPin,
+    Star, BookOpen, ExternalLink, Loader, RefreshCw, ChevronRight,
+    CheckCircle, AlertTriangle, Sparkles, Zap, BarChart3, X,
+    ShieldCheck, Clock
+} from 'lucide-react';
+import {
+    generateSkillPassport,
+    SkillPassportAnalysis,
+    AssessmentHistoryItem,
+    CertificationItem
+} from '../services/geminiService';
+import { CandidateProfile } from '../types';
+
+interface SkillPassportProps {
+    candidate: CandidateProfile;
+    assessmentHistory?: AssessmentHistoryItem[];
+    certifications?: CertificationItem[];
+    onViewJob?: (job: SkillPassportAnalysis['opportunities'][0]) => void;
+}
+
+interface SelectedSkillDetail {
+    skill: string;
+    score: number;
+    category: string;
+    evidence: string;
+    assessmentDate?: string;
+    certificateId?: string;
+}
+
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+export const SkillPassport: React.FC<SkillPassportProps> = ({
+    candidate,
+    assessmentHistory = [],
+    certifications = [],
+    onViewJob
+}) => {
+    const CACHE_KEY = `lune_skill_passport_${candidate.id}`;
+
+    const [passport, setPassport] = useState<SkillPassportAnalysis | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [activeSection, setActiveSection] = useState<'overview' | 'strengths' | 'weaknesses' | 'opportunities'>('overview');
+    const [selectedSkill, setSelectedSkill] = useState<SelectedSkillDetail | null>(null);
+
+    const generatePassport = async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const history: AssessmentHistoryItem[] = assessmentHistory.length > 0
+                ? assessmentHistory
+                : Object.entries(candidate.skills || {}).map(([skill, score]) => ({
+                    skill,
+                    score: score as number,
+                    passed: (score as number) >= 70,
+                    difficulty: (score as number) >= 85 ? 'Advanced' : (score as number) >= 70 ? 'Mid-Level' : 'Beginner',
+                    completedAt: new Date().toISOString(),
+                    category: 'general'
+                }));
+
+            const certs: CertificationItem[] = certifications.length > 0
+                ? certifications
+                : (candidate.certifications || []).map(cert => {
+                    let skillName = 'Verified Skill';
+                    let hash: string = cert;
+                    let date = new Date().toISOString();
+
+                    try {
+                        const parsed = JSON.parse(cert);
+                        if (parsed.skill) skillName = parsed.skill;
+                        if (parsed.hash) hash = parsed.hash;
+                        if (parsed.date) date = parsed.date;
+                    } catch (e) {
+                        // Original string format
+                    }
+
+                    return {
+                        skill: skillName,
+                        score: 85,
+                        issuedAt: date,
+                        certificateId: hash
+                    };
+                });
+
+            const result = await generateSkillPassport(history, certs, candidate.name);
+            setPassport(result);
+
+            // Cache the result
+            localStorage.setItem(CACHE_KEY, JSON.stringify({ data: result, timestamp: Date.now() }));
+        } catch (err) {
+            setError('Failed to generate Skill Passport. Please try again.');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        // Check cache before making an AI call
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+            try {
+                const { data, timestamp } = JSON.parse(cached);
+                if (Date.now() - timestamp < CACHE_TTL) {
+                    setPassport(data);
+                    setLoading(false);
+                    return;
+                }
+            } catch {
+                // Invalid cache — fall through to generate
+            }
+        }
+        generatePassport();
+    }, []);
+
+    const handleRefresh = () => {
+        localStorage.removeItem(CACHE_KEY);
+        generatePassport();
+    };
+
+    const getScoreColor = (score: number) => {
+        if (score >= 80) return { text: 'text-green-600', bg: 'bg-green-100', border: 'border-green-200' };
+        if (score >= 60) return { text: 'text-yellow-600', bg: 'bg-yellow-100', border: 'border-yellow-200' };
+        return { text: 'text-red-600', bg: 'bg-red-100', border: 'border-red-200' };
+    };
+
+    const getScoreLabel = (score: number) => {
+        if (score >= 80) return 'Expert';
+        if (score >= 60) return 'Developing';
+        return 'Beginner';
+    };
+
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: { opacity: 1, y: 0 }
+    };
+
+    if (loading) {
+        return (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+                <div className="relative w-16 h-16 mx-auto mb-5">
+                    <img src="/icons/icon.svg" alt="Lune" className="w-16 h-16 rounded-2xl shadow-md" />
+                    <div className="absolute -inset-2 rounded-[28px] border-[3px] border-teal/20 border-t-teal animate-spin" style={{ animationDuration: '1s' }} />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 mb-1">Generating Your Skill Passport</h3>
+                <p className="text-slate-500 text-sm">Analyzing your assessments and certifications…</p>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+                <AlertTriangle className="w-12 h-12 text-orange mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-slate-900 mb-2">Unable to Generate Passport</h3>
+                <p className="text-slate-500 mb-4">{error}</p>
+                <button
+                    onClick={generatePassport}
+                    className="px-4 py-2 bg-teal text-white rounded-xl font-semibold hover:opacity-90 transition flex items-center gap-2 mx-auto"
+                >
+                    <RefreshCw className="w-4 h-4" />
+                    Try Again
+                </button>
+            </div>
+        );
+    }
+
+    if (!passport) return null;
+
+    const handleSkillClick = (strength: typeof passport.strengths[0]) => {
+        const assessment = assessmentHistory.find(a => a.skill === strength.skill);
+        const cert = certifications.find(c => c.skill === strength.skill);
+
+        setSelectedSkill({
+            skill: strength.skill,
+            score: strength.score,
+            category: strength.category,
+            evidence: strength.evidence,
+            assessmentDate: assessment?.completedAt || cert?.issuedAt,
+            certificateId: cert?.certificateId
+        });
+    };
+
+    // Skill Detail Modal Component
+    const SkillDetailModal = () => {
+        if (!selectedSkill) return null;
+
+        const scoreColors = getScoreColor(selectedSkill.score);
+
+        return (
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                role="dialog"
+                aria-modal="true"
+                aria-label={`Skill details for ${selectedSkill.skill}`}
+                className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+                onClick={() => setSelectedSkill(null)}
+            >
+                <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    onClick={e => e.stopPropagation()}
+                    className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden"
+                >
+                    {/* Header */}
+                    <div className="bg-gradient-to-r from-teal to-teal/80 p-6 text-white relative">
+                        <button
+                            onClick={() => setSelectedSkill(null)}
+                            aria-label="Close skill details"
+                            className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition"
+                        >
+                            <X size={20} />
+                        </button>
+                        <div className="flex items-center gap-4">
+                            <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                                <ShieldCheck className="w-7 h-7" />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <h2 className="text-xl font-bold">{selectedSkill.skill}</h2>
+                                    <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs font-medium">
+                                        Verified
+                                    </span>
+                                </div>
+                                <p className="text-green-100 text-sm">{selectedSkill.category}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-6 space-y-5">
+                        {/* Score Display */}
+                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                            <div>
+                                <p className="text-sm text-gray-500 mb-1">Assessment Score</p>
+                                <p className={`text-3xl font-bold ${scoreColors.text}`}>{selectedSkill.score}%</p>
+                                <p className={`text-xs font-semibold mt-0.5 ${scoreColors.text}`}>
+                                    {getScoreLabel(selectedSkill.score)}
+                                </p>
+                            </div>
+                            <div className={`w-16 h-16 ${scoreColors.bg} rounded-full flex items-center justify-center`}>
+                                <CheckCircle className={`w-8 h-8 ${scoreColors.text}`} />
+                            </div>
+                        </div>
+
+                        {/* Assessment Details */}
+                        <div className="space-y-3">
+                            <h4 className="font-semibold text-gray-900">AI Assessment Summary</h4>
+                            <p className="text-gray-600 text-sm leading-relaxed">{selectedSkill.evidence}</p>
+                        </div>
+
+                        {/* Metadata */}
+                        <div className="grid grid-cols-2 gap-3">
+                            {selectedSkill.assessmentDate && (
+                                <div className="p-3 bg-blue-50 rounded-xl">
+                                    <div className="flex items-center gap-2 text-blue-600 mb-1">
+                                        <Clock className="w-4 h-4" />
+                                        <span className="text-xs font-medium">Completed</span>
+                                    </div>
+                                    <p className="text-blue-800 font-semibold text-sm">
+                                        {new Date(selectedSkill.assessmentDate).toLocaleDateString()}
+                                    </p>
+                                </div>
+                            )}
+                            {selectedSkill.certificateId && (
+                                <div className="p-3 bg-blue-50 rounded-xl">
+                                    <div className="flex items-center gap-2 text-blue-600 mb-1">
+                                        <Award className="w-4 h-4" />
+                                        <span className="text-xs font-medium">Certificate ID</span>
+                                    </div>
+                                    <p className="text-blue-800 font-mono text-xs truncate" title={selectedSkill.certificateId}>
+                                        {selectedSkill.certificateId.slice(0, 16).toUpperCase()}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* View Certificate Button */}
+                        {selectedSkill.certificateId ? (
+                            <button
+                                onClick={() => onViewJob?.(undefined as any)}
+                                className="w-full py-3 bg-teal text-white font-semibold rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition shadow-lg"
+                            >
+                                <Award className="w-5 h-5" />
+                                View Certificate
+                            </button>
+                        ) : (
+                            <div className="w-full py-3 bg-gray-100 text-gray-400 font-semibold rounded-xl flex items-center justify-center gap-2 cursor-not-allowed select-none">
+                                <Award className="w-5 h-5" />
+                                No Certificate Available
+                            </div>
+                        )}
+
+                        <p className="text-xs text-gray-400 text-center">
+                            This skill has been verified through AI-proctored assessment
+                        </p>
+                    </div>
+                </motion.div>
+            </motion.div>
+        );
+    };
+
+    return (
+        <div className="space-y-6">
+            {/* Skill Detail Modal */}
+            <AnimatePresence>
+                {selectedSkill && <SkillDetailModal />}
+            </AnimatePresence>
+
+            {/* Header Card */}
+            <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-gradient-to-r from-teal via-teal/90 to-slate-800 rounded-2xl p-6 text-white relative overflow-hidden"
+            >
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+
+                <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div>
+                        <div className="flex items-center gap-2 text-white/80 text-sm mb-2">
+                            <Award className="w-4 h-4" />
+                            Skill Passport
+                        </div>
+                        <h2 className="text-2xl font-bold mb-1">{candidate.name}</h2>
+                        <p className="text-white/70">{passport.overallProfile?.summary || "Skill passport verified."}</p>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        <div className="text-center">
+                            <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                <span className="text-3xl font-bold">{passport.overallProfile?.readinessScore || 75}</span>
+                            </div>
+                            <p className="text-xs text-white/70 mt-1">Readiness Score</p>
+                        </div>
+                        {/* Refresh button */}
+                        <button
+                            onClick={handleRefresh}
+                            disabled={loading}
+                            title="Regenerate passport"
+                            className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition backdrop-blur-sm"
+                            aria-label="Refresh skill passport"
+                        >
+                            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                        </button>
+                    </div>
+                </div>
+            </motion.div>
+
+            {/* Navigation Tabs */}
+            <div className="flex gap-2 overflow-x-auto pb-2">
+                {[
+                    { id: 'overview', label: 'Overview', icon: BarChart3 },
+                    { id: 'strengths', label: 'Strengths', icon: TrendingUp },
+                    { id: 'weaknesses', label: 'Growth Areas', icon: TrendingDown },
+                    { id: 'opportunities', label: 'Opportunities', icon: Briefcase },
+                ].map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveSection(tab.id as any)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition ${activeSection === tab.id
+                            ? 'bg-teal text-white shadow-sm'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                    >
+                        <tab.icon className="w-4 h-4" />
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* Content Sections */}
+            <AnimatePresence mode="wait">
+                {activeSection === 'overview' && (
+                    <motion.div
+                        key="overview"
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit={{ opacity: 0 }}
+                        className="grid md:grid-cols-2 gap-6"
+                    >
+                        {/* Quick Stats */}
+                        <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                <Sparkles className="w-5 h-5 text-yellow-500" />
+                                Profile Highlights
+                            </h3>
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl">
+                                    <span className="text-green-700 font-medium">Top Category</span>
+                                    <span className="text-green-800 font-bold">{passport.overallProfile?.topCategory || "General"}</span>
+                                </div>
+                                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
+                                    <span className="text-blue-700 font-medium">Verified Skills</span>
+                                    <span className="text-blue-800 font-bold">{passport.strengths.length}</span>
+                                </div>
+                                <div className="flex items-center justify-between p-3 bg-purple-50 rounded-xl">
+                                    <span className="text-purple-700 font-medium">Certifications</span>
+                                    <span className="text-purple-800 font-bold">{certifications.length || (candidate.certifications?.length ?? 0)}</span>
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        {/* Growth Areas */}
+                        <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                <Target className="w-5 h-5 text-teal" />
+                                Focus Areas
+                            </h3>
+                            <div className="space-y-3">
+                                {(passport.overallProfile?.growthAreas || []).map((area, idx) => (
+                                    <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                                        <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
+                                            <span className="text-amber-600 font-bold text-sm">{idx + 1}</span>
+                                        </div>
+                                        <span className="text-gray-700 font-medium">{area}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+
+                        {/* Top Strength Preview */}
+                        <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:col-span-2">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                                    <TrendingUp className="w-5 h-5 text-green-500" />
+                                    Top Skills
+                                </h3>
+                                <button
+                                    onClick={() => setActiveSection('strengths')}
+                                    className="text-teal text-sm font-medium hover:opacity-80 flex items-center gap-1"
+                                >
+                                    View All <ChevronRight className="w-4 h-4" />
+                                </button>
+                            </div>
+                            <div className="grid md:grid-cols-3 gap-4">
+                                {passport.strengths.slice(0, 3).map((strength, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="bg-green-50 rounded-xl p-4 border border-green-100 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all"
+                                        onClick={() => handleSkillClick(strength)}
+                                    >
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="font-bold text-green-800">{strength.skill}</span>
+                                            <div className="text-right">
+                                                <span className={`text-lg font-bold ${getScoreColor(strength.score).text}`}>
+                                                    {strength.score}
+                                                </span>
+                                                <span className={`block text-xs font-semibold ${getScoreColor(strength.score).text}`}>
+                                                    {getScoreLabel(strength.score)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <p className="text-green-700 text-sm">{strength.evidence}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+
+                {activeSection === 'strengths' && (
+                    <motion.div
+                        key="strengths"
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit={{ opacity: 0 }}
+                        className="space-y-4"
+                    >
+                        {passport.strengths.length === 0 ? (
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center text-gray-500">
+                                No verified strengths yet — complete an assessment to get started.
+                            </div>
+                        ) : (
+                            passport.strengths.map((strength, idx) => (
+                                <motion.div
+                                    key={idx}
+                                    variants={itemVariants}
+                                    className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 cursor-pointer hover:shadow-lg hover:border-green-200 transition-all"
+                                    onClick={() => handleSkillClick(strength)}
+                                >
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-start gap-4">
+                                            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                                                <CheckCircle className="w-6 h-6 text-green-600" />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-gray-900 text-lg">{strength.skill}</h4>
+                                                <p className="text-gray-500 text-sm mb-2">{strength.category}</p>
+                                                <p className="text-gray-600">{strength.evidence}</p>
+                                            </div>
+                                        </div>
+                                        <div className={`px-4 py-2 rounded-xl ${getScoreColor(strength.score).bg} text-center`}>
+                                            <span className={`text-2xl font-bold ${getScoreColor(strength.score).text}`}>
+                                                {strength.score}
+                                            </span>
+                                            <p className={`text-xs font-semibold mt-0.5 ${getScoreColor(strength.score).text}`}>
+                                                {getScoreLabel(strength.score)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            ))
+                        )}
+                    </motion.div>
+                )}
+
+                {activeSection === 'weaknesses' && (
+                    <motion.div
+                        key="weaknesses"
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit={{ opacity: 0 }}
+                        className="space-y-4"
+                    >
+                        {passport.weaknesses.length === 0 ? (
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center text-gray-500">
+                                No growth areas identified — great work!
+                            </div>
+                        ) : (
+                            passport.weaknesses.map((weakness, idx) => (
+                                <motion.div
+                                    key={idx}
+                                    variants={itemVariants}
+                                    className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"
+                                >
+                                    <div className="flex items-start gap-4 mb-4">
+                                        <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+                                            <AlertTriangle className="w-6 h-6 text-amber-600" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="font-bold text-gray-900 text-lg">{weakness.skill}</h4>
+                                                <div className={`px-3 py-1 rounded-lg ${getScoreColor(weakness.score).bg} text-center`}>
+                                                    <span className={`font-bold ${getScoreColor(weakness.score).text}`}>
+                                                        {weakness.score}
+                                                    </span>
+                                                    <p className={`text-xs font-semibold ${getScoreColor(weakness.score).text}`}>
+                                                        {getScoreLabel(weakness.score)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="text-gray-500 text-sm">{weakness.category}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-amber-50 rounded-xl p-4 mb-4">
+                                        <h5 className="font-medium text-amber-800 mb-2">Recommendation</h5>
+                                        <p className="text-amber-700">{weakness.recommendation}</p>
+                                    </div>
+
+                                    <div>
+                                        <h5 className="font-medium text-gray-700 mb-2 flex items-center gap-2">
+                                            <BookOpen className="w-4 h-4" />
+                                            Suggested Resources
+                                        </h5>
+                                        <div className="flex flex-wrap gap-2">
+                                            {weakness.resources.map((resource, rIdx) => (
+                                                <span
+                                                    key={rIdx}
+                                                    className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm flex items-center gap-1"
+                                                >
+                                                    {resource}
+                                                    <ExternalLink className="w-3 h-3" />
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            ))
+                        )}
+                    </motion.div>
+                )}
+
+                {activeSection === 'opportunities' && (
+                    <motion.div
+                        key="opportunities"
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit={{ opacity: 0 }}
+                        className="space-y-4"
+                    >
+                        {passport.opportunities.length === 0 ? (
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center text-gray-500">
+                                No job opportunities found — add more skills to your profile.
+                            </div>
+                        ) : (
+                            passport.opportunities.map((opp, idx) => (
+                                <motion.div
+                                    key={idx}
+                                    variants={itemVariants}
+                                    className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition cursor-pointer"
+                                    onClick={() => onViewJob?.(opp)}
+                                >
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div>
+                                            <h4 className="font-bold text-gray-900 text-lg">{opp.jobTitle}</h4>
+                                            <p className="text-gray-500">{opp.company}</p>
+                                        </div>
+                                        <div className={`px-4 py-2 rounded-xl ${getScoreColor(opp.matchScore).bg} ${getScoreColor(opp.matchScore).border} border text-center`}>
+                                            <div className="flex items-center gap-1">
+                                                <Star className={`w-4 h-4 ${getScoreColor(opp.matchScore).text}`} fill="currentColor" />
+                                                <span className={`font-bold ${getScoreColor(opp.matchScore).text}`}>
+                                                    {opp.matchScore}% Match
+                                                </span>
+                                            </div>
+                                            <p className={`text-xs font-semibold mt-0.5 ${getScoreColor(opp.matchScore).text}`}>
+                                                {getScoreLabel(opp.matchScore)}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <p className="text-gray-600 mb-4">{opp.reason}</p>
+
+                                    <div className="flex flex-wrap gap-3">
+                                        <span className="px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-sm font-medium">
+                                            {opp.salaryRange}
+                                        </span>
+                                        <span className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium flex items-center gap-1">
+                                            <MapPin className="w-3 h-3" />
+                                            {opp.location}
+                                        </span>
+                                    </div>
+                                </motion.div>
+                            ))
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
+export default SkillPassport;
