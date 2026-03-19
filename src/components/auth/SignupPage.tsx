@@ -94,7 +94,7 @@ export const SignupPage: React.FC<{
                                 type="text"
                                 value={firstName}
                                 onChange={(e) => setFirstName(e.target.value)}
-                                placeholder="John"
+                                placeholder="First name"
                                 className={`w-full pl-10 pr-4 py-3 bg-slate-50/50 hover:bg-slate-50 border rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-teal-400/10 focus:border-teal-400 outline-none transition-all ${errors.firstName ? 'border-red-400 bg-red-50/50' : 'border-slate-200'}`}
                             />
                         </div>
@@ -108,7 +108,7 @@ export const SignupPage: React.FC<{
                                 type="text"
                                 value={lastName}
                                 onChange={(e) => setLastName(e.target.value)}
-                                placeholder="Doe"
+                                placeholder="Last name"
                                 className={`w-full pl-10 pr-4 py-3 bg-slate-50/50 hover:bg-slate-50 border rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-teal-400/10 focus:border-teal-400 outline-none transition-all ${errors.lastName ? 'border-red-400 bg-red-50/50' : 'border-slate-200'}`}
                             />
                         </div>
@@ -124,7 +124,8 @@ export const SignupPage: React.FC<{
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            placeholder="you@example.com"
+                            placeholder="Your Email"
+                            autoComplete="email"
                             className={`w-full pl-10 pr-4 py-3 bg-slate-50/50 hover:bg-slate-50 border rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-teal-400/10 focus:border-teal-400 outline-none transition-all ${errors.email ? 'border-red-400 bg-red-50/50' : 'border-slate-200'}`}
                         />
                     </div>
@@ -139,7 +140,7 @@ export const SignupPage: React.FC<{
                             type={showPassword ? 'text' : 'password'}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            placeholder="••••••••"
+                            placeholder="••••••••••••••••"
                             className={`w-full pl-10 pr-12 py-3 bg-slate-50/50 hover:bg-slate-50 border rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-teal-400/10 focus:border-teal-400 outline-none transition-all ${errors.password ? 'border-red-400 bg-red-50/50' : 'border-slate-200'}`}
                         />
                         <button
