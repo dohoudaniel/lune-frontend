@@ -53,6 +53,24 @@ const AVAILABLE_ASSESSMENTS = {
 
 export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidate, onStartAssessment, onLogout, onUpdateProfile, onOpenVideoAnalyzer, onStartTour, onNavigateProfile }) => {
    const toast = useToast();
+
+   // Check if candidate's profile is complete enough to apply for jobs
+   const isProfileComplete = (): boolean => {
+      const hasTitle = !!candidate.title && candidate.title !== 'Candidate';
+      const hasBio = !!(candidate.bio && candidate.bio.trim());
+      const hasSkills = !!(candidate.skills && Object.keys(candidate.skills).length > 0);
+      return hasTitle && hasBio && hasSkills;
+   };
+
+   const handleApplyNow = (jobTitle: string, company: string) => {
+      if (!isProfileComplete()) {
+         toast.warning('Please complete your profile before applying — add your title, bio, and at least one skill.');
+         onNavigateProfile?.();
+         return;
+      }
+      window.open(`https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(jobTitle + ' ' + company)}`, '_blank');
+   };
+
    const [activeTab, setActiveTab] = useState<'overview' | 'interview' | 'history'>('overview');
    const [searchQuery, setSearchQuery] = useState(''); // Search state
    const [recommendations, setRecommendations] = useState<{
@@ -705,7 +723,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                                                       whileHover={{ scale: 1.02 }}
                                                       whileTap={{ scale: 0.98 }}
                                                       className="flex-1 bg-black text-white py-3 rounded-xl text-sm font-bold hover:bg-gray-800 transition"
-                                                      onClick={() => window.open(`https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(job.title + ' ' + job.company)}`, '_blank')}
+                                                      onClick={() => handleApplyNow(job.title, job.company)}
                                                    >
                                                       Apply Now
                                                    </motion.button>

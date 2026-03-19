@@ -133,7 +133,7 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
   return (
     <>
       <SEO
-        title="Lune — Hire Verified Talent. Get Verified. Get Hired."
+        title="Lune — Hire Skilled Talent. Get Verified. Get Hired."
         description="Lune is the only platform where VAs, Customer Service reps, Sales professionals, Engineers, and every major role can prove their skills — and employers can trust every credential."
         structuredData={structuredData}
       />

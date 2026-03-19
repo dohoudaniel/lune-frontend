@@ -218,12 +218,20 @@ export const matchCandidatesToJob = async (jobDescription: string, candidates: a
   }
 };
 
-export const generateInterviewQuestion = async (role: string, topic: 'behavioral' | 'technical'): Promise<string> => {
+export const generateInterviewQuestion = async (
+  role: string,
+  topic: 'behavioral' | 'technical',
+  profileContext?: { skills?: string; experienceYears?: string; bio?: string }
+): Promise<string> => {
   try {
-    const res = await callBackend('interview-question', { role, topic });
+    const res = await callBackend('interview-question', {
+      role,
+      topic,
+      ...(profileContext ?? {}),
+    });
     return res.question;
   } catch (e) {
-    return "Tell me about yourself.";
+    return "Tell me about a time you had to work under tight deadlines. How did you manage it?";
   }
 };
 

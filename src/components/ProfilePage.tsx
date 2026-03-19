@@ -250,8 +250,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
     setLoadingProfile(true);
     try {
       const data = await api.get(profileEndpoint);
-      setProfileData(data ?? {});
-      setProfileDraft(data ?? {});
+      // Map backend field 'image_url' to 'avatar' for consistent UI usage
+      const normalized = { ...(data ?? {}), avatar: (data as any)?.image_url ?? (data as any)?.avatar ?? '' };
+      setProfileData(normalized);
+      setProfileDraft(normalized);
     } catch {
       toast.error('Failed to load profile details');
     } finally {
@@ -268,7 +270,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
   const handleSaveAccount = async () => {
     setSavingAccount(true);
     try {
-      await api.put(profileEndpoint, { name: accountDraft.name });
+      // Split full name into first/last and update user record via /users/me/
+      const nameParts = accountDraft.name.trim().split(/\s+/);
+      const first_name = nameParts[0] ?? '';
+      const last_name = nameParts.slice(1).join(' ') || first_name;
+      await api.put('/users/me/', { first_name, last_name });
       toast.success('Account updated successfully');
       setEditingAccount(false);
     } catch {
@@ -283,9 +289,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
   const handleSaveProfile = async () => {
     setSavingProfile(true);
     try {
-      const updated = await api.put(profileEndpoint, profileDraft);
-      setProfileData(updated ?? profileDraft);
-      setProfileDraft(updated ?? profileDraft);
+      // Map frontend 'avatar' field back to backend 'image_url' field
+      const { avatar, ...rest } = profileDraft as any;
+      const payload = { ...rest, ...(avatar ? { image_url: avatar } : {}) };
+      const updated = await api.put(profileEndpoint, payload);
+      // Normalize the response to include 'avatar'
+      const normalized = { ...(updated ?? profileDraft), avatar: (updated as any)?.image_url ?? avatar ?? '' };
+      setProfileData(normalized);
+      setProfileDraft(normalized);
       toast.success('Profile saved successfully');
       setEditingProfile(false);
     } catch {
