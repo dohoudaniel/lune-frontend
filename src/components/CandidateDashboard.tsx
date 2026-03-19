@@ -258,7 +258,13 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
 
          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
             {/* Welcome Banner */}
-            <WelcomeBanner userName={candidate.name} userRole="candidate" onStartTour={onStartTour} className="mb-0" />
+            <WelcomeBanner
+               userName={candidate.name}
+               userRole="candidate"
+               onStartTour={onStartTour}
+               onCompleteProfile={onNavigateProfile}
+               className="mb-0"
+            />
 
             {/* Stats Overview */}
             {userStats && (

@@ -338,9 +338,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
     setUploadingAvatar(true);
     try {
       const form = new FormData();
-      form.append('avatar', file);
+      form.append('image', file);
       const data = await api.postForm('/profiles/upload-image/', form);
-      setProfileData((prev) => ({ ...prev, avatar: data.avatar ?? data.avatar_url }));
+      setProfileData((prev) => ({ ...prev, avatar: data.url ?? data.avatar_url }));
       toast.success('Profile photo updated');
     } catch {
       toast.error('Failed to upload photo');
