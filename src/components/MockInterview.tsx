@@ -10,7 +10,8 @@ interface MockInterviewProps {
 
 export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
   const [mode, setMode] = useState<'setup' | 'interview' | 'feedback'>('setup');
-  const [topic, setTopic] = useState<'behavioral' | 'technical'>('behavioral');
+  // Behavioral-only: technical questions are reserved for tech assessments
+  const topic: 'behavioral' = 'behavioral';
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [interimTranscript, setInterimTranscript] = useState('');
@@ -130,7 +131,15 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
     setAnswer('');
     setSubmitError(null);
     try {
-      const q = await generateInterviewQuestion(candidate.title, topic);
+      const q = await generateInterviewQuestion(
+        candidate.title,
+        topic,
+        {
+          skills: candidate.skills ? Object.keys(candidate.skills).join(', ') : '',
+          experienceYears: String(candidate.yearsOfExperience ?? ''),
+          bio: candidate.bio ?? '',
+        }
+      );
       setQuestion(q);
       setMode('interview');
       speak(q);
@@ -214,21 +223,16 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
             <Brain size={40} className="text-orange" />
           </div>
           <h3 className="text-2xl font-bold text-slate-900 mb-4">Ready to practice?</h3>
-          <p className="text-slate-500 mb-8 max-w-md mx-auto">Select a focus area for your mock interview session. I'll act as your interviewer.</p>
+          <p className="text-slate-500 mb-8 max-w-md mx-auto">
+            Practice real-world behavioral interview questions tailored to your profile.
+            I'll ask you STAR-method questions on topics like conflict resolution,
+            teamwork, leadership, and adaptability.
+          </p>
 
-          <div className="flex justify-center gap-4 mb-8">
-            <button
-              onClick={() => setTopic('behavioral')}
-              className={`px-6 py-3 rounded-xl font-bold border-2 transition ${topic === 'behavioral' ? 'border-orange bg-orange-50 text-orange-900' : 'border-gray-200 hover:border-gray-300 text-gray-600'}`}
-            >
-              Behavioral
-            </button>
-            <button
-              onClick={() => setTopic('technical')}
-              className={`px-6 py-3 rounded-xl font-bold border-2 transition ${topic === 'technical' ? 'border-orange bg-orange-50 text-orange-900' : 'border-gray-200 hover:border-gray-300 text-gray-600'}`}
-            >
-              Technical
-            </button>
+          <div className="flex justify-center mb-8">
+            <span className="px-6 py-3 rounded-xl font-bold border-2 border-orange bg-orange-50 text-orange-900">
+              Behavioral Interview
+            </span>
           </div>
 
           {submitError && (
