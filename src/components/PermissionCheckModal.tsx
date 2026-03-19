@@ -22,6 +22,16 @@ export const PermissionCheckModal: React.FC<PermissionCheckModalProps> = ({
     const [stream, setStream] = useState<MediaStream | null>(null);
     const [error, setError] = useState<string | null>(null);
 
+    // Automatically request permissions as soon as the modal opens
+    useEffect(() => {
+        if (isOpen) {
+            setCameraStatus('pending');
+            setMicStatus('pending');
+            setError(null);
+            checkPermissions();
+        }
+    }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
     // Clean up stream on unmount or close
     useEffect(() => {
         return () => {
@@ -237,14 +247,12 @@ export const PermissionCheckModal: React.FC<PermissionCheckModalProps> = ({
                                     {isChecking ? (
                                         <>
                                             <Loader className="w-4 h-4 animate-spin" />
-                                            Checking...
+                                            Requesting Access...
                                         </>
-                                    ) : anyDenied ? (
-                                        'Try Again'
                                     ) : (
                                         <>
                                             <Camera className="w-4 h-4" />
-                                            Enable Access
+                                            Try Again
                                         </>
                                     )}
                                 </button>
