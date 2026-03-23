@@ -23,6 +23,13 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
   const [recordingSeconds, setRecordingSeconds] = useState(0);
 
   const recognitionRef = useRef<any>(null);
+  // Use a ref to track isListening so onend closure never goes stale
+  const isListeningRef = useRef(false);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    isListeningRef.current = isListening;
+  }, [isListening]);
 
   // Recording timer
   useEffect(() => {
@@ -42,66 +49,70 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
+  // Initialize speech recognition once on mount
   useEffect(() => {
-    if ('webkitSpeechRecognition' in window) {
-      const SpeechRecognition = (window as any).webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'en-US';
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
 
-      recognitionRef.current.onresult = (event: any) => {
-        let interim = '';
-        let final = '';
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
 
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            final += transcript + ' ';
-          } else {
-            interim += transcript;
-          }
+    recognition.onresult = (event: any) => {
+      let interim = '';
+      let final = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          final += transcript + ' ';
+        } else {
+          interim += transcript;
         }
+      }
+      if (interim) setInterimTranscript(interim);
+      if (final) {
+        setAnswer(prev => (prev + ' ' + final).trim());
+        setInterimTranscript('');
+      }
+    };
 
-        if (interim) {
-          setInterimTranscript(interim);
-        }
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      if (event.error === 'aborted') return; // user manually stopped — silent
+      setIsListening(false);
+      isListeningRef.current = false;
+      setInterimTranscript('');
+      if (event.error === 'no-speech') {
+        setMicError('No speech detected. Try speaking closer to the microphone, or type your answer below.');
+      } else if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+        setMicError('Microphone access denied. Enable permissions in your browser settings, or type your answer below.');
+      } else {
+        setMicError(`Speech recognition error: ${event.error}. Please type your answer below.`);
+      }
+    };
 
-        if (final) {
-          setAnswer(prev => (prev + ' ' + final).trim());
+    recognition.onend = () => {
+      // Auto-restart only if we're still supposed to be listening
+      if (isListeningRef.current) {
+        try {
+          recognition.start();
+        } catch (e) {
+          console.error('Failed to restart recognition:', e);
+          setIsListening(false);
+          isListeningRef.current = false;
           setInterimTranscript('');
         }
-      };
+      }
+    };
 
-      recognitionRef.current.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        setIsListening(false);
-        setInterimTranscript('');
+    recognitionRef.current = recognition;
 
-        if (event.error === 'no-speech') {
-          setMicError('No speech detected. Try speaking closer to the microphone, or type below.');
-        } else if (event.error === 'not-allowed' || event.error === 'permission-denied') {
-          setMicError('Microphone access denied. Enable permissions in your browser settings, or type your answer below.');
-        } else if (event.error === 'aborted') {
-          // Silent — user manually stopped
-        } else {
-          setMicError(`Speech recognition error: ${event.error}. Please type your answer below.`);
-        }
-      };
-
-      recognitionRef.current.onend = () => {
-        if (isListening) {
-          try {
-            recognitionRef.current.start();
-          } catch (e) {
-            console.error('Failed to restart recognition:', e);
-            setIsListening(false);
-            setInterimTranscript('');
-          }
-        }
-      };
-    }
-  }, [isListening]);
+    return () => {
+      try { recognition.abort(); } catch { /* ignore */ }
+    };
+  }, []);
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
@@ -110,16 +121,19 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
     }
 
     if (isListening) {
+      isListeningRef.current = false; // update ref BEFORE calling stop so onend doesn't restart
       recognitionRef.current.stop();
       setIsListening(false);
       setInterimTranscript('');
     } else {
       setMicError(null);
       try {
+        isListeningRef.current = true;
         recognitionRef.current.start();
         setIsListening(true);
       } catch (error) {
         console.error('Failed to start recognition:', error);
+        isListeningRef.current = false;
         setMicError('Microphone access denied. Enable permissions in your browser settings, or type your answer below.');
       }
     }
@@ -344,7 +358,15 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
                 </div>
               )}
 
-              <p className="text-xs text-gray-400 mt-2 mb-4 text-center">Speak clearly into your microphone. Your response is captured automatically.</p>
+              <p className="text-xs text-gray-400 mt-2 mb-3 text-center">Speak clearly into your microphone, or type your answer below.</p>
+
+              {/* Answer textarea — visible at all times for manual input or editing */}
+              <textarea
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                placeholder="Your answer will appear here as you speak, or you can type it directly…"
+                className="w-full h-32 p-4 border border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-orange focus:border-transparent text-sm text-gray-800 mb-3"
+              />
 
               {/* Submit error */}
               {submitError && (

@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const SkillPassport = lazy(() => import('./SkillPassport').then(m => ({ default: m.SkillPassport })));
 import { api } from '../lib/api';
 import { generatePassport } from '../services/profileService';
+import { hasPassedAnyAssessment, getSkillAttemptCount } from '../services/assessmentHistoryService';
 
 
 interface CandidateDashboardProps {
@@ -146,6 +147,11 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
    const handleGeneratePassport = async () => {
       if (Object.keys(candidate.skills).length === 0) {
          toast.warning("Complete at least one skill assessment before generating your passport.");
+         return;
+      }
+
+      if (!hasPassedAnyAssessment(candidate.id)) {
+         toast.warning("You need to pass at least one assessment before minting your Skill Passport.");
          return;
       }
 
@@ -410,17 +416,23 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                                  <div key={category}>
                                     <h5 className="text-xs font-bold text-slate-800 mb-2">{category}</h5>
                                     <div className="flex flex-wrap gap-2">
-                                       {skills.map(skill => (
+                                       {skills.map(skill => {
+                                          const attempts = getSkillAttemptCount(candidate.id, skill);
+                                          const maxed = attempts >= 3;
+                                          return (
                                           <motion.button
                                              key={skill}
-                                             whileHover={{ scale: 1.05, backgroundColor: "#000", color: "#fff", borderColor: "#000" }}
-                                             whileTap={{ scale: 0.95 }}
+                                             whileHover={!maxed ? { scale: 1.05, backgroundColor: "#000", color: "#fff", borderColor: "#000" } : {}}
+                                             whileTap={!maxed ? { scale: 0.95 } : {}}
                                              onClick={() => onStartAssessment(skill)}
-                                             className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs font-medium text-gray-600 transition"
+                                             disabled={maxed}
+                                             title={maxed ? 'Maximum 3 attempts reached' : `${3 - attempts} attempt(s) remaining`}
+                                             className={`px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs font-medium transition ${maxed ? 'opacity-40 cursor-not-allowed text-gray-400' : 'text-gray-600'}`}
                                           >
-                                             {skill}
+                                             {skill}{attempts > 0 ? ` (${attempts}/3)` : ''}
                                           </motion.button>
-                                       ))}
+                                          );
+                                       })}
                                     </div>
                                  </div>
                               ))}
@@ -505,7 +517,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                                   whileHover={{ scale: 1.02 }}
                                   whileTap={{ scale: 0.98 }}
                                   onClick={handleGeneratePassport}
-                                  disabled={isGeneratingPassport || Object.keys(candidate.skills).length === 0}
+                                  disabled={isGeneratingPassport || Object.keys(candidate.skills).length === 0 || !hasPassedAnyAssessment(candidate.id)}
                                   className="w-full bg-white text-orange px-4 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition shadow-lg disabled:opacity-60 disabled:cursor-not-allowed hover:bg-gray-50"
                                >
                                   {isGeneratingPassport ? (

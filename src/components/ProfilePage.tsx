@@ -22,6 +22,7 @@ import {
   Shield,
   Calendar,
   Link,
+  Navigation,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '../lib/toast';
@@ -233,6 +234,50 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
 
   // Avatar upload
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  // Location detection
+  const [detectingLocation, setDetectingLocation] = useState(false);
+
+  const handleDetectLocation = async () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+    setDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+          );
+          const data = await res.json();
+          const city =
+            data.address?.city ||
+            data.address?.town ||
+            data.address?.village ||
+            data.address?.county ||
+            '';
+          const country = data.address?.country || '';
+          const locationStr = [city, country].filter(Boolean).join(', ');
+          if (locationStr) {
+            setProfileDraft((p) => ({ ...p, location: locationStr }));
+            toast.success(`Location detected: ${locationStr}`);
+          } else {
+            toast.warning('Could not determine city name from your location');
+          }
+        } catch {
+          toast.error('Failed to reverse-geocode location');
+        } finally {
+          setDetectingLocation(false);
+        }
+      },
+      () => {
+        toast.error('Location access denied. Enable permissions in your browser settings.');
+        setDetectingLocation(false);
+      }
+    );
+  };
 
   // ── Derived ──
 
@@ -696,21 +741,39 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
                   </FormField>
 
                   <FormField label="Location">
-                    <div className="relative">
-                      <MapPin
-                        size={15}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                      />
-                      <Input
-                        type="text"
-                        placeholder="e.g. Lagos, Nigeria"
-                        value={(profileDraft as CandidateProfileData).location ?? ''}
-                        onChange={(e) =>
-                          setProfileDraft((p) => ({ ...p, location: e.target.value }))
-                        }
-                        disabled={!editingProfile}
-                        className="pl-9"
-                      />
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <MapPin
+                          size={15}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                        />
+                        <Input
+                          type="text"
+                          placeholder="e.g. Lagos, Nigeria"
+                          value={(profileDraft as CandidateProfileData).location ?? ''}
+                          onChange={(e) =>
+                            setProfileDraft((p) => ({ ...p, location: e.target.value }))
+                          }
+                          disabled={!editingProfile}
+                          className="pl-9"
+                        />
+                      </div>
+                      {editingProfile && (
+                        <button
+                          type="button"
+                          onClick={handleDetectLocation}
+                          disabled={detectingLocation}
+                          title="Detect my current location"
+                          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-teal border border-teal/30 rounded-xl hover:bg-teal/5 transition disabled:opacity-60 whitespace-nowrap"
+                        >
+                          {detectingLocation ? (
+                            <RefreshCw size={13} className="animate-spin" />
+                          ) : (
+                            <Navigation size={13} />
+                          )}
+                          {detectingLocation ? 'Detecting…' : 'Detect'}
+                        </button>
+                      )}
                     </div>
                   </FormField>
 

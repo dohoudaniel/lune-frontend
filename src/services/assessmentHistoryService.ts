@@ -315,6 +315,20 @@ export const canRetakeAssessment = (
 };
 
 /**
+ * Get number of attempts for a specific skill (regardless of pass/fail)
+ */
+export const getSkillAttemptCount = (candidateId: string, skill: string): number => {
+    return getSkillHistory(candidateId, skill).length;
+};
+
+/**
+ * Check whether the candidate has at least one passed assessment (required to mint passport)
+ */
+export const hasPassedAnyAssessment = (candidateId: string): boolean => {
+    return loadAssessmentHistory(candidateId).some(h => h.passed);
+};
+
+/**
  * Get improvement suggestions based on history
  */
 export const getImprovementSuggestions = (candidateId: string): string[] => {
@@ -395,6 +409,8 @@ export default {
     getPerformanceSummary,
     getSkillHistory,
     canRetakeAssessment,
+    getSkillAttemptCount,
+    hasPassedAnyAssessment,
     getImprovementSuggestions,
     clearAssessmentHistory,
     formatTimeSpent

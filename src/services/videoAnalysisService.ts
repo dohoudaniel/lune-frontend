@@ -8,7 +8,8 @@
  * Provides AI-powered video introduction analysis with transcription and scoring
  */
 
-// Gemini API is now called via backend proxy to secure API keys
+// Gemini API is called via backend proxy to secure API keys
+import { api } from '../lib/api';
 
 export interface VideoAnalysisResult {
     transcription: string;
@@ -315,37 +316,25 @@ export const analyzeSpeakingPace = (
 };
 
 /**
- * Analyze video for communication skills verification assessment
- * Used for non-tech roles like Customer Service, Sales, etc.
+ * Analyze video for communication skills verification assessment.
+ * Extracts a real-time transcript via Web Speech API (done by the caller),
+ * then sends it to the backend for Gemini-powered evaluation.
  */
 export const analyzeVideoVerification = async (
     videoFile: File,
     roleContext: string,
-    assessmentType: 'customer_service' | 'sales' | 'general' = 'general'
+    assessmentType: 'customer_service' | 'sales' | 'general' = 'general',
+    transcript: string = ''
 ): Promise<VideoVerificationResult> => {
     try {
         const duration = await getVideoDuration(videoFile);
-        const base64Video = await fileToBase64(videoFile);
 
-        const response = await fetch('/api/ai/analyze-video', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                videoBase64: base64Video.split(',')[1],
-                mimeType: videoFile.type,
-                type: 'verification',
-                roleContext,
-                assessmentType
-            })
+        const analysis = await api.post('/ai/analyze-video/', {
+            transcript,
+            roleContext,
+            assessmentType,
         });
 
-        if (!response.ok) {
-            throw new Error('Video verification failed');
-        }
-
-        const analysis = await response.json();
-
-        // Calculate overall score
         const overallScore = Math.round(
             (analysis.communicationStyleScore +
                 analysis.accentScore +
@@ -358,7 +347,7 @@ export const analyzeVideoVerification = async (
         );
 
         return {
-            transcription: analysis.transcription,
+            transcription: analysis.transcription || transcript,
             summary: analysis.summary,
             confidenceScore: analysis.confidenceScore,
             clarityScore: analysis.clarityScore,
@@ -369,14 +358,16 @@ export const analyzeVideoVerification = async (
             improvements: analysis.improvements || [],
             duration,
             communicationStyleScore: analysis.communicationStyleScore,
-            accentScore: analysis.accentScore,
+            accentScore: analysis.accentScore ?? 75,
             pronunciationScore: analysis.pronunciationScore,
             grammarScore: analysis.grammarScore,
             intonationScore: analysis.intonationScore,
-            persuasionScore: analysis.persuasionScore,
-            empathyScore: analysis.empathyScore,
-            communicationFeedback: analysis.communicationFeedback,
-            recommendedPass: analysis.recommendedPass ?? overallScore >= 70,
+            persuasionScore: analysis.persuasionScore ?? 0,
+            empathyScore: analysis.empathyScore ?? 0,
+            communicationFeedback: analysis.communicationFeedback || {
+                pace: '', tone: '', vocabulary: '', engagement: ''
+            },
+            recommendedPass: analysis.recommendedPass ?? overallScore >= 65,
             assessmentType,
         };
     } catch (error) {

@@ -19,7 +19,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAssessmentType, getSkillCategory } from './services/geminiService';
-import { addAssessmentEntry } from './services/assessmentHistoryService';
+import { addAssessmentEntry, getSkillAttemptCount } from './services/assessmentHistoryService';
 import { VideoVerificationResult } from './services/videoAnalysisService';
 import { seedService } from './services/seedService';
 
@@ -196,8 +196,34 @@ function AppContent() {
   const [impersonationToken, setImpersonationToken] = useState<string | null>(null);
   const [impersonatedUser, setImpersonatedUser] = useState<{ id: string; name: string; email: string; role: 'candidate' | 'employer' } | null>(null);
 
-  // Update profile when user changes and check for onboarding
-  // Handle initial routing based on URL path
+  // Routes that require an authenticated session
+  const PROTECTED_VIEWS: ViewState[] = [
+    ViewState.CANDIDATE_DASHBOARD,
+    ViewState.EMPLOYER_DASHBOARD,
+    ViewState.ADMIN_DASHBOARD,
+    ViewState.PROFILE,
+    ViewState.SKILL_SELECTION,
+    ViewState.ASSESSMENT,
+    ViewState.ASSESSMENT_RESULT,
+  ];
+
+  // Redirect to login when session expires or user logs out while on a protected route
+  useEffect(() => {
+    if (!isLoading && !user && PROTECTED_VIEWS.includes(currentView)) {
+      handleNavigate(ViewState.LOGIN);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isLoading, currentView]);
+
+  // Show a toast + redirect when the API detects a fully expired session
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      toast.warning('Your session has expired. Please log in again.');
+    };
+    window.addEventListener('auth:session-expired', handleSessionExpired);
+    return () => window.removeEventListener('auth:session-expired', handleSessionExpired);
+  }, [toast]);
+
   // Handle browser back/forward buttons
   useEffect(() => {
     const handlePopState = () => {
@@ -379,8 +405,15 @@ function AppContent() {
     toast.success('👋 Logged out successfully!');
   };
 
+  const MAX_SKILL_ATTEMPTS = 3;
+
   const handleStartAssessment = (skill?: string) => {
     if (skill) {
+      const attempts = getSkillAttemptCount(candidateProfile.id, skill);
+      if (attempts >= MAX_SKILL_ATTEMPTS) {
+        toast.warning(`You've reached the maximum of ${MAX_SKILL_ATTEMPTS} attempts for "${skill}". Focus on other skills to strengthen your passport.`);
+        return;
+      }
       setSelectedSkill(skill);
       // Determine the assessment type based on skill
       const type = getAssessmentType(skill);
@@ -807,6 +840,7 @@ Verify my certificate: ${certificateUrl}
       case ViewState.LANDING:
         return <Landing onNavigate={handleNavigate} />;
       case ViewState.CANDIDATE_DASHBOARD:
+        if (!user) return <LoginPage onNavigate={handleNavigate} />;
         return (
           <>
             {impersonatedUser && (
@@ -829,6 +863,7 @@ Verify my certificate: ${certificateUrl}
           </>
         );
       case ViewState.EMPLOYER_DASHBOARD:
+        if (!user) return <LoginPage onNavigate={handleNavigate} />;
         return (
           <>
             {impersonatedUser && (
@@ -849,10 +884,13 @@ Verify my certificate: ${certificateUrl}
           </>
         );
       case ViewState.SKILL_SELECTION:
+        if (!user) return <LoginPage onNavigate={handleNavigate} />;
         return renderSkillSelection();
       case ViewState.ASSESSMENT:
+        if (!user) return <LoginPage onNavigate={handleNavigate} />;
         return renderAssessment();
       case ViewState.ASSESSMENT_RESULT:
+        if (!user) return <LoginPage onNavigate={handleNavigate} />;
         return renderResult();
       case ViewState.LOGIN:
         if (isAuthenticated && user) return <LoadingFallback />;
@@ -873,7 +911,8 @@ Verify my certificate: ${certificateUrl}
       case ViewState.VERIFY_EMAIL:
         return <VerifyEmail onNavigate={handleNavigate} />;
       case ViewState.ADMIN_DASHBOARD:
-        if (!user || user.role !== 'admin') return <Landing onNavigate={handleNavigate} />;
+        if (!user) return <LoginPage onNavigate={handleNavigate} />;
+        if (user.role !== 'admin') return <Landing onNavigate={handleNavigate} />;
         return (
           <AdminDashboard
             onLogout={handleLogout}
@@ -881,7 +920,7 @@ Verify my certificate: ${certificateUrl}
           />
         );
       case ViewState.PROFILE:
-        if (!user) return <Landing onNavigate={handleNavigate} />;
+        if (!user) return <LoginPage onNavigate={handleNavigate} />;
         return (
           <ProfilePage
             user={user}
