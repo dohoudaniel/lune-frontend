@@ -28,6 +28,9 @@ export const CertificateBadge: React.FC<CertificateBadgeProps> = ({
     const [showShare, setShowShare] = useState(false);
     const [downloading, setDownloading] = useState(false);
 
+    // Safe ID — verificationId is the canonical field; fall back to certificateId
+    const vid = certificate.verificationId || certificate.certificateId || 'UNVERIFIED';
+
     useEffect(() => {
         const svg = generateCertificateBadge(certificate);
         setSvgContent(svg);
@@ -43,7 +46,7 @@ export const CertificateBadge: React.FC<CertificateBadgeProps> = ({
     };
 
     const handleCopyLink = () => {
-        const link = generateShareableLink(certificate.verificationId);
+        const link = generateShareableLink(vid);
         navigator.clipboard.writeText(link);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
@@ -51,7 +54,7 @@ export const CertificateBadge: React.FC<CertificateBadgeProps> = ({
 
     const handleShare = (platform: 'twitter' | 'linkedin') => {
         const shareText = generateShareText(certificate);
-        const link = generateShareableLink(certificate.verificationId);
+        const link = generateShareableLink(vid);
 
         if (platform === 'twitter') {
             window.open(
@@ -66,7 +69,7 @@ export const CertificateBadge: React.FC<CertificateBadgeProps> = ({
         }
     };
 
-    const shortHash = certificate.verificationId.slice(0, 8) + '...' + certificate.verificationId.slice(-6);
+    const shortHash = vid.slice(0, 8) + '...' + vid.slice(-6);
 
     return (
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-lg mx-auto">
@@ -126,7 +129,7 @@ export const CertificateBadge: React.FC<CertificateBadgeProps> = ({
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide">Certificate ID</p>
-                            <p className="font-mono text-sm text-gray-900 mt-1">{certificate.verificationId.slice(0, 16).toUpperCase()}</p>
+                            <p className="font-mono text-sm text-gray-900 mt-1">{vid.slice(0, 16).toUpperCase()}</p>
                         </div>
                     </div>
                 </div>

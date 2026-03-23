@@ -522,7 +522,7 @@ export const Assessment: React.FC<AssessmentProps> = ({ skill, difficulty, onCom
                         <span className="text-teal-500">{idx + 1}.</span> {q.question}
                       </p>
                       <div className="space-y-2">
-                        {q.options.map((opt, optIdx) => (
+                        {(q.options ?? []).map((opt, optIdx) => (
                           <label
                             key={optIdx}
                             className={`flex items-center gap-3 p-3 rounded-lg border transition cursor-pointer group ${theoryAnswers[q.id] === optIdx ? 'bg-teal-900/20 border-teal-500/50 text-white' : 'border-gray-800 hover:bg-gray-800 hover:border-gray-700 text-gray-400'}`}

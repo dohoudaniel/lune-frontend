@@ -137,6 +137,9 @@ const getViewFromPath = (): ViewState => {
   if (path === '/forgot-password') return ViewState.FORGOT_PASSWORD;
   if (path === '/check-email') return ViewState.CHECK_EMAIL;
   if (path === '/dashboard') return ViewState.CANDIDATE_DASHBOARD;
+  if (path === '/dashboard/assess') return ViewState.SKILL_SELECTION;
+  if (path === '/dashboard/assessment') return ViewState.ASSESSMENT;
+  if (path === '/dashboard/result') return ViewState.ASSESSMENT_RESULT;
   if (path === '/employer') return ViewState.EMPLOYER_DASHBOARD;
   if (path === '/admin') return ViewState.ADMIN_DASHBOARD;
   if (path === '/profile') return ViewState.PROFILE;
@@ -279,33 +282,26 @@ function AppContent() {
       setUserRole(user.role === 'candidate' ? UserRole.CANDIDATE : user.role === 'employer' ? UserRole.EMPLOYER : UserRole.ADMIN);
 
       // Handle login redirect - if modal was open and user just authenticated
-      // This ensures we use the actual user role from the database, not form state
       if (authModalOpen) {
         setAuthModalOpen(false);
-        // Redirect to appropriate dashboard based on actual user role
         if (user.role === 'employer') {
-          setCurrentView(ViewState.EMPLOYER_DASHBOARD);
+          handleNavigate(ViewState.EMPLOYER_DASHBOARD);
         } else if (user.role === 'admin') {
-          setCurrentView(ViewState.ADMIN_DASHBOARD);
+          handleNavigate(ViewState.ADMIN_DASHBOARD);
         } else {
-          setCurrentView(ViewState.CANDIDATE_DASHBOARD);
+          handleNavigate(ViewState.CANDIDATE_DASHBOARD);
         }
         setShowWelcomeBanner(true);
       }
 
-      // Session restore on page refresh: if user is authenticated but still on LANDING,
-      // redirect to their dashboard automatically
-      // We explicitly EXCLUDE verification/reset pages so they work even if a session exists.
+      // Session restore on page refresh: redirect authenticated users away from auth/landing pages
       if (currentView === ViewState.LANDING || currentView === ViewState.LOGIN || currentView === ViewState.SIGNUP) {
         if (user.role === 'employer') {
-          setCurrentView(ViewState.EMPLOYER_DASHBOARD);
-          window.history.replaceState({}, '', '/employer');
+          handleNavigate(ViewState.EMPLOYER_DASHBOARD);
         } else if (user.role === 'admin') {
-          setCurrentView(ViewState.ADMIN_DASHBOARD);
-          window.history.replaceState({}, '', '/admin');
+          handleNavigate(ViewState.ADMIN_DASHBOARD);
         } else {
-          setCurrentView(ViewState.CANDIDATE_DASHBOARD);
-          window.history.replaceState({}, '', '/dashboard');
+          handleNavigate(ViewState.CANDIDATE_DASHBOARD);
         }
       }
 
@@ -328,21 +324,23 @@ function AppContent() {
 
     let path = '/';
     switch (view) {
-      case ViewState.LOGIN: path = '/login'; break;
-      case ViewState.SIGNUP: path = '/signup'; break;
-      case ViewState.FORGOT_PASSWORD: path = '/forgot-password'; break;
-      case ViewState.RESET_PASSWORD: path = '/reset-password'; break;
-      case ViewState.VERIFY_EMAIL: path = '/verify-email'; break;
-      case ViewState.CHECK_EMAIL: path = '/check-email'; break;
+      case ViewState.LOGIN:               path = '/login'; break;
+      case ViewState.SIGNUP:              path = '/signup'; break;
+      case ViewState.FORGOT_PASSWORD:     path = '/forgot-password'; break;
+      case ViewState.RESET_PASSWORD:      path = '/reset-password'; break;
+      case ViewState.VERIFY_EMAIL:        path = '/verify-email'; break;
+      case ViewState.CHECK_EMAIL:         path = '/check-email'; break;
       case ViewState.CANDIDATE_DASHBOARD: path = '/dashboard'; break;
-      case ViewState.EMPLOYER_DASHBOARD: path = '/employer'; break;
-      case ViewState.ADMIN_DASHBOARD: path = '/admin'; break;
-      case ViewState.PROFILE: path = '/profile'; break;
-      case ViewState.LANDING: path = '/'; break;
-      default: path = window.location.pathname; // Keep current path for nested views
+      case ViewState.SKILL_SELECTION:     path = '/dashboard/assess'; break;
+      case ViewState.ASSESSMENT:          path = '/dashboard/assessment'; break;
+      case ViewState.ASSESSMENT_RESULT:   path = '/dashboard/result'; break;
+      case ViewState.EMPLOYER_DASHBOARD:  path = '/employer'; break;
+      case ViewState.ADMIN_DASHBOARD:     path = '/admin'; break;
+      case ViewState.PROFILE:             path = '/profile'; break;
+      case ViewState.LANDING:             path = '/'; break;
+      default:                            path = window.location.pathname; break;
     }
 
-    // Update URL if it changed
     if (window.location.pathname !== path) {
       window.history.pushState({}, '', path);
     }
@@ -418,9 +416,9 @@ function AppContent() {
       // Determine the assessment type based on skill
       const type = getAssessmentType(skill);
       setAssessmentType(type);
-      setCurrentView(ViewState.SKILL_SELECTION);
+      handleNavigate(ViewState.SKILL_SELECTION);
     } else {
-      setCurrentView(ViewState.SKILL_SELECTION);
+      handleNavigate(ViewState.SKILL_SELECTION);
     }
   };
 
@@ -431,12 +429,12 @@ function AppContent() {
 
   const handlePermissionGranted = () => {
     setShowPermissionModal(false);
-    startTransition(() => setCurrentView(ViewState.ASSESSMENT));
+    handleNavigate(ViewState.ASSESSMENT);
   };
 
   const handleAssessmentComplete = (result: EvaluationResult) => {
     setAssessmentResult(result);
-    startTransition(() => setCurrentView(ViewState.ASSESSMENT_RESULT));
+    handleNavigate(ViewState.ASSESSMENT_RESULT);
 
     // Save to assessment history
     addAssessmentEntry(
@@ -666,7 +664,7 @@ Verify my certificate: ${certificateUrl}
           </button>
         </div>
         <button
-          onClick={() => setCurrentView(ViewState.LANDING)}
+          onClick={() => handleNavigate(ViewState.LANDING)}
           className="mt-8 text-sm text-gray-400 hover:text-gray-600 flex items-center justify-center gap-1 mx-auto"
         >
           <ArrowLeft size={14} /> Back to Home
@@ -680,7 +678,7 @@ Verify my certificate: ${certificateUrl}
     <div className="min-h-screen bg-cream flex flex-col items-center justify-center p-4">
       <div className="max-w-4xl w-full">
         <div className="flex items-center mb-8">
-          <button onClick={() => startTransition(() => setCurrentView(ViewState.CANDIDATE_DASHBOARD))} className="bg-white p-2 rounded-full hover:bg-gray-100 mr-4">
+          <button onClick={() => handleNavigate(ViewState.CANDIDATE_DASHBOARD)} className="bg-white p-2 rounded-full hover:bg-gray-100 mr-4">
             <ArrowLeft />
           </button>
           <div>
@@ -823,7 +821,7 @@ Verify my certificate: ${certificateUrl}
             )}
 
             <button
-              onClick={() => startTransition(() => setCurrentView(ViewState.CANDIDATE_DASHBOARD))}
+              onClick={() => handleNavigate(ViewState.CANDIDATE_DASHBOARD)}
               className="mt-4 text-center text-gray-400 text-sm hover:text-gray-600"
             >
               Return to Dashboard
@@ -930,6 +928,17 @@ Verify my certificate: ${certificateUrl}
               else handleNavigate(ViewState.CANDIDATE_DASHBOARD);
             }}
             onLogout={handleLogout}
+            onProfileUpdated={(updates) => {
+              setCandidateProfile(prev => ({
+                ...prev,
+                ...(updates.image !== undefined ? { image: updates.image } : {}),
+                ...(updates.title !== undefined ? { title: updates.title! } : {}),
+                ...(updates.bio !== undefined ? { bio: updates.bio } : {}),
+                ...(updates.location !== undefined ? { location: updates.location! } : {}),
+                ...(updates.yearsOfExperience !== undefined ? { yearsOfExperience: updates.yearsOfExperience } : {}),
+                ...(updates.preferredWorkMode !== undefined ? { preferredWorkMode: updates.preferredWorkMode as any } : {}),
+              }));
+            }}
           />
         );
       case ViewState.NOT_FOUND:
@@ -948,15 +957,15 @@ Verify my certificate: ${certificateUrl}
     if (assessmentType === 'code') {
       return <Assessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} />;
     } else if (assessmentType === 'scenario') {
-      return <ScenarioAssessment skill={selectedSkill} difficulty={selectedDifficulty} candidateId={user?.id || ''} onComplete={handleAssessmentComplete} onCancel={() => startTransition(() => setCurrentView(ViewState.CANDIDATE_DASHBOARD))} />;
+      return <ScenarioAssessment skill={selectedSkill} difficulty={selectedDifficulty} candidateId={user?.id || ''} onComplete={handleAssessmentComplete} onCancel={() => handleNavigate(ViewState.CANDIDATE_DASHBOARD)} />;
     } else if (assessmentType === 'spreadsheet') {
-      return <SpreadsheetAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} onCancel={() => startTransition(() => setCurrentView(ViewState.CANDIDATE_DASHBOARD))} />;
+      return <SpreadsheetAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} onCancel={() => handleNavigate(ViewState.CANDIDATE_DASHBOARD)} />;
     } else if (assessmentType === 'text_editor') {
-      return <TextEditorAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} onCancel={() => startTransition(() => setCurrentView(ViewState.CANDIDATE_DASHBOARD))} />;
+      return <TextEditorAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} onCancel={() => handleNavigate(ViewState.CANDIDATE_DASHBOARD)} />;
     } else if (assessmentType === 'presentation') {
-      return <PresentationAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} onCancel={() => startTransition(() => setCurrentView(ViewState.CANDIDATE_DASHBOARD))} />;
+      return <PresentationAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleAssessmentComplete} onCancel={() => handleNavigate(ViewState.CANDIDATE_DASHBOARD)} />;
     } else if (assessmentType === 'video_verification') {
-      return <VideoVerificationAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleVideoVerificationComplete} onCancel={() => startTransition(() => setCurrentView(ViewState.CANDIDATE_DASHBOARD))} />;
+      return <VideoVerificationAssessment skill={selectedSkill} difficulty={selectedDifficulty} onComplete={handleVideoVerificationComplete} onCancel={() => handleNavigate(ViewState.CANDIDATE_DASHBOARD)} />;
     }
     return null;
   };

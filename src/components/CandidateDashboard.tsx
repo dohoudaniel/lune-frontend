@@ -13,8 +13,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 // Lazy load SkillPassport for performance
 const SkillPassport = lazy(() => import('./SkillPassport').then(m => ({ default: m.SkillPassport })));
 import { api } from '../lib/api';
-import { generatePassport } from '../services/profileService';
-import { hasPassedAnyAssessment, getSkillAttemptCount } from '../services/assessmentHistoryService';
+import { generatePassport, getCandidateProfile } from '../services/profileService';
+import { calcCompletion } from './ProfilePage';
+import { hasPassedAnyAssessment, getSkillAttemptCount, canGeneratePassport, getTotalAssessmentCount, MIN_PASSPORT_SESSIONS } from '../services/assessmentHistoryService';
 
 
 interface CandidateDashboardProps {
@@ -55,7 +56,20 @@ const AVAILABLE_ASSESSMENTS = {
 export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidate, onStartAssessment, onLogout, onUpdateProfile, onOpenVideoAnalyzer, onStartTour, onNavigateProfile }) => {
    const toast = useToast();
 
-   // Check if candidate's profile is complete enough to apply for jobs
+   // Profile completion % — shared with ProfilePage so both views agree
+   const profileCompletion = calcCompletion(
+      {
+         bio: candidate.bio,
+         title: candidate.title,
+         location: candidate.location,
+         years_of_experience: candidate.yearsOfExperience,
+         preferred_work_mode: candidate.preferredWorkMode,
+         avatar: candidate.image,
+      } as Record<string, unknown>,
+      'candidate'
+   );
+
+   // A profile is "ready" once at least title, bio and one skill are filled
    const isProfileComplete = (): boolean => {
       const hasTitle = !!candidate.title && candidate.title !== 'Candidate';
       const hasBio = !!(candidate.bio && candidate.bio.trim());
@@ -123,11 +137,21 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
 
    // Fetch user stats on profile change
    useEffect(() => {
-      // Fetch stats from backend
       api.get('/users/me/statistics/')
          .then(setUserStats)
          .catch(err => console.error('Failed to fetch user stats:', err));
-   }, [candidate]);
+   }, [candidate.id]);
+
+   // Sync fresh profile data from backend on every dashboard mount so the
+   // completion bar and profile card always reflect the actual saved state.
+   useEffect(() => {
+      getCandidateProfile().then((fresh) => {
+         if (fresh) {
+            onUpdateProfile(fresh as Partial<CandidateProfile>);
+         }
+      }).catch(() => {/* silently ignore — stale local data is acceptable fallback */});
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, []);
 
    const fetchRecommendations = async () => {
       setLoadingRecommendations(true);
@@ -145,8 +169,10 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
 
    // Generate Skill Passport
    const handleGeneratePassport = async () => {
-      if (Object.keys(candidate.skills).length === 0) {
-         toast.warning("Complete at least one skill assessment before generating your passport.");
+      if (!canGeneratePassport(candidate.id)) {
+         const count = getTotalAssessmentCount(candidate.id);
+         const remaining = MIN_PASSPORT_SESSIONS - count;
+         toast.warning(`Complete ${remaining} more assessment session${remaining !== 1 ? 's' : ''} to unlock your Skill Passport (${count}/${MIN_PASSPORT_SESSIONS} done).`);
          return;
       }
 
@@ -346,28 +372,88 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                {/* Left Sidebar: Verified Skills + Skill Passport */}
                <motion.div variants={itemVariants} className="lg:col-span-4 space-y-6">
 
+                  {/* Profile Summary Card */}
+                  <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                     <div className="flex items-center gap-4 mb-4">
+                        {/* Avatar */}
+                        <button
+                           onClick={onNavigateProfile}
+                           className="w-14 h-14 rounded-2xl bg-orange flex-shrink-0 overflow-hidden flex items-center justify-center text-white font-bold text-lg shadow-md shadow-orange/20 hover:ring-2 hover:ring-orange/40 transition"
+                           title="Edit profile"
+                        >
+                           {candidate.image
+                              ? <img src={candidate.image} alt={candidate.name} className="w-full h-full object-cover" />
+                              : candidate.name.substring(0, 2).toUpperCase()
+                           }
+                        </button>
+                        <div className="min-w-0">
+                           <p className="font-bold text-slate-900 truncate">{candidate.name}</p>
+                           <p className="text-xs text-slate-500 truncate">
+                              {candidate.title && candidate.title !== 'Candidate' ? candidate.title : 'Add your title'}
+                           </p>
+                           {candidate.location && (
+                              <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                                 <MapPin size={10} />{candidate.location}
+                              </p>
+                           )}
+                        </div>
+                     </div>
+
+                     {/* Profile Completion Bar */}
+                     <div>
+                        <div className="flex justify-between text-xs mb-1.5">
+                           <span className="font-semibold text-gray-600">Profile completion</span>
+                           <span className={`font-bold ${profileCompletion >= 80 ? 'text-teal' : profileCompletion >= 50 ? 'text-orange' : 'text-red-500'}`}>
+                              {profileCompletion}%
+                           </span>
+                        </div>
+                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                           <motion.div
+                              initial={{ width: "0%" }}
+                              animate={{ width: `${profileCompletion}%` }}
+                              transition={{ duration: 0.7, ease: 'easeOut' }}
+                              className={`h-full rounded-full ${
+                                 profileCompletion >= 80 ? 'bg-teal' :
+                                 profileCompletion >= 50 ? 'bg-orange' : 'bg-red-400'
+                              }`}
+                           />
+                        </div>
+                        {profileCompletion < 100 && (
+                           <button
+                              onClick={onNavigateProfile}
+                              className="mt-2 text-xs text-teal font-semibold hover:underline"
+                           >
+                              {profileCompletion === 0 ? 'Set up your profile →' : 'Complete your profile →'}
+                           </button>
+                        )}
+                     </div>
+                  </div>
+
                   {/* Verified Skills Card */}
                   <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                      <div className="flex justify-between items-center mb-4">
                         <h3 className="font-bold text-slate-900 flex items-center gap-2"><Award className="text-teal-600" size={20} /> Verified Skills</h3>
                      </div>
                      <div className="space-y-4 mb-6">
-                        {Object.entries(candidate.skills).map(([skill, score]) => (
-                           <div key={skill} className={(score as number) >= 80 ? 'ring-1 ring-teal-100 rounded-xl p-2 -mx-2' : ''}>
+                        {Object.entries(candidate.skills).map(([skill, score]) => {
+                           const pct = Math.min(100, Math.max(0, Math.round(score as number)));
+                           return (
+                           <div key={`${skill}-${pct}`} className={pct >= 80 ? 'ring-1 ring-teal-100 rounded-xl p-2 -mx-2' : ''}>
                               <div className="flex justify-between text-xs mb-1.5">
                                  <span className="font-medium text-slate-700">{skill}</span>
-                                 <span className={`font-bold ${(score as number) >= 80 ? 'text-green-600' : 'text-slate-600'}`}>{score as number}%</span>
+                                 <span className={`font-bold ${pct >= 80 ? 'text-green-600' : 'text-slate-600'}`}>{pct}%</span>
                               </div>
                               <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden shadow-inner">
                                  <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${score}%` }}
+                                    initial={{ width: "0%" }}
+                                    animate={{ width: `${pct}%` }}
                                     transition={{ duration: 1, ease: "easeOut" }}
-                                    className={`h-full rounded-full ${(score as number) >= 80 ? 'bg-gradient-to-r from-teal-500 to-emerald-400' : 'bg-gradient-to-r from-orange-400 to-orange-500'}`}
-                                 ></motion.div>
+                                    className={`h-full rounded-full ${pct >= 80 ? 'bg-gradient-to-r from-teal-500 to-emerald-400' : 'bg-gradient-to-r from-orange-400 to-orange-500'}`}
+                                 />
                               </div>
                            </div>
-                        ))}
+                           );
+                        })}
                         {Object.keys(candidate.skills).length === 0 && (
                            <p className="text-xs text-gray-400 italic">No skills verified yet.</p>
                         )}
@@ -517,7 +603,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                                   whileHover={{ scale: 1.02 }}
                                   whileTap={{ scale: 0.98 }}
                                   onClick={handleGeneratePassport}
-                                  disabled={isGeneratingPassport || Object.keys(candidate.skills).length === 0 || !hasPassedAnyAssessment(candidate.id)}
+                                  disabled={isGeneratingPassport || !canGeneratePassport(candidate.id) || !hasPassedAnyAssessment(candidate.id)}
                                   className="w-full bg-white text-orange px-4 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition shadow-lg disabled:opacity-60 disabled:cursor-not-allowed hover:bg-gray-50"
                                >
                                   {isGeneratingPassport ? (
@@ -530,9 +616,9 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                                      </span>
                                   )}
                                </motion.button>
-                              {Object.keys(candidate.skills).length === 0 && (
+                              {!canGeneratePassport(candidate.id) && (
                                  <p className="text-orange-200 text-xs text-center">
-                                    Complete at least one assessment first
+                                    {getTotalAssessmentCount(candidate.id)}/{MIN_PASSPORT_SESSIONS} sessions completed
                                  </p>
                               )}
                            </div>
@@ -840,44 +926,29 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
             </motion.div>
          </main>
 
-         {/* Skill Passport Modal */}
+         {/* Skill Passport — full-screen page */}
          <AnimatePresence>
             {showPassportModal && (
                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm overflow-y-auto p-4"
-                  onClick={() => setShowPassportModal(false)}
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 24 }}
+                  transition={{ duration: 0.2 }}
+                  className="fixed inset-0 z-50 bg-gray-50 overflow-y-auto"
                >
-                  <motion.div
-                     initial={{ scale: 0.95, opacity: 0 }}
-                     animate={{ scale: 1, opacity: 1 }}
-                     exit={{ scale: 0.95, opacity: 0 }}
-                     onClick={e => e.stopPropagation()}
-                     className="max-w-4xl mx-auto my-8"
-                  >
-                     {/* Close Button */}
-                     <div className="flex justify-end mb-4">
-                        <button
-                           onClick={() => setShowPassportModal(false)}
-                           className="p-2 bg-white/20 hover:bg-white/30 rounded-full text-white transition backdrop-blur-sm"
-                           aria-label="Close"
-                        >
-                           <X size={24} />
-                        </button>
-                     </div>
-
-                     {/* SkillPassport Component */}
-                     <Suspense fallback={
-                        <div className="bg-white rounded-2xl p-12 text-center">
-                           <Loader className="w-12 h-12 text-indigo-500 animate-spin mx-auto mb-4" />
-                           <p className="text-gray-500">Loading Skill Passport...</p>
+                  <Suspense fallback={
+                     <div className="min-h-screen flex items-center justify-center">
+                        <div className="text-center">
+                           <Loader className="w-12 h-12 text-teal animate-spin mx-auto mb-4" />
+                           <p className="text-gray-500">Loading Skill Passport…</p>
                         </div>
-                     }>
-                        <SkillPassport candidate={candidate} />
-                     </Suspense>
-                  </motion.div>
+                     </div>
+                  }>
+                     <SkillPassport
+                        candidate={candidate}
+                        onBack={() => setShowPassportModal(false)}
+                     />
+                  </Suspense>
                </motion.div>
             )}
          </AnimatePresence>
