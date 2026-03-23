@@ -329,6 +329,20 @@ export const hasPassedAnyAssessment = (candidateId: string): boolean => {
 };
 
 /**
+ * Return the total number of assessment sessions (pass OR fail) for a candidate.
+ * Skill Passport generation requires at least MIN_PASSPORT_SESSIONS.
+ */
+export const MIN_PASSPORT_SESSIONS = 3;
+
+export const getTotalAssessmentCount = (candidateId: string): number => {
+    return loadAssessmentHistory(candidateId).length;
+};
+
+export const canGeneratePassport = (candidateId: string): boolean => {
+    return getTotalAssessmentCount(candidateId) >= MIN_PASSPORT_SESSIONS;
+};
+
+/**
  * Get improvement suggestions based on history
  */
 export const getImprovementSuggestions = (candidateId: string): string[] => {

@@ -23,11 +23,15 @@ import {
   Calendar,
   Link,
   Navigation,
+  Monitor,
+  Smartphone,
+  LogOut,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '../lib/toast';
 import { api } from '../lib/api';
 import { Skeleton } from './Skeleton';
+import { getActiveSessions, terminateSession, UserSession } from '../services/profileService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,6 +44,15 @@ export interface ProfilePageProps {
   };
   onBack: () => void;
   onLogout: () => void;
+  /** Called after any profile save so the dashboard can sync its candidateProfile state */
+  onProfileUpdated?: (updates: {
+    image?: string;
+    title?: string;
+    bio?: string;
+    location?: string;
+    yearsOfExperience?: number;
+    preferredWorkMode?: string;
+  }) => void;
 }
 
 type Tab = 'account' | 'profile' | 'security' | 'danger';
@@ -68,17 +81,26 @@ const WORK_MODES = ['Remote', 'Hybrid', 'On-site'] as const;
 const COMPANY_SIZES = ['1-10', '11-50', '51-200', '201-500', '500+'] as const;
 
 const completionFields = {
-  candidate: ['bio', 'title', 'location', 'years_of_experience', 'preferred_work_mode'],
+  // avatar included so uploading a photo contributes to the score
+  candidate: ['bio', 'title', 'location', 'years_of_experience', 'preferred_work_mode', 'avatar'],
   employer: ['company_name', 'website', 'industry', 'company_size', 'location'],
 };
 
-function calcCompletion(data: Record<string, unknown>, role: 'candidate' | 'employer'): number {
+export function calcCompletion(data: Record<string, unknown>, role: 'candidate' | 'employer'): number {
   const fields = completionFields[role] ?? [];
   if (!fields.length) return 0;
-  const filled = fields.filter((f) => {
+  let filled = 0;
+  for (const f of fields) {
     const v = data[f];
-    return v !== undefined && v !== null && v !== '' && v !== 0;
-  }).length;
+    if (f === 'skills') {
+      // skills is an object — count as filled if at least one entry
+      if (v && typeof v === 'object' && Object.keys(v as object).length > 0) filled++;
+    } else {
+      // Treat the default placeholder title 'Candidate' as unfilled
+      const effective = (f === 'title' && v === 'Candidate') ? '' : v;
+      if (effective !== undefined && effective !== null && effective !== '') filled++;
+    }
+  }
   return Math.round((filled / fields.length) * 100);
 }
 
@@ -205,7 +227,7 @@ const DeleteAccountModal: React.FC<{
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout }) => {
+export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout, onProfileUpdated }) => {
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -227,6 +249,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
   // Security section
   const [sendingReset, setSendingReset] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+
+  // Active sessions
+  const [sessions, setSessions] = useState<UserSession[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+  const [terminatingSession, setTerminatingSession] = useState<string | null>(null);
 
   // Danger zone
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -310,6 +337,28 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
     fetchProfile();
   }, [fetchProfile]);
 
+  useEffect(() => {
+    if (activeTab === 'security') {
+      setLoadingSessions(true);
+      getActiveSessions().then(data => {
+        setSessions(data);
+        setLoadingSessions(false);
+      });
+    }
+  }, [activeTab]);
+
+  const handleTerminateSession = async (sessionId: string) => {
+    setTerminatingSession(sessionId);
+    const ok = await terminateSession(sessionId);
+    if (ok) {
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      toast.success('Session terminated.');
+    } else {
+      toast.error('Failed to terminate session.');
+    }
+    setTerminatingSession(null);
+  };
+
   // ── Account save ──
 
   const handleSaveAccount = async () => {
@@ -344,6 +393,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
       setProfileDraft(normalized);
       toast.success('Profile saved successfully');
       setEditingProfile(false);
+      // Propagate all saved fields back so the dashboard stays in sync
+      if (user.role === 'candidate') {
+        onProfileUpdated?.({
+          image: (normalized as any).avatar || undefined,
+          title: (normalized as any).title,
+          bio: (normalized as any).bio,
+          location: (normalized as any).location,
+          yearsOfExperience: (normalized as any).years_of_experience,
+          preferredWorkMode: (normalized as any).preferred_work_mode,
+        });
+      }
     } catch {
       toast.error('Failed to save profile');
     } finally {
@@ -395,8 +455,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
     try {
       const form = new FormData();
       form.append('image', file);
-      const data = await api.postForm('/profiles/upload-image/', form);
-      setProfileData((prev) => ({ ...prev, avatar: data.url ?? data.avatar_url }));
+      const data = await api.postForm('/profiles/upload-image/', form) as any;
+      const imageUrl: string = data.url ?? data.avatar_url ?? '';
+      setProfileData((prev) => ({ ...prev, avatar: imageUrl }));
+      setProfileDraft((prev) => ({ ...prev, avatar: imageUrl }));
+      // Propagate the new picture to App.tsx so the navbar updates immediately
+      onProfileUpdated?.({ image: imageUrl });
       toast.success('Profile photo updated');
     } catch {
       toast.error('Failed to upload photo');
@@ -978,22 +1042,81 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
                 </div>
               </div>
 
-              {/* Active sessions note */}
+              {/* Active sessions */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Shield size={18} className="text-teal" />
-                  <h2 className="font-bold text-gray-900">Active Sessions</h2>
-                </div>
-                <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4">
-                  <Shield size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-blue-800">Current session active</p>
-                    <p className="text-xs text-blue-600 mt-0.5">
-                      You are currently logged in. To end all active sessions, log out from all
-                      devices by changing your password.
-                    </p>
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2">
+                    <Shield size={18} className="text-teal" />
+                    <h2 className="font-bold text-gray-900">Active Sessions</h2>
                   </div>
+                  <button
+                    onClick={() => {
+                      setLoadingSessions(true);
+                      getActiveSessions().then(data => { setSessions(data); setLoadingSessions(false); });
+                    }}
+                    className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                    title="Refresh"
+                  >
+                    <RefreshCw size={14} className={loadingSessions ? 'animate-spin' : ''} />
+                  </button>
                 </div>
+
+                {loadingSessions ? (
+                  <div className="space-y-3">
+                    {[1, 2].map(i => (
+                      <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+                    ))}
+                  </div>
+                ) : sessions.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">No active sessions found.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {sessions.map((session) => {
+                      const isMobile = session.device_name.toLowerCase().includes('mobile') || session.device_name.toLowerCase().includes('tablet');
+                      const sessionDate = new Date(session.last_active_at);
+                      const isRecent = Date.now() - sessionDate.getTime() < 5 * 60 * 1000; // within 5 min
+                      return (
+                        <div key={session.id} className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-xl p-4">
+                          <div className="flex-shrink-0 w-9 h-9 bg-white rounded-lg border border-gray-200 flex items-center justify-center text-gray-500">
+                            {isMobile ? <Smartphone size={16} /> : <Monitor size={16} />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold text-gray-800 truncate">
+                                {session.device_name || 'Unknown device'}
+                              </p>
+                              {isRecent && (
+                                <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                  Current
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {session.ip_address ?? 'Unknown IP'} · Last active {sessionDate.toLocaleString()}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleTerminateSession(session.id)}
+                            disabled={terminatingSession === session.id}
+                            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
+                          >
+                            {terminatingSession === session.id ? (
+                              <RefreshCw size={12} className="animate-spin" />
+                            ) : (
+                              <LogOut size={12} />
+                            )}
+                            End
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <p className="text-xs text-gray-400 mt-4">
+                  Ending a session will immediately invalidate that device's login token.
+                </p>
               </div>
             </motion.div>
           )}

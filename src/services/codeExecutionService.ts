@@ -100,9 +100,10 @@ export const executeCode = async (
     }
 
     try {
-        const response = await fetch(`${API_URL}/execute-code`, {
+        const response = await fetch(`${API_URL}/execute-code/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',  // send auth cookies
             body: JSON.stringify({
                 sourceCode,
                 languageId,
