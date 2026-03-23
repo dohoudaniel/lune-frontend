@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 // Lazy load SkillPassport for performance
 const SkillPassport = lazy(() => import('./SkillPassport').then(m => ({ default: m.SkillPassport })));
 import { api } from '../lib/api';
-import { generatePassport } from '../services/profileService';
+import { generatePassport, getCandidateProfile } from '../services/profileService';
 import { calcCompletion } from './ProfilePage';
 import { hasPassedAnyAssessment, getSkillAttemptCount, canGeneratePassport, getTotalAssessmentCount, MIN_PASSPORT_SESSIONS } from '../services/assessmentHistoryService';
 
@@ -137,11 +137,21 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
 
    // Fetch user stats on profile change
    useEffect(() => {
-      // Fetch stats from backend
       api.get('/users/me/statistics/')
          .then(setUserStats)
          .catch(err => console.error('Failed to fetch user stats:', err));
-   }, [candidate]);
+   }, [candidate.id]);
+
+   // Sync fresh profile data from backend on every dashboard mount so the
+   // completion bar and profile card always reflect the actual saved state.
+   useEffect(() => {
+      getCandidateProfile().then((fresh) => {
+         if (fresh) {
+            onUpdateProfile(fresh as Partial<CandidateProfile>);
+         }
+      }).catch(() => {/* silently ignore — stale local data is acceptable fallback */});
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, []);
 
    const fetchRecommendations = async () => {
       setLoadingRecommendations(true);
