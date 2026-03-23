@@ -434,14 +434,25 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
                 recognition.lang = 'en-US';
 
                 recognition.onresult = (event: any) => {
-                    let finalTranscript = '';
+                    let finalText = '';
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         if (event.results[i].isFinal) {
-                            finalTranscript += event.results[i][0].transcript;
+                            finalText += event.results[i][0].transcript;
                         }
                     }
-                    if (finalTranscript) {
-                        setOralTranscript(prev => prev + ' ' + finalTranscript);
+                    if (finalText) {
+                        setOralTranscript(prev => {
+                            const updated = (prev + ' ' + finalText).trim();
+                            // Also save into the current question's answer
+                            setAnswers(prevAnswers => {
+                                if (!content) return prevAnswers;
+                                const qId = content.situationalQuestions[currentQuestionIndex]?.id;
+                                if (qId == null) return prevAnswers;
+                                const existing = prevAnswers[qId] || '';
+                                return { ...prevAnswers, [qId]: (existing + ' ' + finalText).trim() };
+                            });
+                            return updated;
+                        });
                     }
                 };
 
@@ -507,8 +518,8 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
         const currentQuestion = content.situationalQuestions[currentQuestionIndex];
         const answer = answers[currentQuestion.id];
         if (!answer || answer.trim() === '') return false;
-        // For text responses, require minimum length
-        if (!currentQuestion.options && answer.trim().length < 10) return false;
+        // For text (written) responses, require minimum length
+        if (!currentQuestion.options && !currentQuestion.requiresOralResponse && answer.trim().length < 10) return false;
         return true;
     };
 
@@ -520,8 +531,8 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
             const answer = answers[q.id];
             if (!answer || answer.trim() === '') {
                 unanswered.push(idx + 1);
-            } else if (!q.options && answer.trim().length < 10) {
-                // Text responses need minimum length
+            } else if (!q.options && !q.requiresOralResponse && answer.trim().length < 10) {
+                // Written text responses need minimum length; oral responses just need any text
                 unanswered.push(idx + 1);
             }
         });
@@ -536,27 +547,18 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
     const handleNextQuestion = () => {
         if (!content) return;
 
-        // Allow skipping - no per-question validation
-        // Validation only happens at final submission
-
         if (currentQuestionIndex < content.situationalQuestions.length - 1) {
-            // Check if next question requires oral response
-            const nextQuestion = content.situationalQuestions[currentQuestionIndex + 1];
-            if (nextQuestion.requiresOralResponse) {
-                setCurrentQuestionIndex(prev => prev + 1);
-                setStep('oral');
-            } else {
-                setCurrentQuestionIndex(prev => prev + 1);
-            }
+            // Move to the next question — stay in 'situational' step regardless of question type
+            // Oral questions are handled inline in the situational view
+            setCurrentQuestionIndex(prev => prev + 1);
+            if (step === 'oral') setStep('situational');
         } else {
-            // Last situational question
-            // If there's an oral task, go there. usage of 'submitting' step is ONLY for after oral.
+            // Last situational question — go to separate oral task if one exists, else submit
             if (content.oralResponseTask) {
                 setStep('oral');
                 return;
             }
 
-            // If no oral task (unlikely per new prompt), validate and submit
             const unanswered = getAllUnansweredQuestions();
             if (unanswered.length > 0) {
                 setActiveAlert(`Please answer all questions before submitting. Unanswered: Question(s) ${unanswered.join(', ')}`);
@@ -970,7 +972,7 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
 
                                         {content.situationalQuestions[currentQuestionIndex].options && content.situationalQuestions[currentQuestionIndex].options!.length > 0 ? (
                                             <>
-                                                {/* Multiple Choice Options - Always Visible */}
+                                                {/* Multiple Choice Options */}
                                                 <div className="space-y-3 max-w-2xl" style={{ display: 'block', visibility: 'visible' }}>
                                                     {content.situationalQuestions[currentQuestionIndex].options!.map((option, idx) => (
                                                         <button
@@ -995,9 +997,70 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
                                                     ))}
                                                 </div>
                                             </>
+                                        ) : content.situationalQuestions[currentQuestionIndex].requiresOralResponse ? (
+                                            <>
+                                                {/* Oral / Voice Response — inline recording for VA questions */}
+                                                <div className="flex-1 flex flex-col gap-4">
+                                                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-start gap-3">
+                                                        <Mic className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+                                                        <p className="text-sm text-purple-800">
+                                                            This question requires a <strong>verbal response</strong>. Press <strong>Start Recording</strong>, speak your answer clearly, then press <strong>Stop</strong>.
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-4">
+                                                        {!isRecording ? (
+                                                            <button
+                                                                onClick={startRecording}
+                                                                className="flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-full font-bold hover:bg-red-700 transition shadow-md"
+                                                            >
+                                                                <Mic className="w-5 h-5" />
+                                                                Start Recording
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                onClick={stopRecording}
+                                                                className="flex items-center gap-2 px-6 py-3 bg-gray-800 text-white rounded-full font-bold hover:bg-gray-900 transition shadow-md animate-pulse"
+                                                            >
+                                                                <StopCircle className="w-5 h-5" />
+                                                                Stop ({formatTime(recordingTime)})
+                                                            </button>
+                                                        )}
+                                                        {isRecording && (
+                                                            <div className="flex items-center gap-2 text-sm text-red-600 font-medium">
+                                                                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                                                                Listening…
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Live transcript feedback */}
+                                                    {(oralTranscript || (isRecording && answers[content.situationalQuestions[currentQuestionIndex].id])) && (
+                                                        <div className="bg-white border border-gray-200 rounded-xl p-4">
+                                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Your response (live transcript)</p>
+                                                            <p className="text-sm text-gray-700 leading-relaxed">
+                                                                {answers[content.situationalQuestions[currentQuestionIndex].id] || oralTranscript}
+                                                            </p>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Re-record option */}
+                                                    {!isRecording && answers[content.situationalQuestions[currentQuestionIndex].id] && (
+                                                        <button
+                                                            onClick={() => {
+                                                                handleAnswerSelect(content!.situationalQuestions[currentQuestionIndex].id, '');
+                                                                setOralTranscript('');
+                                                            }}
+                                                            className="text-xs text-gray-400 hover:text-gray-600 underline self-start"
+                                                        >
+                                                            Re-record this answer
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </>
                                         ) : (
                                             <>
-                                                {/* Written Response Text Area - Always Visible */}
+                                                {/* Written Response Text Area */}
                                                 <div className="flex-1 flex flex-col" style={{ display: 'flex', visibility: 'visible' }}>
                                                     <textarea
                                                         value={answers[content.situationalQuestions[currentQuestionIndex].id] || ''}

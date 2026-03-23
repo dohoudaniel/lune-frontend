@@ -36,6 +36,8 @@ export const VideoVerificationAssessment: React.FC<VideoVerificationAssessmentPr
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const [analysis, setAnalysis] = useState<VideoVerificationResult | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [liveTranscript, setLiveTranscript] = useState('');
+    const [finalTranscript, setFinalTranscript] = useState('');
 
     const videoRef = useRef<HTMLVideoElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -43,6 +45,8 @@ export const VideoVerificationAssessment: React.FC<VideoVerificationAssessmentPr
     const chunksRef = useRef<Blob[]>([]);
     const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const speechRecognitionRef = useRef<any>(null);
+    const accumulatedTranscriptRef = useRef<string>('');
 
     const MAX_RECORDING_TIME = 120; // 2 minutes max
     const MIN_RECORDING_TIME = 30; // 30 seconds min
@@ -118,10 +122,46 @@ export const VideoVerificationAssessment: React.FC<VideoVerificationAssessmentPr
     const startRecording = () => {
         if (!streamRef.current) return;
 
+        // Reset transcripts
+        accumulatedTranscriptRef.current = '';
+        setLiveTranscript('');
+        setFinalTranscript('');
+
+        // Start speech recognition for real-time transcript
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+            recognition.onresult = (event: any) => {
+                let interim = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    const t = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        accumulatedTranscriptRef.current += t + ' ';
+                    } else {
+                        interim = t;
+                    }
+                }
+                setLiveTranscript(interim);
+                setFinalTranscript(accumulatedTranscriptRef.current);
+            };
+            recognition.onerror = () => { /* silently ignore */ };
+            try { recognition.start(); } catch { /* silently ignore */ }
+            speechRecognitionRef.current = recognition;
+        }
+
         chunksRef.current = [];
-        const mediaRecorder = new MediaRecorder(streamRef.current, {
-            mimeType: 'video/webm;codecs=vp9'
-        });
+        // Use a supported mimeType with fallback
+        const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+            ? 'video/webm;codecs=vp9'
+            : MediaRecorder.isTypeSupported('video/webm')
+            ? 'video/webm'
+            : '';
+        const mediaRecorder = mimeType
+            ? new MediaRecorder(streamRef.current, { mimeType })
+            : new MediaRecorder(streamRef.current);
 
         mediaRecorder.ondataavailable = (e) => {
             if (e.data.size > 0) {
@@ -161,6 +201,12 @@ export const VideoVerificationAssessment: React.FC<VideoVerificationAssessmentPr
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
             mediaRecorderRef.current.stop();
         }
+        if (speechRecognitionRef.current) {
+            try { speechRecognitionRef.current.stop(); } catch { /* ignore */ }
+            speechRecognitionRef.current = null;
+        }
+        // Save final accumulated transcript
+        setFinalTranscript(accumulatedTranscriptRef.current.trim());
         stopCamera();
     };
 
@@ -182,11 +228,12 @@ export const VideoVerificationAssessment: React.FC<VideoVerificationAssessmentPr
         setError(null);
 
         try {
-            const videoFile = new File([videoBlob], 'assessment.webm', { type: 'video/webm' });
+            const videoFile = new File([videoBlob], 'assessment.webm', { type: videoBlob.type || 'video/webm' });
             const result = await analyzeVideoVerification(
                 videoFile,
                 prompt,
-                getAssessmentType()
+                getAssessmentType(),
+                finalTranscript || accumulatedTranscriptRef.current
             );
 
             setAnalysis(result);
@@ -324,6 +371,21 @@ export const VideoVerificationAssessment: React.FC<VideoVerificationAssessmentPr
                                 <div className="px-3 py-1.5 bg-black/50 backdrop-blur-sm rounded-full text-white font-mono">
                                     {formatTime(recordingTime)} / {formatTime(MAX_RECORDING_TIME)}
                                 </div>
+                                {(liveTranscript || finalTranscript) && (
+                                    <div className="flex items-center gap-1.5 px-2 py-1 bg-green-500/80 backdrop-blur-sm rounded-full">
+                                        <Mic className="w-3 h-3 text-white" />
+                                        <span className="text-white text-xs font-medium">Voice detected</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        {/* Live transcript overlay during recording */}
+                        {recordingState === 'recording' && (liveTranscript || finalTranscript) && (
+                            <div className="absolute bottom-4 left-4 right-4 bg-black/60 backdrop-blur-sm rounded-xl p-3 max-h-20 overflow-hidden">
+                                <p className="text-white text-xs leading-relaxed line-clamp-3">
+                                    {finalTranscript}
+                                    {liveTranscript && <span className="text-white/60 italic"> {liveTranscript}</span>}
+                                </p>
                             </div>
                         )}
 

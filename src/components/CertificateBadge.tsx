@@ -43,7 +43,7 @@ export const CertificateBadge: React.FC<CertificateBadgeProps> = ({
     };
 
     const handleCopyLink = () => {
-        const link = generateShareableLink(certificate.blockchainHash);
+        const link = generateShareableLink(certificate.verificationId);
         navigator.clipboard.writeText(link);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
@@ -51,7 +51,7 @@ export const CertificateBadge: React.FC<CertificateBadgeProps> = ({
 
     const handleShare = (platform: 'twitter' | 'linkedin') => {
         const shareText = generateShareText(certificate);
-        const link = generateShareableLink(certificate.blockchainHash);
+        const link = generateShareableLink(certificate.verificationId);
 
         if (platform === 'twitter') {
             window.open(
@@ -66,7 +66,7 @@ export const CertificateBadge: React.FC<CertificateBadgeProps> = ({
         }
     };
 
-    const shortHash = certificate.blockchainHash.slice(0, 8) + '...' + certificate.blockchainHash.slice(-6);
+    const shortHash = certificate.verificationId.slice(0, 8) + '...' + certificate.verificationId.slice(-6);
 
     return (
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-lg mx-auto">
@@ -126,7 +126,7 @@ export const CertificateBadge: React.FC<CertificateBadgeProps> = ({
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide">Certificate ID</p>
-                            <p className="font-mono text-sm text-gray-900 mt-1">{certificate.blockchainHash.slice(0, 16).toUpperCase()}</p>
+                            <p className="font-mono text-sm text-gray-900 mt-1">{certificate.verificationId.slice(0, 16).toUpperCase()}</p>
                         </div>
                     </div>
                 </div>

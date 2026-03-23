@@ -92,13 +92,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         role: 'candidate' | 'employer'
     ): Promise<{ success: boolean; error?: string }> => {
         try {
-            setIsLoading(true);
             await api.post('/auth/register/', { email, password, first_name, last_name, role });
             return { success: true };
         } catch (error: unknown) {
             return { success: false, error: extractErrorMessage(error) };
-        } finally {
-            setIsLoading(false);
         }
     }, []);
 
@@ -167,39 +164,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const requestPasswordReset = useCallback(async (email: string) => {
         try {
-            setIsLoading(true);
             await api.post('/auth/password-reset/', { email });
             return { success: true };
         } catch (error: unknown) {
             return { success: false, error: extractErrorMessage(error) };
-        } finally {
-            setIsLoading(false);
         }
     }, []);
 
     const resetPassword = useCallback(async (token: string, new_password: string) => {
         try {
-            setIsLoading(true);
             await api.post('/auth/password-reset-confirm/', { token, new_password });
             return { success: true };
         } catch (error: unknown) {
             return { success: false, error: extractErrorMessage(error) };
-        } finally {
-            setIsLoading(false);
         }
     }, []);
 
     const logout = useCallback(async () => {
-        try {
-            setIsLoading(true);
-            await api.post('/auth/logout/', {});
-        } catch {
-            // Still clear local state even if the backend call fails
-        } finally {
-            setUser(null);
-            localStorage.removeItem(USER_PROFILE_KEY);
-            setIsLoading(false);
-        }
+        // Clear local state immediately so the UI responds instantly
+        setUser(null);
+        localStorage.removeItem(USER_PROFILE_KEY);
+        // Fire-and-forget the backend blacklist call
+        api.post('/auth/logout/', {}).catch(() => {});
     }, []);
 
     const value: AuthContextType = {
