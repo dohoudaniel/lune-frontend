@@ -147,6 +147,24 @@ export const PermissionCheckModal: React.FC<PermissionCheckModalProps> = ({
 
                     {/* Scrollable body */}
                     <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+                        {/* Mobile device warning */}
+                        {/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) && (
+                            <div className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                                <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                                <p className="text-xs text-amber-700">
+                                    <strong>Mobile device detected.</strong> Assessments are best taken on a desktop or laptop. Camera and microphone proctoring may not function correctly on mobile.
+                                </p>
+                            </div>
+                        )}
+
+                        {/* AI proctoring disclaimer */}
+                        <div className="flex items-start gap-2.5 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                            <Shield className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-blue-700 leading-relaxed">
+                                <strong>AI Proctoring Active:</strong> This session monitors your eye gaze pattern and screen focus to detect distractions. Looking away repeatedly or switching tabs will be flagged. Stay focused and keep your face visible to the camera throughout.
+                            </p>
+                        </div>
+
                         <p className="text-gray-500 text-sm">
                             This {assessmentType} requires camera and microphone access to ensure integrity.
                             Your session will be monitored for proctoring purposes.

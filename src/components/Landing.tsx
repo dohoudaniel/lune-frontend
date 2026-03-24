@@ -737,7 +737,15 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                 Terms
               </a>
               <a
-                href="https://linkedin.com"
+                href="https://x.com/lunetalent"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-gray-500 hover:text-gray-800 transition-colors"
+              >
+                𝕏 / Twitter
+              </a>
+              <a
+                href="https://www.linkedin.com/in/lunecompany/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-gray-500 hover:text-gray-800 transition-colors"

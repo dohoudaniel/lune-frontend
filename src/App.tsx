@@ -12,7 +12,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { CertificateData } from './services/certificateBadgeService';
 import { onboardingService } from './services/onboardingService';
 import { ViewState, UserRole, EvaluationResult, CandidateProfile, DifficultyLevel, AssessmentType } from './types';
-import { CheckCircle, AlertCircle, Code, ArrowLeft, ArrowRight, Award, ShieldCheck, Share2, Copy, Linkedin, Download, ExternalLink, X, Sparkles, Building2, Video, FileSpreadsheet, Presentation as PresentationIcon, FileText, Brain } from 'lucide-react';
+import { CheckCircle, AlertCircle, Code, ArrowLeft, ArrowRight, Award, ShieldCheck, Share2, Copy, Linkedin, Download, ExternalLink, X, Sparkles, Building2, Video, FileSpreadsheet, Presentation as PresentationIcon, FileText, Brain, RefreshCw } from 'lucide-react';
 import { ToastProvider, useToast } from './lib/toast';
 import { celebrateSuccess } from './lib/confetti';
 import { AuthProvider } from './contexts/AuthContext';
@@ -194,6 +194,9 @@ function AppContent() {
 
   // Permission modal state for assessments
   const [showPermissionModal, setShowPermissionModal] = useState(false);
+
+  // Retake confirmation dialog
+  const [retakeDialog, setRetakeDialog] = useState<{ skill: string; attempts: number } | null>(null);
 
   // Admin impersonation state
   const [impersonationToken, setImpersonationToken] = useState<string | null>(null);
@@ -403,23 +406,47 @@ function AppContent() {
     toast.success('👋 Logged out successfully!');
   };
 
-  const MAX_SKILL_ATTEMPTS = 3;
-
   const handleStartAssessment = (skill?: string) => {
     if (skill) {
       const attempts = getSkillAttemptCount(candidateProfile.id, skill);
-      if (attempts >= MAX_SKILL_ATTEMPTS) {
-        toast.warning(`You've reached the maximum of ${MAX_SKILL_ATTEMPTS} attempts for "${skill}". Focus on other skills to strengthen your passport.`);
+      if (attempts > 0) {
+        // Candidate already attempted this skill — show retake confirmation (costs 1 credit)
+        setRetakeDialog({ skill, attempts });
         return;
       }
       setSelectedSkill(skill);
-      // Determine the assessment type based on skill
       const type = getAssessmentType(skill);
       setAssessmentType(type);
       handleNavigate(ViewState.SKILL_SELECTION);
     } else {
       handleNavigate(ViewState.SKILL_SELECTION);
     }
+  };
+
+  const handleConfirmRetake = async () => {
+    if (!retakeDialog) return;
+    // Call backend to deduct 1 credit before proceeding
+    try {
+      const res = await import('./lib/api').then(m => m.api.post('/users/me/deduct-credit/', {})) as any;
+      // Refresh the user profile so credits display updates
+      if (typeof res?.credits_remaining === 'number') {
+        getCandidateProfile().then(fresh => {
+          if (fresh) setCandidateProfile(prev => ({ ...prev, ...fresh }));
+        }).catch(() => {});
+      }
+    } catch (err: any) {
+      if (err?.response?.status === 402 || err?.status === 402) {
+        toast.error('No credits remaining. Upgrade your plan to retake.');
+        setRetakeDialog(null);
+        return;
+      }
+      // If deduction fails for any other reason, still allow retake (non-blocking)
+    }
+    setSelectedSkill(retakeDialog.skill);
+    const type = getAssessmentType(retakeDialog.skill);
+    setAssessmentType(type);
+    setRetakeDialog(null);
+    handleNavigate(ViewState.SKILL_SELECTION);
   };
 
   const startAssessmentFlow = (difficulty: DifficultyLevel) => {
@@ -450,6 +477,11 @@ function AppContent() {
       result.categoryScores,
       result.certificationHash
     );
+
+    // When a skill is passed, invalidate the cached Skill Passport so it regenerates with new data
+    if (result.passed) {
+      localStorage.removeItem('lune_skill_passport_v1');
+    }
 
     // Update local profile if passed - save skills regardless of certificate hash
     if (result.passed) {
@@ -751,7 +783,22 @@ Verify my certificate: ${certificateUrl}
             <h2 className="text-2xl font-bold text-center mb-2">
               {assessmentResult.passed ? 'Verified!' : 'Not Passed'}
             </h2>
-            <div className="text-5xl font-bold my-2">{assessmentResult.score}</div>
+            <div className="text-5xl font-bold my-2">{assessmentResult.score}<span className="text-2xl opacity-60">/100</span></div>
+            {/* Score progress bar */}
+            <div className="w-full mt-3 mb-1">
+              <div className="w-full bg-white/20 rounded-full h-2">
+                <div
+                  className="bg-white rounded-full h-2 transition-all duration-1000"
+                  style={{ width: `${assessmentResult.score}%` }}
+                />
+              </div>
+              {/* Pass mark indicator */}
+              <div className="flex justify-between text-xs opacity-70 mt-1">
+                <span>0</span>
+                <span>Pass: 70</span>
+                <span>100</span>
+              </div>
+            </div>
             <div className="text-sm opacity-80">{selectedDifficulty} • {selectedSkill}</div>
           </div>
 
@@ -997,7 +1044,7 @@ Verify my certificate: ${certificateUrl}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
             onClick={() => setShowCertificateBadge(false)}
           >
             <motion.div
@@ -1005,7 +1052,7 @@ Verify my certificate: ${certificateUrl}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative"
+              className="relative my-auto"
             >
               <button
                 onClick={() => setShowCertificateBadge(false)}
@@ -1017,6 +1064,54 @@ Verify my certificate: ${certificateUrl}
                 certificate={selectedCertificate}
                 onClose={() => setShowCertificateBadge(false)}
               />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Retake Confirmation Dialog */}
+      <AnimatePresence>
+        {retakeDialog && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setRetakeDialog(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full"
+            >
+              <div className="text-center mb-6">
+                <div className="w-14 h-14 bg-orange/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <RefreshCw className="w-7 h-7 text-orange" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900">Retake Assessment</h3>
+                <p className="text-slate-500 mt-2">
+                  You've attempted <strong>{retakeDialog.skill}</strong> {retakeDialog.attempts} time{retakeDialog.attempts !== 1 ? 's' : ''}. Each retake uses <strong>1 credit</strong> from your account.
+                </p>
+              </div>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700 mb-6">
+                <strong>Note:</strong> Credits are deducted per attempt regardless of pass/fail. Retaking helps you improve your score and unlock your Skill Passport.
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setRetakeDialog(null)}
+                  className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmRetake}
+                  className="flex-1 py-3 rounded-xl bg-teal text-white font-semibold hover:opacity-90 transition"
+                >
+                  Use 1 Credit &amp; Retake
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

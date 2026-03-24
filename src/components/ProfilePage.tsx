@@ -26,6 +26,10 @@ import {
   Monitor,
   Smartphone,
   LogOut,
+  FileText,
+  Sparkles,
+  Upload,
+  Star,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '../lib/toast';
@@ -55,7 +59,7 @@ export interface ProfilePageProps {
   }) => void;
 }
 
-type Tab = 'account' | 'profile' | 'security' | 'danger';
+type Tab = 'account' | 'profile' | 'security' | 'danger' | 'cv';
 
 interface CandidateProfileData {
   bio?: string;
@@ -262,6 +266,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
   // Avatar upload
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
+  // CV upload & AI recommendations
+  const [cvText, setCvText] = useState('');
+  const [cvFileName, setCvFileName] = useState('');
+  const [analyzingCv, setAnalyzingCv] = useState(false);
+  const [cvRecommendations, setCvRecommendations] = useState<{ skill: string; reason: string }[]>([]);
+  const cvInputRef = useRef<HTMLInputElement>(null);
+
   // Location detection
   const [detectingLocation, setDetectingLocation] = useState(false);
 
@@ -326,6 +337,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
       const normalized = { ...(data ?? {}), avatar: (data as any)?.image_url ?? (data as any)?.avatar ?? '' };
       setProfileData(normalized);
       setProfileDraft(normalized);
+      // Restore saved CV data
+      if ((data as any)?.cv_text) setCvText((data as any).cv_text);
+      if (Array.isArray((data as any)?.cv_recommendations) && (data as any).cv_recommendations.length > 0) {
+        setCvRecommendations((data as any).cv_recommendations);
+      }
     } catch {
       toast.error('Failed to load profile details');
     } finally {
@@ -457,9 +473,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
       form.append('image', file);
       const data = await api.postForm('/profiles/upload-image/', form) as any;
       const imageUrl: string = data.url ?? data.avatar_url ?? '';
+      if (!imageUrl) throw new Error('No URL returned');
+      // Belt-and-suspenders: also PUT the image_url to the profile endpoint to guarantee persistence
+      await api.put(profileEndpoint, { image_url: imageUrl }).catch(() => {/* non-fatal */});
       setProfileData((prev) => ({ ...prev, avatar: imageUrl }));
       setProfileDraft((prev) => ({ ...prev, avatar: imageUrl }));
-      // Propagate the new picture to App.tsx so the navbar updates immediately
       onProfileUpdated?.({ image: imageUrl });
       toast.success('Profile photo updated');
     } catch {
@@ -470,12 +488,50 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
     }
   };
 
+  // ── CV upload & AI skill recommendation ──
+
+  const handleCvFileRead = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCvFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = (ev.target?.result as string) || '';
+      setCvText(text.slice(0, 15000)); // cap at 15k chars to stay within token limits
+      setCvRecommendations([]);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleAnalyzeCv = async () => {
+    if (!cvText.trim()) {
+      toast.warning('Please upload or paste your CV text first.');
+      return;
+    }
+    setAnalyzingCv(true);
+    setCvRecommendations([]);
+    try {
+      const res = await api.post('/ai/recommend-skills/', { cv_text: cvText }) as any;
+      const recs = Array.isArray(res?.recommendations) ? res.recommendations : [];
+      setCvRecommendations(recs);
+      if (recs.length === 0) toast.warning('No recommendations generated. Try adding more detail to your CV.');
+    } catch {
+      toast.error('Failed to analyze CV. Please try again.');
+    } finally {
+      setAnalyzingCv(false);
+    }
+  };
+
   // ── Tab definitions ──
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'account', label: 'Account', icon: <User size={15} /> },
     ...(user.role !== 'admin'
       ? [{ id: 'profile' as Tab, label: 'Profile Details', icon: <Edit2 size={15} /> }]
+      : []),
+    ...(user.role === 'candidate'
+      ? [{ id: 'cv' as Tab, label: 'CV & Skills', icon: <FileText size={15} /> }]
       : []),
     { id: 'security', label: 'Security', icon: <Lock size={15} /> },
     { id: 'danger', label: 'Danger Zone', icon: <AlertTriangle size={15} /> },
@@ -1122,6 +1178,94 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
           )}
 
           {/* ── Danger Zone Tab ── */}
+          {activeTab === 'cv' && user.role === 'candidate' && (
+            <motion.div
+              key="cv"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-5"
+            >
+              {/* Elite plan badge */}
+              <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-5 text-white flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Star className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-widest opacity-80 mb-0.5">Elite Plan Feature</div>
+                  <h2 className="font-bold text-lg leading-tight">CV Analysis &amp; Skill Recommendations</h2>
+                  <p className="text-white/80 text-sm mt-0.5">Upload your CV and let AI tell you which skills to verify on Lune to maximize your profile.</p>
+                </div>
+              </div>
+
+              {/* Upload area */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+                <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                  <Upload size={16} className="text-teal" /> Upload Your CV
+                </h3>
+                <p className="text-sm text-gray-500">Upload a plain-text (.txt) file or paste your CV content below. PDF/Word support coming soon.</p>
+
+                <div
+                  onClick={() => cvInputRef.current?.click()}
+                  className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center cursor-pointer hover:border-teal hover:bg-teal/5 transition"
+                >
+                  <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                  {cvFileName ? (
+                    <p className="text-sm font-semibold text-teal">{cvFileName}</p>
+                  ) : (
+                    <p className="text-sm text-gray-400">Click to upload a .txt file</p>
+                  )}
+                </div>
+                <input ref={cvInputRef} type="file" accept=".txt,.md" className="hidden" onChange={handleCvFileRead} />
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Or paste CV text</label>
+                  <textarea
+                    rows={8}
+                    value={cvText}
+                    onChange={(e) => { setCvText(e.target.value); setCvRecommendations([]); }}
+                    placeholder="Paste your CV / resume text here..."
+                    className="w-full text-sm border border-gray-200 rounded-xl p-3 resize-none focus:outline-none focus:ring-2 focus:ring-teal/30"
+                  />
+                </div>
+
+                <button
+                  onClick={handleAnalyzeCv}
+                  disabled={analyzingCv || !cvText.trim()}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-teal text-white font-semibold hover:opacity-90 transition disabled:opacity-50"
+                >
+                  {analyzingCv ? (
+                    <><RefreshCw className="w-4 h-4 animate-spin" /> Analyzing CV…</>
+                  ) : (
+                    <><Sparkles className="w-4 h-4" /> Analyze &amp; Get Recommendations</>
+                  )}
+                </button>
+              </div>
+
+              {/* Recommendations */}
+              {cvRecommendations.length > 0 && (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                  <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <Sparkles size={16} className="text-orange" /> Recommended Skills to Verify
+                  </h3>
+                  <div className="space-y-3">
+                    {cvRecommendations.map((rec, i) => (
+                      <div key={i} className="flex items-start gap-3 p-4 bg-teal/5 border border-teal/20 rounded-xl">
+                        <div className="w-7 h-7 bg-teal text-white rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">{i + 1}</div>
+                        <div>
+                          <p className="font-semibold text-gray-900 text-sm">{rec.skill}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{rec.reason}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-4">Head to your dashboard to start verifying these skills and strengthen your Skill Passport.</p>
+                </div>
+              )}
+            </motion.div>
+          )}
+
           {activeTab === 'danger' && (
             <motion.div
               key="danger"
