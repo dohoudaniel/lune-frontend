@@ -255,19 +255,23 @@ let cachedGamificationData: Record<string, UserGamification> = {};
 
 export const initializeGamification = async (userId: string) => {
     try {
-        const stats = await api.get('/users/me/statistics/');
-        const achievementsData = await api.get('/users/me/achievements/');
+        const [stats, achievementsData] = await Promise.all([
+            api.get('/users/me/statistics/'),
+            api.get('/users/me/achievements/'),
+        ]);
 
         if (stats) {
             const user = initializeUser(userId);
-            user.totalXP = stats.total_points;
-            user.currentXP = stats.total_points % XP_PER_LEVEL;
-            user.level = Math.floor(stats.total_points / XP_PER_LEVEL) + 1;
-            user.streak.current = stats.current_streak;
-            user.streak.longest = stats.longest_streak;
-            
-            if (achievementsData) {
-                achievementsData.forEach((a: any) => {
+            // Always use server values — do not override with stale localStorage
+            user.totalXP = (stats as any).total_points ?? 0;
+            user.currentXP = user.totalXP % XP_PER_LEVEL;
+            user.level = Math.floor(user.totalXP / XP_PER_LEVEL) + 1;
+            user.xpToNextLevel = calculateXPForLevel(user.level + 1);
+            user.streak.current = (stats as any).current_streak ?? 0;
+            user.streak.longest = (stats as any).longest_streak ?? 0;
+
+            if (Array.isArray(achievementsData)) {
+                (achievementsData as any[]).forEach((a: any) => {
                     const localAch = user.achievements.find(la => la.id === a.achievement_id);
                     if (localAch) {
                         localAch.unlocked = true;
@@ -285,36 +289,16 @@ export const initializeGamification = async (userId: string) => {
     }
 };
 
+// In-memory only — streak & XP are the authoritative backend values.
+// localStorage is no longer used as source of truth.
 const getStoredData = (): Record<string, UserGamification> => {
-    if (Object.keys(cachedGamificationData).length > 0) return cachedGamificationData;
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        return stored ? JSON.parse(stored) : {};
-    } catch {
-        return {};
-    }
+    return cachedGamificationData;
 };
 
 const saveData = (data: Record<string, UserGamification>): void => {
+    // Only update the in-memory cache. Streak/XP are computed server-side via
+    // recalculate_user_stats and fetched on login via initializeGamification.
     cachedGamificationData = data;
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-
-        // Background sync to user preferences (for extra UI state)
-        const userIds = Object.keys(data);
-        if (userIds.length > 0) {
-            const userId = userIds[0];
-            api.get(`/users/${userId}/preferences/`)
-                .then(async (profData) => {
-                    const prefs = profData || {};
-                    prefs.gamification = data;
-                    await api.put(`/users/${userId}/preferences/`, prefs);
-                })
-                .catch(() => {});
-        }
-    } catch (error) {
-        console.error('Failed to save gamification data:', error);
-    }
 };
 
 // =====================================================
@@ -402,57 +386,37 @@ const calculateXPForLevel = (level: number): number => {
 };
 
 /**
- * Update streak
+ * Update streak — streak is now computed server-side by recalculate_user_stats().
+ * This function refreshes the local cache from the backend and returns the
+ * server-authoritative streak value. Call after every assessment submission.
  */
-export const updateStreak = (userId: string): {
+export const updateStreak = async (userId: string): Promise<{
     newStreak: number;
     bonus: number;
     streakBroken: boolean;
-} => {
-    const data = getStoredData();
-    const user = data[userId] || initializeUser(userId);
+}> => {
+    try {
+        const stats = await api.get('/users/me/statistics/') as any;
+        const data = getStoredData();
+        const user = data[userId] || initializeUser(userId);
 
-    const today = new Date().toISOString().split('T')[0];
-    const lastActivity = user.streak.lastActivityDate;
+        const prevStreak = user.streak.current;
+        user.streak.current = stats?.current_streak ?? user.streak.current;
+        user.streak.longest = stats?.longest_streak ?? user.streak.longest;
+        user.totalXP = stats?.total_points ?? user.totalXP;
+        user.currentXP = user.totalXP % XP_PER_LEVEL;
+        user.level = Math.floor(user.totalXP / XP_PER_LEVEL) + 1;
 
-    let bonus = 0;
-    let streakBroken = false;
+        data[userId] = user;
+        saveData(data);
 
-    if (lastActivity === today) {
-        // Already active today
-        return { newStreak: user.streak.current, bonus: 0, streakBroken: false };
+        const streakBroken = user.streak.current < prevStreak && prevStreak > 0;
+        const bonus = user.streak.current > prevStreak ? STREAK_BONUS_XP * Math.min(user.streak.current, 10) : 0;
+        return { newStreak: user.streak.current, bonus, streakBroken };
+    } catch {
+        const user = getStoredData()[userId];
+        return { newStreak: user?.streak?.current ?? 0, bonus: 0, streakBroken: false };
     }
-
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-
-    if (lastActivity === yesterday) {
-        // Continue streak
-        user.streak.current += 1;
-        bonus = STREAK_BONUS_XP * Math.min(user.streak.current, 10);
-
-        if (user.streak.current > user.streak.longest) {
-            user.streak.longest = user.streak.current;
-        }
-    } else if (lastActivity && lastActivity !== today) {
-        // Streak broken
-        streakBroken = user.streak.current > 0;
-        user.streak.current = 1;
-    } else {
-        // First activity
-        user.streak.current = 1;
-    }
-
-    user.streak.lastActivityDate = today;
-
-    if (bonus > 0) {
-        user.currentXP += bonus;
-        user.totalXP += bonus;
-    }
-
-    data[userId] = user;
-    saveData(data);
-
-    return { newStreak: user.streak.current, bonus, streakBroken };
 };
 
 /**
@@ -524,15 +488,24 @@ export const checkAchievements = (userId: string, stats: {
             achievement.unlocked = true;
             user.unlockedAt[achievement.id] = new Date().toISOString();
             newlyUnlocked.push(achievement);
-
-            // Award XP for achievement
-            user.currentXP += achievement.xpReward;
-            user.totalXP += achievement.xpReward;
         }
     });
 
     data[userId] = user;
     saveData(data);
+
+    // Persist newly unlocked achievements to backend
+    if (newlyUnlocked.length > 0) {
+        newlyUnlocked.forEach(ach => {
+            api.post('/users/me/achievements/', {
+                achievement_id: ach.id,
+                achievement_type: ach.category,
+                achievement_name: ach.name,
+                description: ach.description,
+                points: ach.xpReward,
+            }).catch(() => {});  // fire-and-forget, non-fatal
+        });
+    }
 
     return newlyUnlocked;
 };

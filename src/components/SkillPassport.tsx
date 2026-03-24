@@ -57,16 +57,20 @@ export const SkillPassport: React.FC<SkillPassportProps> = ({
         setError(null);
 
         try {
-            const history: AssessmentHistoryItem[] = assessmentHistory.length > 0
-                ? assessmentHistory
-                : Object.entries(candidate.skills || {}).map(([skill, score]) => ({
-                    skill,
-                    score: score as number,
-                    passed: (score as number) >= 70,
-                    difficulty: (score as number) >= 85 ? 'Advanced' : (score as number) >= 70 ? 'Mid-Level' : 'Beginner',
-                    completedAt: new Date().toISOString(),
-                    category: 'general',
-                }));
+            // Only include assessments the candidate actually PASSED (score ≥ 70)
+            const passedHistory = assessmentHistory.filter(h => h.passed);
+            const history: AssessmentHistoryItem[] = passedHistory.length > 0
+                ? passedHistory
+                : Object.entries(candidate.skills || {})
+                    .filter(([, score]) => (score as number) >= 70)
+                    .map(([skill, score]) => ({
+                        skill,
+                        score: score as number,
+                        passed: true,
+                        difficulty: (score as number) >= 85 ? 'Advanced' : (score as number) >= 70 ? 'Mid-Level' : 'Beginner',
+                        completedAt: new Date().toISOString(),
+                        category: 'general',
+                    }));
 
             const certs: CertificationItem[] = certifications.length > 0
                 ? certifications

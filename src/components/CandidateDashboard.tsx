@@ -146,9 +146,18 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
    // completion bar and profile card always reflect the actual saved state.
    useEffect(() => {
       getCandidateProfile().then((fresh) => {
-         if (fresh) {
-            onUpdateProfile(fresh as Partial<CandidateProfile>);
+         if (!fresh) return;
+         // Merge skills carefully: take the best score per skill from both sources
+         // so a recent local pass is never overwritten by a stale backend fetch.
+         const freshSkills = (fresh.skills as Record<string, number>) || {};
+         const localSkills = (candidate.skills as Record<string, number>) || {};
+         const mergedSkills: Record<string, number> = { ...freshSkills };
+         for (const [skill, score] of Object.entries(localSkills)) {
+            if ((score as number) > (mergedSkills[skill] || 0)) {
+               mergedSkills[skill] = score as number;
+            }
          }
+         onUpdateProfile({ ...fresh, skills: mergedSkills } as Partial<CandidateProfile>);
       }).catch(() => {/* silently ignore — stale local data is acceptable fallback */});
    // eslint-disable-next-line react-hooks/exhaustive-deps
    }, []);
@@ -436,20 +445,22 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
                      </div>
                      <div className="space-y-4 mb-6">
                         {Object.entries(candidate.skills).map(([skill, score]) => {
-                           const pct = Math.min(100, Math.max(0, Math.round(score as number)));
+                           const pct = Math.min(100, Math.max(0, Math.round(Number(score) || 0)));
+                           const barStyle: React.CSSProperties = {
+                              width: `${pct}%`,
+                              background: pct >= 80
+                                 ? 'linear-gradient(to right, #1F4D48, #34d399)'
+                                 : 'linear-gradient(to right, #F26430, #fb923c)',
+                              transition: 'width 0.7s ease-out',
+                           };
                            return (
-                           <div key={`${skill}-${pct}`} className={pct >= 80 ? 'ring-1 ring-teal-100 rounded-xl p-2 -mx-2' : ''}>
+                           <div key={skill} className={pct >= 80 ? 'ring-1 ring-teal/20 rounded-xl p-2 -mx-2' : ''}>
                               <div className="flex justify-between text-xs mb-1.5">
                                  <span className="font-medium text-slate-700">{skill}</span>
-                                 <span className={`font-bold ${pct >= 80 ? 'text-green-600' : 'text-slate-600'}`}>{pct}%</span>
+                                 <span className={`font-bold ${pct >= 80 ? 'text-teal' : 'text-slate-600'}`}>{pct}%</span>
                               </div>
-                              <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden shadow-inner">
-                                 <motion.div
-                                    initial={{ width: "0%" }}
-                                    animate={{ width: `${pct}%` }}
-                                    transition={{ duration: 1, ease: "easeOut" }}
-                                    className={`h-full rounded-full ${pct >= 80 ? 'bg-gradient-to-r from-teal-500 to-emerald-400' : 'bg-gradient-to-r from-orange-400 to-orange-500'}`}
-                                 />
+                              <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                                 <div className="h-full rounded-full" style={barStyle} />
                               </div>
                            </div>
                            );

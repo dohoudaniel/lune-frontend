@@ -78,18 +78,40 @@ export const VideoVerificationAssessment: React.FC<VideoVerificationAssessmentPr
 
     // Start camera preview
     const startCamera = async () => {
+        // Try with both video + audio first; fall back to video-only if mic is blocked
+        let stream: MediaStream | null = null;
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
+            stream = await navigator.mediaDevices.getUserMedia({
                 video: { width: 1280, height: 720, facingMode: 'user' },
                 audio: true
             });
+        } catch (audioErr: any) {
+            if (audioErr?.name === 'NotAllowedError' || audioErr?.name === 'PermissionDeniedError') {
+                // Microphone was denied — try video-only and warn the user
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                    setError('Microphone access was denied. Audio responses will not be recorded. Please allow microphone access and refresh to enable full recording.');
+                } catch (videoErr) {
+                    setError('Unable to access camera. Please allow camera and microphone permissions in your browser, then refresh.');
+                    console.error(videoErr);
+                    return;
+                }
+            } else {
+                setError('Unable to access camera/microphone. Please allow permissions and refresh.');
+                console.error(audioErr);
+                return;
+            }
+        }
+        if (stream) {
             streamRef.current = stream;
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
             }
-        } catch (err) {
-            setError('Unable to access camera. Please allow camera permissions.');
-            console.error(err);
+            // Warn if audio track is missing
+            const hasAudio = stream.getAudioTracks().length > 0;
+            if (!hasAudio) {
+                setError('No microphone detected. Your spoken responses will not be captured. For full assessment, plug in a microphone and refresh.');
+            }
         }
     };
 
@@ -147,7 +169,11 @@ export const VideoVerificationAssessment: React.FC<VideoVerificationAssessmentPr
                 setLiveTranscript(interim);
                 setFinalTranscript(accumulatedTranscriptRef.current);
             };
-            recognition.onerror = () => { /* silently ignore */ };
+            recognition.onerror = (event: any) => {
+                if (event.error === 'not-allowed') {
+                    setError('Microphone permission denied for speech recognition. Please allow microphone access in your browser settings and refresh.');
+                }
+            };
             try { recognition.start(); } catch { /* silently ignore */ }
             speechRecognitionRef.current = recognition;
         }

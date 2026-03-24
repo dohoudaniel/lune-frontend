@@ -132,14 +132,24 @@ export const Assessment: React.FC<AssessmentProps> = ({ skill, difficulty, onCom
       }
     };
 
+    // Gaze tracking proxy: mouse leaving window = candidate looking away
+    const handleMouseLeave = () => {
+      setSuspiciousGazeCount(prev => prev + 1);
+      setCheatingEvents(prev => [...prev, 'Gaze left screen']);
+      setActiveAlert("Proctor Alert: Please keep your eyes on the screen.");
+      setTimeout(() => setActiveAlert(null), 3000);
+    };
+
     document.addEventListener("visibilitychange", handleVisibilityChange);
     document.addEventListener("contextmenu", handleContextMenu);
     window.addEventListener("keydown", handleKeyDownGlobal);
+    document.documentElement.addEventListener("mouseleave", handleMouseLeave);
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       document.removeEventListener("contextmenu", handleContextMenu);
       window.removeEventListener("keydown", handleKeyDownGlobal);
+      document.documentElement.removeEventListener("mouseleave", handleMouseLeave);
     };
   }, []);
 
@@ -169,27 +179,30 @@ export const Assessment: React.FC<AssessmentProps> = ({ skill, difficulty, onCom
     setTimeout(() => { isPasting.current = false; }, 100);
   };
 
-  // Webcam Setup
+  // Webcam Setup — runs AFTER the assessment content loads so the video element is in the DOM
   useEffect(() => {
+    if (loading) return; // video element not rendered yet while loading screen is showing
+
+    let stream: MediaStream | null = null;
     const startWebcam = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => {/* autoplay policy — muted video plays anyway */});
           setWebcamActive(true);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Webcam access denied", err);
-        setWarnings(prev => [...prev, "Camera required for verification."]);
+        const reason = err?.name === 'NotAllowedError' ? 'Camera permission denied.' : 'Camera not accessible.';
+        setWarnings(prev => [...prev, `${reason} Enable camera for proctoring.`]);
       }
     };
     startWebcam();
     return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
-      }
+      stream?.getTracks().forEach(t => t.stop());
     };
-  }, []);
+  }, [loading]);
 
   // Editor Logic: Scroll Sync & Autocomplete
   const handleScroll = () => {
