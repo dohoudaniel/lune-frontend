@@ -30,6 +30,8 @@ import {
   Sparkles,
   Upload,
   Star,
+  Copy,
+  ExternalLink,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '../lib/toast';
@@ -57,6 +59,8 @@ export interface ProfilePageProps {
     yearsOfExperience?: number;
     preferredWorkMode?: string;
   }) => void;
+  /** Called when user clicks "Start Assessment" on a CV recommendation */
+  onStartAssessment?: (skill: string) => void;
 }
 
 type Tab = 'account' | 'profile' | 'security' | 'danger' | 'cv';
@@ -231,7 +235,7 @@ const DeleteAccountModal: React.FC<{
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout, onProfileUpdated }) => {
+export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout, onProfileUpdated, onStartAssessment }) => {
   const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -269,8 +273,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
   // CV upload & AI recommendations
   const [cvText, setCvText] = useState('');
   const [cvFileName, setCvFileName] = useState('');
+  const [cvFileUrl, setCvFileUrl] = useState('');
+  const [uploadingCv, setUploadingCv] = useState(false);
   const [analyzingCv, setAnalyzingCv] = useState(false);
   const [cvRecommendations, setCvRecommendations] = useState<{ skill: string; reason: string }[]>([]);
+  const [cvSource, setCvSource] = useState<'uploaded' | 'manual'>('uploaded');
+  const [manualCvText, setManualCvText] = useState('');
   const cvInputRef = useRef<HTMLInputElement>(null);
 
   // Location detection
@@ -339,6 +347,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
       setProfileDraft(normalized);
       // Restore saved CV data
       if ((data as any)?.cv_text) setCvText((data as any).cv_text);
+      if ((data as any)?.cv_file_url) {
+        setCvFileUrl((data as any).cv_file_url);
+        setCvSource('uploaded');
+      } else {
+        setCvSource('manual');
+      }
       if (Array.isArray((data as any)?.cv_recommendations) && (data as any).cv_recommendations.length > 0) {
         setCvRecommendations((data as any).cv_recommendations);
       }
@@ -490,29 +504,49 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
 
   // ── CV upload & AI skill recommendation ──
 
-  const handleCvFileRead = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCvFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setCvFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = (ev.target?.result as string) || '';
-      setCvText(text.slice(0, 15000)); // cap at 15k chars to stay within token limits
-      setCvRecommendations([]);
-    };
-    reader.readAsText(file);
     e.target.value = '';
+    setCvFileName(file.name);
+    setCvRecommendations([]);
+    setUploadingCv(true);
+    try {
+      const formData = new FormData();
+      formData.append('cv', file);
+      const res = await api.postForm('/profiles/upload-cv/', formData) as any;
+      if (res?.cv_file_url) setCvFileUrl(res.cv_file_url);
+      if (res?.cv_text) setCvText(res.cv_text);
+      setCvSource('uploaded');
+      setCvRecommendations([]);
+      toast.success('CV uploaded successfully.');
+    } catch {
+      toast.error('CV upload failed. Please try again.');
+    } finally {
+      setUploadingCv(false);
+    }
   };
 
   const handleAnalyzeCv = async () => {
-    if (!cvText.trim()) {
-      toast.warning('Please upload or paste your CV text first.');
+    if (cvSource === 'uploaded') {
+      if (!cvFileUrl) {
+        toast.warning('Please upload a CV file first.');
+        return;
+      }
+      if (!cvText.trim()) {
+        toast.warning('No text could be extracted from your CV. Try uploading a PDF or TXT file instead of a Word document.');
+        return;
+      }
+    }
+    const textToAnalyze = cvSource === 'uploaded' ? cvText : manualCvText;
+    if (!textToAnalyze.trim()) {
+      toast.warning('Please paste your CV text first.');
       return;
     }
     setAnalyzingCv(true);
     setCvRecommendations([]);
     try {
-      const res = await api.post('/ai/recommend-skills/', { cv_text: cvText }) as any;
+      const res = await api.post('/ai/recommend-skills/', { cv_text: textToAnalyze }) as any;
       const recs = Array.isArray(res?.recommendations) ? res.recommendations : [];
       setCvRecommendations(recs);
       if (recs.length === 0) toast.warning('No recommendations generated. Try adding more detail to your CV.');
@@ -1199,40 +1233,121 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
                 </div>
               </div>
 
-              {/* Upload area */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+              {/* CV Management */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-5">
                 <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                  <Upload size={16} className="text-teal" /> Upload Your CV
+                  <Upload size={16} className="text-teal" /> Your CV
                 </h3>
-                <p className="text-sm text-gray-500">Upload a plain-text (.txt) file or paste your CV content below. PDF/Word support coming soon.</p>
 
+                {/* ── Option 1: Uploaded CV card ── */}
                 <div
-                  onClick={() => cvInputRef.current?.click()}
-                  className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center cursor-pointer hover:border-teal hover:bg-teal/5 transition"
+                  onClick={() => setCvSource('uploaded')}
+                  className={`rounded-xl border-2 p-4 transition cursor-pointer ${cvSource === 'uploaded' ? 'border-teal bg-teal/5' : 'border-gray-200 bg-white hover:border-gray-300'}`}
                 >
-                  <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                  {cvFileName ? (
-                    <p className="text-sm font-semibold text-teal">{cvFileName}</p>
-                  ) : (
-                    <p className="text-sm text-gray-400">Click to upload a .txt file</p>
-                  )}
-                </div>
-                <input ref={cvInputRef} type="file" accept=".txt,.md" className="hidden" onChange={handleCvFileRead} />
+                  <div className="flex items-start gap-3">
+                    {/* Radio indicator */}
+                    <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition ${cvSource === 'uploaded' ? 'border-teal' : 'border-gray-300'}`}>
+                      {cvSource === 'uploaded' && <div className="w-2.5 h-2.5 rounded-full bg-teal" />}
+                    </div>
 
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Or paste CV text</label>
-                  <textarea
-                    rows={8}
-                    value={cvText}
-                    onChange={(e) => { setCvText(e.target.value); setCvRecommendations([]); }}
-                    placeholder="Paste your CV / resume text here..."
-                    className="w-full text-sm border border-gray-200 rounded-xl p-3 resize-none focus:outline-none focus:ring-2 focus:ring-teal/30"
-                  />
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-gray-900">
+                          {cvFileUrl ? 'Uploaded CV' : 'Upload a CV'}
+                        </p>
+                        {cvSource === 'uploaded' && (
+                          <span className="text-xs font-semibold text-teal bg-teal/10 px-2 py-0.5 rounded-full flex-shrink-0">Selected for analysis</span>
+                        )}
+                      </div>
+
+                      {cvFileUrl && (
+                        <>
+                          <p className="text-xs text-gray-400">
+                            {cvText ? `~${Math.round(cvText.length / 5)} words extracted` : 'No text extracted (upload a PDF or TXT for analysis)'}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <a
+                              href={`/app/user/view-cv/${user.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal hover:underline"
+                            >
+                              <ExternalLink size={12} /> View CV
+                            </a>
+                            <a
+                              href={`/api/profiles/${user.id}/cv/download/`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-teal transition"
+                            >
+                              <FileText size={12} /> Download
+                            </a>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(`${window.location.origin}/app/user/view-cv/${user.id}`); toast.success('CV link copied!'); }}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-teal transition"
+                            >
+                              <Copy size={12} /> Copy link
+                            </button>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Upload / Replace button */}
+                      <div
+                        onClick={(e) => { e.stopPropagation(); if (!uploadingCv) cvInputRef.current?.click(); }}
+                        className={`mt-1 border-2 border-dashed rounded-lg p-4 text-center transition ${uploadingCv ? 'opacity-60 cursor-not-allowed border-gray-200' : 'cursor-pointer hover:border-teal hover:bg-teal/5 border-gray-200'}`}
+                      >
+                        {uploadingCv ? (
+                          <div className="flex items-center justify-center gap-2 text-teal text-sm font-semibold">
+                            <RefreshCw className="w-4 h-4 animate-spin" /> Uploading…
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-400">
+                            {cvFileUrl ? '↑ Click to replace with a new file' : '↑ Click to upload a PDF, TXT, or Word file'}
+                            {cvFileName && <span className="block text-teal font-semibold mt-0.5">{cvFileName}</span>}
+                          </p>
+                        )}
+                      </div>
+                      <input ref={cvInputRef} type="file" accept=".pdf,.txt,.md,.doc,.docx" className="hidden" onChange={handleCvFileUpload} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Option 2: Paste manually ── */}
+                <div
+                  onClick={() => setCvSource('manual')}
+                  className={`rounded-xl border-2 p-4 transition cursor-pointer ${cvSource === 'manual' ? 'border-teal bg-teal/5' : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Radio indicator */}
+                    <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition ${cvSource === 'manual' ? 'border-teal' : 'border-gray-300'}`}>
+                      {cvSource === 'manual' && <div className="w-2.5 h-2.5 rounded-full bg-teal" />}
+                    </div>
+
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-gray-900">Paste CV text manually</p>
+                        {cvSource === 'manual' && (
+                          <span className="text-xs font-semibold text-teal bg-teal/10 px-2 py-0.5 rounded-full flex-shrink-0">Selected for analysis</span>
+                        )}
+                      </div>
+                      {cvSource === 'manual' && (
+                        <textarea
+                          rows={8}
+                          value={manualCvText}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => { setManualCvText(e.target.value); setCvRecommendations([]); }}
+                          placeholder="Paste your CV / resume text here…"
+                          className="w-full text-sm border border-gray-200 rounded-xl p-3 resize-none focus:outline-none focus:ring-2 focus:ring-teal/30"
+                        />
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <button
                   onClick={handleAnalyzeCv}
-                  disabled={analyzingCv || !cvText.trim()}
+                  disabled={analyzingCv}
                   className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-teal text-white font-semibold hover:opacity-90 transition disabled:opacity-50"
                 >
                   {analyzingCv ? (
@@ -1253,14 +1368,20 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onBack, onLogout
                     {cvRecommendations.map((rec, i) => (
                       <div key={i} className="flex items-start gap-3 p-4 bg-teal/5 border border-teal/20 rounded-xl">
                         <div className="w-7 h-7 bg-teal text-white rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">{i + 1}</div>
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <p className="font-semibold text-gray-900 text-sm">{rec.skill}</p>
                           <p className="text-xs text-gray-500 mt-0.5">{rec.reason}</p>
                         </div>
+                        <button
+                          onClick={() => onStartAssessment ? onStartAssessment(rec.skill) : onBack()}
+                          className="flex-shrink-0 text-xs font-semibold text-teal border border-teal/30 rounded-lg px-3 py-1.5 hover:bg-teal hover:text-white transition whitespace-nowrap"
+                        >
+                          Start Assessment →
+                        </button>
                       </div>
                     ))}
                   </div>
-                  <p className="text-xs text-gray-400 mt-4">Head to your dashboard to start verifying these skills and strengthen your Skill Passport.</p>
+                  <p className="text-xs text-gray-400 mt-4">Click "Start Assessment" on any skill to begin verifying it on your Skill Passport.</p>
                 </div>
               )}
             </motion.div>

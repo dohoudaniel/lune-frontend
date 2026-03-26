@@ -64,6 +64,7 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
     const [webcamActive, setWebcamActive] = useState(false);
     const [webcamError, setWebcamError] = useState<string | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
+    const streamRef = useRef<MediaStream | null>(null);  // tracks live stream for reliable cleanup
     const [facialWarnings, setFacialWarnings] = useState(0);
 
     // Audio Recording State for Oral Responses
@@ -71,9 +72,13 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
     const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
     const [audioUrl, setAudioUrl] = useState<string | null>(null);
     const [oralTranscript, setOralTranscript] = useState('');
+    const [interimTranscript, setInterimTranscript] = useState(''); // real-time interim speech
     const [recordingTime, setRecordingTime] = useState(0);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
+    const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    // Ref so SpeechRecognition callbacks always see the current question index
+    const currentQuestionIndexRef = useRef(currentQuestionIndex);
 
     // Advanced Proctoring State
     const [integrityScore, setIntegrityScore] = useState(100);
@@ -83,6 +88,17 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
     // Session Tracking State
     const [sessionId, setSessionId] = useState<string | null>(null);
 
+
+    // Keep ref in sync with state so recognition callbacks never use stale closure values
+    useEffect(() => { currentQuestionIndexRef.current = currentQuestionIndex; }, [currentQuestionIndex]);
+
+    // Reset audio state when moving to a new question
+    useEffect(() => {
+        setOralTranscript('');
+        setInterimTranscript('');
+        setAudioBlob(null);
+        setAudioUrl(null);
+    }, [currentQuestionIndex]);
 
     // Load assessment content
     useEffect(() => {
@@ -99,7 +115,7 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
                 setStep('context');
             } catch (err) {
                 setError('Failed to load assessment. Please try again.');
-                console.error(err);
+                if (import.meta.env.DEV) console.error(err);
             }
         };
         loadContent();
@@ -299,13 +315,22 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
         const startWebcam = async () => {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                streamRef.current = stream;
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream;
-                    setWebcamActive(true);
+                    // Wait for the video element to confirm the stream is active before marking camera as on
+                    videoRef.current.onloadedmetadata = () => {
+                        videoRef.current?.play().catch(() => {});
+                        setWebcamActive(true);
+                    };
+                } else {
+                    // videoRef not mounted yet — will be picked up when the element renders
+                    // Do NOT set webcamActive here; onloadedmetadata will fire once the element mounts
                 }
             } catch (err) {
-                console.error("Webcam access denied", err);
+                if (import.meta.env.DEV) console.error("Webcam access denied", err);
                 setWebcamError("Camera access is required for proctoring. Please enable camera permissions.");
+                setWebcamActive(false);
             }
         };
 
@@ -314,9 +339,10 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
         }
 
         return () => {
-            if (videoRef.current && videoRef.current.srcObject) {
-                (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
-            }
+            // Stop all tracks and reset state — runs when step changes or component unmounts
+            streamRef.current?.getTracks().forEach(t => t.stop());
+            streamRef.current = null;
+            setWebcamActive(false);
         };
     }, [step]);
 
@@ -424,77 +450,97 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
             mediaRecorder.start();
             setIsRecording(true);
             setRecordingTime(0);
+            setOralTranscript('');
+            setInterimTranscript('');
 
-            // Start Speech Recognition (Real-time)
-            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-                const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-                const recognition = new SpeechRecognition();
+            // Start Speech Recognition (Real-time transcription)
+            const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+            if (SpeechRecognitionAPI) {
+                const recognition = new SpeechRecognitionAPI();
                 recognition.continuous = true;
                 recognition.interimResults = true;
                 recognition.lang = 'en-US';
+                recognition.maxAlternatives = 1;
 
                 recognition.onresult = (event: any) => {
                     let finalText = '';
+                    let interimText = '';
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         if (event.results[i].isFinal) {
-                            finalText += event.results[i][0].transcript;
+                            finalText += event.results[i][0].transcript + ' ';
+                        } else {
+                            interimText += event.results[i][0].transcript;
                         }
                     }
-                    if (finalText) {
-                        setOralTranscript(prev => {
-                            const updated = (prev + ' ' + finalText).trim();
-                            // Also save into the current question's answer
-                            setAnswers(prevAnswers => {
-                                if (!content) return prevAnswers;
-                                const qId = content.situationalQuestions[currentQuestionIndex]?.id;
-                                if (qId == null) return prevAnswers;
-                                const existing = prevAnswers[qId] || '';
-                                return { ...prevAnswers, [qId]: (existing + ' ' + finalText).trim() };
-                            });
-                            return updated;
+                    // Show interim text in real-time so user knows mic is working
+                    if (interimText) setInterimTranscript(interimText);
+                    if (finalText.trim()) {
+                        setInterimTranscript('');
+                        setOralTranscript(prev => (prev + ' ' + finalText).trim());
+                        // Use ref — avoids stale closure capturing old currentQuestionIndex
+                        setAnswers(prev => {
+                            const qId = content?.situationalQuestions[currentQuestionIndexRef.current]?.id;
+                            if (qId == null) return prev;
+                            return { ...prev, [qId]: ((prev[qId] || '') + ' ' + finalText).trim() };
                         });
                     }
                 };
 
                 recognition.onerror = (event: any) => {
-                    console.error('Speech recognition error', event.error);
+                    if (import.meta.env.DEV) console.error('Speech recognition error', event.error);
+                    // no-speech and audio-capture are recoverable — onend will auto-restart
+                };
+
+                // Critical fix: SpeechRecognition stops automatically after ~60 s of audio or
+                // a few seconds of silence. Re-start it as long as recording is still active.
+                recognition.onend = () => {
+                    if (mediaRecorderRef.current?.state === 'recording') {
+                        try { recognition.start(); } catch (_) { /* already restarting */ }
+                    }
                 };
 
                 recognition.start();
                 speechRecognitionRef.current = recognition;
             } else {
-                setOralTranscript("(Speech recognition not supported in this browser. Please ensure your response is clear.)");
+                setOralTranscript("(Live transcription not supported in this browser — your audio has been recorded and will be evaluated.)");
             }
 
             // Recording timer
-            const recordTimer = setInterval(() => {
+            recordTimerRef.current = setInterval(() => {
                 setRecordingTime(prev => prev + 1);
             }, 1000);
 
-            // Auto-stop after max duration (90 seconds)
+            // Auto-stop after 90 seconds
             setTimeout(() => {
-                if (mediaRecorder.state === 'recording') {
+                if (mediaRecorderRef.current?.state === 'recording') {
                     stopRecording();
-                    clearInterval(recordTimer);
                 }
             }, 90000);
 
         } catch (err) {
-            console.error("Audio recording error:", err);
+            if (import.meta.env.DEV) console.error("Audio recording error:", err);
             setActiveAlert("Microphone access is required for oral responses.");
             setTimeout(() => setActiveAlert(null), 3000);
         }
     };
 
     const stopRecording = () => {
+        // Clear the timer first
+        if (recordTimerRef.current) {
+            clearInterval(recordTimerRef.current);
+            recordTimerRef.current = null;
+        }
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
             setIsRecording(false);
         }
         if (speechRecognitionRef.current) {
+            // Prevent the onend handler from restarting after we intentionally stop
+            speechRecognitionRef.current.onend = null;
             speechRecognitionRef.current.stop();
             speechRecognitionRef.current = null;
         }
+        setInterimTranscript('');
     };
 
     // Removed placeholder transcribeAudio function as it's now handled in real-time
@@ -615,7 +661,7 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
         } catch (err) {
             setError('Failed to submit assessment. Please try again.');
             setStep('situational');
-            console.error(err);
+            if (import.meta.env.DEV) console.error(err);
         }
     };
 
@@ -1035,11 +1081,14 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
                                                     </div>
 
                                                     {/* Live transcript feedback */}
-                                                    {(oralTranscript || (isRecording && answers[content.situationalQuestions[currentQuestionIndex].id])) && (
+                                                    {(oralTranscript || interimTranscript || answers[content.situationalQuestions[currentQuestionIndex].id]) && (
                                                         <div className="bg-white border border-gray-200 rounded-xl p-4">
                                                             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Your response (live transcript)</p>
                                                             <p className="text-sm text-gray-700 leading-relaxed">
                                                                 {answers[content.situationalQuestions[currentQuestionIndex].id] || oralTranscript}
+                                                                {interimTranscript && (
+                                                                    <span className="text-gray-400 italic"> {interimTranscript}</span>
+                                                                )}
                                                             </p>
                                                         </div>
                                                     )}

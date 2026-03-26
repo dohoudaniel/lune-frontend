@@ -16,7 +16,7 @@
     media-src 'self' blob:;
     connect-src 'self' http://localhost:8000 https://lunemvpphaseone.onrender.com https://generativelanguage.googleapis.com https://accounts.google.com https://vercel.live https://nominatim.openstreetmap.org https://cdn.jsdelivr.net;
     worker-src 'self' blob:;
-    frame-src https://accounts.google.com https://vercel.live;
+    frame-src https://accounts.google.com https://vercel.live https://*.supabase.co;
   " />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
   <title>Lune | Talent Beyond Borders</title>
@@ -44,7 +44,7 @@
 
   <!-- Open Graph / Social handled by React Helmet -->
 
-  <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -66,6 +66,7 @@
       }
     }
   </script>
+
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap"
     rel="stylesheet">

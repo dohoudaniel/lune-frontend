@@ -90,7 +90,7 @@ export const LiveAssessmentViewer: React.FC<LiveAssessmentViewerProps> = ({
 
                 setRecordings(transformedRecordings);
             } catch (error) {
-                console.error('Failed to load assessment data', error);
+                if (import.meta.env.DEV) { console.error('Failed to load assessment data', error); } else { console.error('Failed to load assessment data'); }
             } finally {
                 setLoading(false);
             }

@@ -59,7 +59,7 @@ class OnboardingService {
                 }
             }
         } catch (err) {
-            console.error('Initial sync failed', err);
+            if (import.meta.env.DEV) { console.error('Initial sync failed', err); } else { console.error('Initial sync failed'); }
         }
     }
 
@@ -81,7 +81,7 @@ class OnboardingService {
 
             await api.put(`/users/${this.userId}/preferences/`, prefs);
         } catch (e) {
-            console.error('Failed to sync onboarding', e);
+            if (import.meta.env.DEV) { console.error('Failed to sync onboarding', e); } else { console.error('Failed to sync onboarding'); }
         }
     }
 

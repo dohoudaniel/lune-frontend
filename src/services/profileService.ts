@@ -15,7 +15,7 @@ export const getActiveSessions = async (): Promise<UserSession[]> => {
     try {
         return (await api.get('/users/me/sessions/')) as UserSession[];
     } catch (error) {
-        console.error('Error fetching active sessions:', error);
+        if (import.meta.env.DEV) { console.error('Error fetching active sessions:', error); } else { console.error('Error fetching active sessions:'); }
         return [];
     }
 };
@@ -25,7 +25,7 @@ export const terminateSession = async (sessionId: string): Promise<boolean> => {
         await api.delete(`/users/me/sessions/${sessionId}/`);
         return true;
     } catch (error) {
-        console.error('Error terminating session:', error);
+        if (import.meta.env.DEV) { console.error('Error terminating session:', error); } else { console.error('Error terminating session:'); }
         return false;
     }
 };
@@ -37,7 +37,7 @@ export const uploadProfileImage = async (file: File): Promise<string | null> => 
         const response = await api.postForm('/profiles/upload-image/', formData);
         return response.url ?? null;
     } catch (error) {
-        console.error('Error uploading profile image:', error);
+        if (import.meta.env.DEV) { console.error('Error uploading profile image:', error); } else { console.error('Error uploading profile image:'); }
         return null;
     }
 };
@@ -46,7 +46,7 @@ export const generatePassport = async (): Promise<{ passportId: string; txHash: 
     try {
         return await api.post('/profiles/generate-passport/');
     } catch (error) {
-        console.error('Error generating passport:', error);
+        if (import.meta.env.DEV) { console.error('Error generating passport:', error); } else { console.error('Error generating passport:'); }
         return null;
     }
 };
@@ -66,7 +66,7 @@ export const getCandidateProfile = async (_userId?: string): Promise<Partial<Can
             videoIntroUrl: data.video_intro_url ?? data.videoIntroUrl ?? undefined,
         };
     } catch (error) {
-        console.error('Error in getCandidateProfile:', error);
+        if (import.meta.env.DEV) { console.error('Error in getCandidateProfile:', error); } else { console.error('Error in getCandidateProfile:'); }
         return null;
     }
 };
@@ -76,7 +76,7 @@ export const updateCandidateProfile = async (userId: string, updates: Partial<Ca
         await api.put(`/profiles/candidate/`, updates);
         return true;
     } catch (error) {
-        console.error('Error in updateCandidateProfile:', error);
+        if (import.meta.env.DEV) { console.error('Error in updateCandidateProfile:', error); } else { console.error('Error in updateCandidateProfile:'); }
         return false;
     }
 };
@@ -84,7 +84,7 @@ export const getEmployerProfile = async (userId: string): Promise<any | null> =>
     try {
         return await api.get(`/profiles/employer/${userId}/`);
     } catch (error) {
-        console.error('Error in getEmployerProfile:', error);
+        if (import.meta.env.DEV) { console.error('Error in getEmployerProfile:', error); } else { console.error('Error in getEmployerProfile:'); }
         return null;
     }
 };
@@ -94,7 +94,7 @@ export const updateEmployerProfile = async (updates: any): Promise<boolean> => {
         await api.put(`/profiles/employer/`, updates);
         return true;
     } catch (error) {
-        console.error('Error in updateEmployerProfile:', error);
+        if (import.meta.env.DEV) { console.error('Error in updateEmployerProfile:', error); } else { console.error('Error in updateEmployerProfile:'); }
         return false;
     }
 };

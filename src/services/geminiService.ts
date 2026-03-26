@@ -1,5 +1,6 @@
 import { AssessmentContent, Job, RecommendedCertification, InterviewFeedback, DifficultyLevel, AssessmentType, SkillCategory } from "../types";
 import { api } from "../lib/api";
+import { logger } from "../lib/logger";
 
 // Skill to Category Mapping (static helper)
 const SKILL_CATEGORY_MAP: Record<string, SkillCategory> = {
@@ -152,7 +153,7 @@ const callBackend = async (endpoint: string, body: any) => {
   try {
     return await api.post(`/ai/${endpoint}/`, body);
   } catch (error) {
-    console.error(`API Error (${endpoint}):`, error);
+    logger.error(`API Error (${endpoint})`, error);
     throw error;
   }
 };

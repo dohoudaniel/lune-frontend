@@ -86,7 +86,7 @@ export const initializeAssessmentHistory = async (userId: string) => {
 
         saveAssessmentHistory(cachedHistory);
     } catch (err) {
-        console.error('Failed to initialize history:', err);
+        if (import.meta.env.DEV) { console.error('Failed to initialize history:', err); } else { console.error('Failed to initialize history:'); }
     }
 };
 
@@ -109,7 +109,7 @@ export const loadAssessmentHistory = (candidateId?: string): AssessmentHistoryEn
             return history;
         }
     } catch (error) {
-        console.error('Error loading assessment history:', error);
+        if (import.meta.env.DEV) { console.error('Error loading assessment history:', error); } else { console.error('Error loading assessment history:'); }
     }
     return [];
 };
@@ -121,7 +121,7 @@ const saveAssessmentHistory = (history: AssessmentHistoryEntry[]): void => {
     try {
         localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
     } catch (error) {
-        console.error('Error saving assessment history:', error);
+        if (import.meta.env.DEV) { console.error('Error saving assessment history:', error); } else { console.error('Error saving assessment history:'); }
     }
 };
 
@@ -177,7 +177,7 @@ export const addAssessmentEntry = (
                 cheating_detected: cheatingDetected,
             });
         } catch (err) {
-            console.error('Failed to sync assessment:', err);
+            if (import.meta.env.DEV) { console.error('Failed to sync assessment:', err); } else { console.error('Failed to sync assessment:'); }
         }
     })();
 

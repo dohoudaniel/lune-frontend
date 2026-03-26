@@ -8,8 +8,7 @@ import { RealtimeProvider } from './contexts/RealtimeContext';
 import { HelmetProvider } from 'react-helmet-async';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
-// Fallback to a test ID, you will replace it properly on production
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1234567890-mockclientid.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

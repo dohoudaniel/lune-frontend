@@ -178,7 +178,7 @@ export const AIInterviewSimulator: React.FC<AIInterviewSimulatorProps> = ({
                         videoRef.current.srcObject = stream;
                     }
                 })
-                .catch(console.error);
+                .catch(e => { if (import.meta.env.DEV) console.error(e); });
         }
     }, [stage, isVideoOn, isMicOn]);
 
