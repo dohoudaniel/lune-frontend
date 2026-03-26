@@ -107,7 +107,7 @@ export const SkillPassport: React.FC<SkillPassportProps> = ({
             localStorage.setItem(CACHE_KEY, JSON.stringify({ data: safe, timestamp: Date.now() }));
         } catch (err) {
             setError('Failed to generate Skill Passport. Please try again.');
-            console.error(err);
+            if (import.meta.env.DEV) console.error(err);
         } finally {
             setLoading(false);
         }

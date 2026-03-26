@@ -79,7 +79,7 @@ export const TeamAssessmentDashboard: React.FC<TeamDashboardProps> = ({
                 setCandidates(teamCandidates);
                 setAssessments(fetchedAssessments);
             } catch (error) {
-                console.error('Failed to load team dashboard data', error);
+                if (import.meta.env.DEV) { console.error('Failed to load team dashboard data', error); } else { console.error('Failed to load team dashboard data'); }
             } finally {
                 setLoading(false);
             }

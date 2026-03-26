@@ -136,7 +136,7 @@ export const CollaborativeCoding: React.FC<CollaborativeCodingProps> = ({
                         videoRef.current.srcObject = stream;
                     }
                 })
-                .catch(console.error);
+                .catch(e => { if (import.meta.env.DEV) console.error(e); });
         }
     }, [isVideoOn, isMicOn]);
 

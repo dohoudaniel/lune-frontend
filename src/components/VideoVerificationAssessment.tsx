@@ -267,7 +267,7 @@ export const VideoVerificationAssessment: React.FC<VideoVerificationAssessmentPr
         } catch (err) {
             setError('Failed to analyze video. Please try again.');
             setRecordingState('preview');
-            console.error(err);
+            if (import.meta.env.DEV) console.error(err);
         }
     };
 

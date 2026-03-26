@@ -99,7 +99,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
         try {
           recognition.start();
         } catch (e) {
-          console.error('Failed to restart recognition:', e);
+          if (import.meta.env.DEV) { console.error('Failed to restart recognition:', e); } else { console.error('Failed to restart recognition:'); }
           setIsListening(false);
           isListeningRef.current = false;
           setInterimTranscript('');
@@ -132,7 +132,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
         recognitionRef.current.start();
         setIsListening(true);
       } catch (error) {
-        console.error('Failed to start recognition:', error);
+        if (import.meta.env.DEV) { console.error('Failed to start recognition:', error); } else { console.error('Failed to start recognition:'); }
         isListeningRef.current = false;
         setMicError('Microphone access denied. Enable permissions in your browser settings, or type your answer below.');
       }
@@ -158,7 +158,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
       setMode('interview');
       speak(q);
     } catch (err) {
-      console.error('Failed to generate interview question:', err);
+      if (import.meta.env.DEV) { console.error('Failed to generate interview question:', err); } else { console.error('Failed to generate interview question:'); }
       setSubmitError('Failed to load interview question. Please try again.');
     } finally {
       setLoading(false);
@@ -190,7 +190,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
       setFeedback(result);
       setMode('feedback');
     } catch (err) {
-      console.error('Failed to evaluate response:', err);
+      if (import.meta.env.DEV) { console.error('Failed to evaluate response:', err); } else { console.error('Failed to evaluate response:'); }
       setSubmitError('Failed to get AI feedback. Please try again.');
     } finally {
       setLoading(false);

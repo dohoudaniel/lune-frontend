@@ -72,7 +72,7 @@ export const VideoAnalyzer: React.FC<VideoAnalyzerProps> = ({
             }
         } catch (err) {
             setError('Failed to analyze video. Please try again.');
-            console.error(err);
+            if (import.meta.env.DEV) console.error(err);
         } finally {
             setIsAnalyzing(false);
         }

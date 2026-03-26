@@ -212,7 +212,7 @@ export const analyzeVideoIntroduction = async (
             duration,
         };
     } catch (error) {
-        console.error('Video analysis error:', error);
+        if (import.meta.env.DEV) { console.error('Video analysis error:', error); } else { console.error('Video analysis error:'); }
 
         // Return fallback analysis
         return {
@@ -277,7 +277,7 @@ export const generateInterviewTips = async (
 
         return await response.json();
     } catch (error) {
-        console.error('Failed to generate tips:', error);
+        if (import.meta.env.DEV) { console.error('Failed to generate tips:', error); } else { console.error('Failed to generate tips:'); }
         return [
             'Practice your introduction multiple times',
             'Maintain eye contact with the camera',
@@ -371,7 +371,7 @@ export const analyzeVideoVerification = async (
             assessmentType,
         };
     } catch (error) {
-        console.error('Video verification analysis error:', error);
+        if (import.meta.env.DEV) { console.error('Video verification analysis error:', error); } else { console.error('Video verification analysis error:'); }
 
         // Return fallback result
         return {

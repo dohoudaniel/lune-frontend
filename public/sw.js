@@ -52,8 +52,8 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Skip cross-origin requests (except for CDN assets)
-    if (url.origin !== location.origin && !url.hostname.includes('supabase')) {
+    // Skip all cross-origin requests — let browser handle them natively
+    if (url.origin !== location.origin) {
         return;
     }
 

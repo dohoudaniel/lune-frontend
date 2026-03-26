@@ -202,7 +202,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({ candidat
          });
       } catch (error) {
          toast.error("Failed to generate passport. Please try again.");
-         console.error(error);
+         if (import.meta.env.DEV) console.error(error);
       } finally {
          setIsGeneratingPassport(false);
       }

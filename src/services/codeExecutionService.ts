@@ -117,7 +117,7 @@ export const executeCode = async (
 
         return await response.json();
     } catch (error) {
-        console.error('Execution error:', error);
+        if (import.meta.env.DEV) { console.error('Execution error:', error); } else { console.error('Execution error:'); }
         throw error;
     }
 };

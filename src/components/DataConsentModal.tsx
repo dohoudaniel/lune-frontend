@@ -92,7 +92,7 @@ export const DataConsentModal: React.FC<DataConsentModalProps> = ({
             a.click();
             URL.revokeObjectURL(url);
         } catch (error) {
-            console.error('Export failed:', error);
+            if (import.meta.env.DEV) { console.error('Export failed:', error); } else { console.error('Export failed:'); }
         } finally {
             setIsExporting(false);
         }

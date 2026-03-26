@@ -77,7 +77,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
                  setProfileForm(newProfile);
              }
           } catch (error) {
-            console.error('Failed to load dashboard data:', error);
+            if (import.meta.env.DEV) { console.error('Failed to load dashboard data:', error); } else { console.error('Failed to load dashboard data:'); }
             toast.error('Failed to load dashboard data');
             setCandidateError('Failed to load candidates.');
          } finally {

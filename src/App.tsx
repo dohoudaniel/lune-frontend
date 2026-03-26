@@ -57,6 +57,7 @@ const QuestionBankManager = lazy(() => import('./components/QuestionBankManager'
 const DataConsentModal = lazy(() => import('./components/DataConsentModal').then(m => ({ default: m.DataConsentModal })));
 const AdminDashboard = lazy(() => import('./components/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
 const ProfilePage = lazy(() => import('./components/ProfilePage').then(m => ({ default: m.ProfilePage })));
+const CVViewerPage = lazy(() => import('./components/CVViewerPage').then(m => ({ default: m.CVViewerPage })));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -106,7 +107,7 @@ const loadProfileFromStorage = (): CandidateProfile => {
       return { ...DEFAULT_PROFILE, ...JSON.parse(stored) };
     }
   } catch (error) {
-    console.error('Error loading profile from storage:', error);
+    if (import.meta.env.DEV) { console.error('Error loading profile from storage:', error); } else { console.error('Error loading profile from storage:'); }
   }
   return DEFAULT_PROFILE;
 };
@@ -120,7 +121,7 @@ const saveProfileToStorage = (profile: CandidateProfile) => {
     delete minProfile.videoIntroUrl;
     localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(minProfile));
   } catch (error) {
-    console.error('Error saving profile to storage:', error);
+    if (import.meta.env.DEV) { console.error('Error saving profile to storage:', error); } else { console.error('Error saving profile to storage:'); }
   }
 };
 
@@ -143,6 +144,7 @@ const getViewFromPath = (): ViewState => {
   if (path === '/employer') return ViewState.EMPLOYER_DASHBOARD;
   if (path === '/admin') return ViewState.ADMIN_DASHBOARD;
   if (path === '/profile') return ViewState.PROFILE;
+  if (path.startsWith('/app/user/view-cv/')) return ViewState.VIEW_CV;
   if (path === '/') return ViewState.LANDING;
   return ViewState.NOT_FOUND;
 };
@@ -341,6 +343,7 @@ function AppContent() {
       case ViewState.ADMIN_DASHBOARD:     path = '/admin'; break;
       case ViewState.PROFILE:             path = '/profile'; break;
       case ViewState.LANDING:             path = '/'; break;
+      // VIEW_CV path is set externally via window.history.pushState before calling navigate
       default:                            path = window.location.pathname; break;
     }
 
@@ -746,26 +749,42 @@ Verify my certificate: ${certificateUrl}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {(['Beginner', 'Mid-Level', 'Advanced'] as DifficultyLevel[]).map((level) => (
-              <button
-                key={level}
-                onClick={() => startAssessmentFlow(level)}
-                className="bg-white p-8 rounded-2xl border-2 border-transparent hover:border-teal hover:shadow-lg transition text-left group"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${level === 'Beginner' ? 'bg-green-100 text-green-700' : level === 'Mid-Level' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
-                    {level}
-                  </span>
-                  <ArrowRight size={20} className="opacity-0 group-hover:opacity-100 text-teal transition-opacity" />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">{level}</h3>
-                <p className="text-sm text-gray-500">
-                  {level === 'Beginner' ? 'Basic syntax and core concepts.' :
-                    level === 'Mid-Level' ? 'Best practices, patterns, and optimization.' :
-                      'System design, edge cases, and performance.'}
-                </p>
-              </button>
-            ))}
+            {(['Beginner', 'Mid-Level', 'Advanced'] as DifficultyLevel[]).map((level) => {
+              const SKILL_NOTES: Record<string, [string, string, string]> = {
+                'React':      ['Components, JSX, props, and hooks.',       'Context, performance, and state patterns.',     'SSR, architecture, and rendering optimisation.'],
+                'Vue':        ['Templates, directives, and reactivity.',    'Composition API, Pinia, and routing.',          'Nuxt, SSR, and performance tuning.'],
+                'CSS':        ['Selectors, box model, and flexbox.',        'Grid, animations, and custom properties.',      'Performance, theming, and CSS-in-JS patterns.'],
+                'Node.js':    ['Modules, async/await, and REST basics.',    'Middleware, streams, and database access.',     'Clustering, security, and microservices.'],
+                'Python':     ['Syntax, data types, and functions.',        'OOP, error handling, and popular libraries.',   'Concurrency, design patterns, and API design.'],
+                'Java':       ['Syntax, OOP fundamentals, and collections.','Generics, concurrency, and Spring basics.',     'JVM internals, enterprise patterns, and security.'],
+                'AWS':        ['Core services, S3, EC2, and IAM basics.',   'Architecture, scaling, and cost management.',   'Multi-region, advanced security, and well-architected.'],
+                'Docker':     ['Images, containers, and CLI basics.',       'Compose, networking, and volume management.',   'Orchestration, CI/CD integration, and hardening.'],
+                'Kubernetes': ['Pods, services, and basic deployments.',    'Ingress, RBAC, Helm charts, and namespaces.',   'Autoscaling, multi-cluster, and platform engineering.'],
+              };
+              const DEFAULT_NOTES: [string, string, string] = [
+                'Fundamentals and core concepts.',
+                'Best practices and real-world patterns.',
+                'Architecture, performance, and edge cases.',
+              ];
+              const notes = selectedSkill ? (SKILL_NOTES[selectedSkill] ?? DEFAULT_NOTES) : DEFAULT_NOTES;
+              const note = level === 'Beginner' ? notes[0] : level === 'Mid-Level' ? notes[1] : notes[2];
+              return (
+                <button
+                  key={level}
+                  onClick={() => startAssessmentFlow(level)}
+                  className="bg-white p-8 rounded-2xl border-2 border-transparent hover:border-teal hover:shadow-lg transition text-left group"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${level === 'Beginner' ? 'bg-green-100 text-green-700' : level === 'Mid-Level' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
+                      {level}
+                    </span>
+                    <ArrowRight size={20} className="opacity-0 group-hover:opacity-100 text-teal transition-opacity" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 mb-2">{level}</h3>
+                  <p className="text-sm text-gray-500">{note}</p>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
@@ -975,6 +994,10 @@ Verify my certificate: ${certificateUrl}
               else handleNavigate(ViewState.CANDIDATE_DASHBOARD);
             }}
             onLogout={handleLogout}
+            onStartAssessment={(skill) => {
+              setSelectedSkill(skill);
+              handleNavigate(ViewState.SKILL_SELECTION);
+            }}
             onProfileUpdated={(updates) => {
               setCandidateProfile(prev => ({
                 ...prev,
@@ -988,6 +1011,15 @@ Verify my certificate: ${certificateUrl}
             }}
           />
         );
+      case ViewState.VIEW_CV: {
+        const cvUserId = window.location.pathname.replace('/app/user/view-cv/', '').split('/')[0];
+        return (
+          <CVViewerPage
+            userId={cvUserId}
+            onBack={() => window.history.length > 1 ? window.history.back() : handleNavigate(ViewState.LANDING)}
+          />
+        );
+      }
       case ViewState.NOT_FOUND:
         return (
           <NotFoundPage
