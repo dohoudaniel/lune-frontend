@@ -23,7 +23,7 @@ export const LoginPage: React.FC<{
         if (!email) newErrors.email = 'Email is required';
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Invalid email format';
         if (!password) newErrors.password = 'Password is required';
-        
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -31,7 +31,7 @@ export const LoginPage: React.FC<{
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!validateForm()) return;
-        
+
         const result = await login(email, password);
         if (result.success) {
             toast.success('👋 Welcome back!');
@@ -43,10 +43,13 @@ export const LoginPage: React.FC<{
 
     const handleGoogleSuccess = async (credentialResponse: any) => {
         if (!credentialResponse.credential) return;
+        // For returning users, the backend will use their existing role from the database
         const result = await googleLogin(credentialResponse.credential);
         if (result.success) toast.success('🎉 Successfully authenticated with Google!');
         else toast.error(result.error || 'Google Authentication failed.');
     };
+</text>
+
 
     return (
         <AuthLayout
@@ -65,7 +68,7 @@ export const LoginPage: React.FC<{
                     size="large"
                 />
             </div>
-            
+
             <div className="relative flex items-center py-4">
                 <div className="flex-grow border-t border-slate-100"></div>
                 <span className="flex-shrink-0 mx-4 text-slate-400 text-xs font-medium uppercase tracking-wider">Or continue with</span>

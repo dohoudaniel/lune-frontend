@@ -1,41 +1,58 @@
-
 export enum ViewState {
-  LANDING = 'LANDING',
-  AUTH_SELECTION = 'AUTH_SELECTION',
-  LOGIN = 'LOGIN',
-  SIGNUP = 'SIGNUP',
-  FORGOT_PASSWORD = 'FORGOT_PASSWORD',
-  RESET_PASSWORD = 'RESET_PASSWORD',
-  CANDIDATE_DASHBOARD = 'CANDIDATE_DASHBOARD',
-  SKILL_SELECTION = 'SKILL_SELECTION',
-  ASSESSMENT = 'ASSESSMENT',
-  ASSESSMENT_RESULT = 'ASSESSMENT_RESULT',
-  EMPLOYER_DASHBOARD = 'EMPLOYER_DASHBOARD',
-  VERIFY_EMAIL = 'VERIFY_EMAIL',
-  CHECK_EMAIL = 'CHECK_EMAIL',
-  ADMIN_DASHBOARD = 'ADMIN_DASHBOARD',
-  PROFILE = 'PROFILE',
-  VIEW_CV = 'VIEW_CV',
-  NOT_FOUND = 'NOT_FOUND',
+  LANDING = "LANDING",
+  AUTH_SELECTION = "AUTH_SELECTION",
+  LOGIN = "LOGIN",
+  SIGNUP = "SIGNUP",
+  FORGOT_PASSWORD = "FORGOT_PASSWORD",
+  RESET_PASSWORD = "RESET_PASSWORD",
+  CANDIDATE_DASHBOARD = "CANDIDATE_DASHBOARD",
+  SKILL_SELECTION = "SKILL_SELECTION",
+  ASSESSMENT = "ASSESSMENT",
+  ASSESSMENT_RESULT = "ASSESSMENT_RESULT",
+  EMPLOYER_DASHBOARD = "EMPLOYER_DASHBOARD",
+  VERIFY_EMAIL = "VERIFY_EMAIL",
+  CHECK_EMAIL = "CHECK_EMAIL",
+  ADMIN_DASHBOARD = "ADMIN_DASHBOARD",
+  PROFILE = "PROFILE",
+  VIEW_CV = "VIEW_CV",
+  NOT_FOUND = "NOT_FOUND",
 }
 
 export enum UserRole {
-  CANDIDATE = 'CANDIDATE',
-  EMPLOYER = 'EMPLOYER',
-  ADMIN = 'ADMIN',
+  CANDIDATE = "CANDIDATE",
+  EMPLOYER = "EMPLOYER",
+  ADMIN = "ADMIN",
 }
 
-export type DifficultyLevel = 'Beginner' | 'Mid-Level' | 'Advanced';
+export type DifficultyLevel = "Beginner" | "Mid-Level" | "Advanced";
 
 export interface Skill {
   id: string;
   name: string;
-  category: 'frontend' | 'backend' | 'cloud' | 'devops' | 'architect' | 'generalist' | 'customer_service' | 'marketing' | 'admin' | 'sales' | 'communication' | 'office_tools';
+  category:
+    | "frontend"
+    | "backend"
+    | "cloud"
+    | "devops"
+    | "architect"
+    | "generalist"
+    | "customer_service"
+    | "marketing"
+    | "admin"
+    | "sales"
+    | "communication"
+    | "office_tools";
 }
 
-export type AssessmentType = 'code' | 'text_editor' | 'spreadsheet' | 'presentation' | 'video_verification' | 'scenario';
+export type AssessmentType =
+  | "code"
+  | "text_editor"
+  | "spreadsheet"
+  | "presentation"
+  | "video_verification"
+  | "scenario";
 
-export type SkillCategory = Skill['category'];
+export type SkillCategory = Skill["category"];
 
 export interface CandidateProfile {
   id: string;
@@ -49,7 +66,7 @@ export interface CandidateProfile {
   bio?: string;
   experience?: string; // Text summary
   yearsOfExperience?: number; // Numeric
-  preferredWorkMode?: 'Remote' | 'Hybrid' | 'On-site';
+  preferredWorkMode?: "Remote" | "Hybrid" | "On-site";
   verified?: boolean; // UI helper
   passportId?: string;
 }
@@ -126,7 +143,11 @@ export interface InterviewFeedback {
 export interface Notification {
   id: string;
   userId: string;
-  type: 'certificate_verified' | 'certificate_issued' | 'job_match' | 'profile_view';
+  type:
+    | "certificate_verified"
+    | "certificate_issued"
+    | "job_match"
+    | "profile_view";
   title: string;
   message: string;
   relatedData?: {
@@ -150,14 +171,15 @@ export interface VerificationEvent {
 }
 
 export interface AuthUser {
-    id: string;
-    email: string;
-    name: string;
-    role: 'candidate' | 'employer' | 'admin';
+  id: string;
+  email: string;
+  name: string;
+  role: "candidate" | "employer" | "admin";
+  onboarding_completed: boolean;
 }
 
 export interface AuthSession {
-    access_token: string;
-    refresh_token: string;
-    expires_at: number;
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
 }
