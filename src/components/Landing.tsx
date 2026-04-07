@@ -495,7 +495,7 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                       repeat: Infinity,
                       ease: "easeInOut",
                     }}
-                    className="absolute -bottom-6 -left-6 bg-white rounded-2xl shadow-lg border border-gray-100 p-4 max-w-xs"
+                    className="absolute -bottom-2 -left-2 sm:-bottom-6 sm:-left-6 bg-white rounded-xl sm:rounded-2xl shadow-lg border border-gray-100 p-2.5 sm:p-4 max-w-xs scale-75 sm:scale-100 origin-bottom-left z-10"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center flex-shrink-0">
@@ -521,7 +521,7 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                       ease: "easeInOut",
                       delay: 0.5,
                     }}
-                    className="absolute -top-4 -right-4 bg-white rounded-2xl shadow-lg border border-gray-100 p-3 max-w-xs"
+                    className="absolute -top-2 -right-2 sm:-top-4 sm:-right-4 bg-white rounded-xl sm:rounded-2xl shadow-lg border border-gray-100 p-2 sm:p-3 max-w-xs scale-75 sm:scale-100 origin-top-right z-10"
                   >
                     <div className="flex items-center gap-2">
                       <div className="text-center">
