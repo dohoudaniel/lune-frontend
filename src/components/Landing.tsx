@@ -356,7 +356,7 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
         {/* ── HERO ── */}
         <section
           id="hero"
-          className="relative bg-cream overflow-hidden min-h-screen flex items-center"
+          className="relative bg-cream overflow-hidden min-h-[calc(100vh-4rem)] flex items-center"
         >
           {/* Background blobs */}
           <div
@@ -376,14 +376,14 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
             }}
           />
 
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 w-full">
-            <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-20 lg:pt-12 lg:pb-28 w-full">
+            <div className="grid lg:grid-cols-5 gap-12 lg:gap-16 items-center">
               {/* Left — copy */}
               <motion.div
                 variants={stagger}
                 initial="hidden"
                 animate="visible"
-                className="flex flex-col gap-6"
+                className="flex flex-col gap-6 lg:col-span-2"
               >
                 <motion.div variants={fadeInUp}>
                   <span className="inline-flex items-center gap-1.5 bg-orange-50 border border-orange-200 text-orange-700 text-xs font-semibold px-3 py-1 rounded-full">
@@ -457,7 +457,7 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.8, delay: 0.3 }}
-                className="relative flex flex-col items-center justify-center w-full lg:w-1/2"
+                className="relative flex flex-col items-center justify-center w-full lg:col-span-3"
               >
                 {/* Hero 3D Illustration with container */}
                 <div className="relative w-full h-auto">
@@ -481,7 +481,7 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                     <LazyImage
                       src="/assets/landing/optimized_1.webp"
                       alt="Lune 3D illustration showcasing verified talent platform"
-                      className="w-full h-auto max-w-5xl object-cover"
+                      className="w-full h-auto object-cover"
                       containerClassName="w-full"
                       priority={true}
                     />
