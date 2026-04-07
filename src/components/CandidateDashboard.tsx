@@ -41,6 +41,7 @@ import { NotificationBell } from "./NotificationBell";
 import { MockInterview } from "./MockInterview";
 import { WelcomeBanner } from "./WelcomeBanner";
 import { AssessmentHistory } from "./AssessmentHistory";
+import { MessagingUI } from "./messaging/MessagingUI";
 import { SEO } from "./SEO";
 import { useToast } from "../lib/toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -238,7 +239,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
   };
 
   const [activeTab, setActiveTab] = useState<
-    "overview" | "interview" | "history"
+    "overview" | "interview" | "history" | "community"
   >("overview");
   const [searchQuery, setSearchQuery] = useState(""); // Search state
   const [recommendations, setRecommendations] = useState<{
@@ -442,6 +443,11 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
             icon: <History size={20} />,
             label: "Progress",
             tab: "history" as const,
+          },
+          {
+            icon: <MessageSquare size={20} />,
+            label: "Community",
+            tab: "community" as const,
           },
         ].map((item) => (
           <button
@@ -958,6 +964,11 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
                   label: "Progress",
                   icon: <History size={15} />,
                 },
+                {
+                  id: "community",
+                  label: "Community",
+                  icon: <MessageSquare size={15} />,
+                },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -1345,6 +1356,18 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
                     candidateId={candidate.id}
                     onRetakeAssessment={(skill) => onStartAssessment(skill)}
                   />
+                </motion.div>
+              )}
+
+              {activeTab === "community" && (
+                <motion.div
+                  key="community"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <MessagingUI />
                 </motion.div>
               )}
             </AnimatePresence>

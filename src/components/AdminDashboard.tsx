@@ -251,7 +251,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onImpe
     setLoadingStats(true);
     try {
       const data = await api.get('/admin/stats/');
-      setStats(data);
+      setStats({
+        total_users: data.users?.total || 0,
+        total_candidates: data.users?.candidates || 0,
+        total_employers: data.users?.employers || 0,
+        total_assessments: data.assessments?.total || 0,
+        assessments_passed: data.assessments?.passed || 0,
+        assessments_failed: data.assessments?.failed || 0,
+        average_score: data.assessments?.avgScore || 0,
+        pass_rate: data.assessments?.passRate || 0,
+      });
     } catch {
       toast.error('Failed to load platform stats');
     } finally {
@@ -265,7 +274,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onImpe
       const endpoint =
         roleFilter === 'all' ? '/admin/users/' : `/admin/users/?role=${roleFilter}`;
       const data = await api.get(endpoint);
-      setUsers(Array.isArray(data) ? data : data.results ?? []);
+      // Map DRF ListAPIView paginated response if applicable, else data
+      const usersData = Array.isArray(data) ? data : (data.results || []);
+      setUsers(usersData.map((u: any) => ({
+        id: u.id,
+        name: u.name || u.email.split('@')[0],
+        email: u.email,
+        role: u.role,
+        is_active: u.is_active,
+        date_joined: u.created_at || u.date_joined || new Date().toISOString()
+      })));
     } catch {
       toast.error('Failed to load users');
     } finally {

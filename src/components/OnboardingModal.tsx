@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useToast } from "../lib/toast";
+import { api } from "../lib/api";
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -66,6 +67,24 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   const handleComplete = async () => {
     setIsSubmitting(true);
     try {
+      // Save profile data first
+      try {
+        if (userRole === "candidate") {
+          await api.patch("/profiles/candidate/", {
+            title: candidateData.title,
+            location: candidateData.location,
+            bio: candidateData.bio,
+          });
+        } else {
+          await api.patch("/profiles/employer/", {
+            company_name: employerData.companyName,
+            industry: employerData.industry,
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to save profile data, continuing anyway:", err);
+      }
+
       // Call backend to mark onboarding as complete
       const result = await authMarkOnboardingComplete();
 

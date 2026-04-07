@@ -15,6 +15,10 @@ export const MessagingUI: React.FC = () => {
   useEffect(() => {
     if (selectedConversationId) {
       loadMessages(selectedConversationId);
+      const interval = setInterval(() => {
+        loadMessages(selectedConversationId);
+      }, 5000);
+      return () => clearInterval(interval);
     } else {
       setMessages([]);
     }
