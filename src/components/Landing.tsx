@@ -37,39 +37,43 @@ const LazyImage: React.FC<LazyImageProps> = ({
   priority = false,
 }) => {
   const [isLoaded, setIsLoaded] = useState(priority);
-  const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (priority) return;
+    if (priority) {
+      setIsLoaded(true);
+      return;
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           setIsLoaded(true);
-          observer.unobserve(entry.target);
+          if (containerRef.current) {
+            observer.unobserve(containerRef.current);
+          }
         }
       },
-      { rootMargin: "50px" },
+      { rootMargin: "100px" },
     );
 
-    if (imgRef.current) {
-      observer.observe(imgRef.current);
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
     }
 
     return () => {
-      if (imgRef.current) {
-        observer.unobserve(imgRef.current);
+      if (containerRef.current) {
+        observer.unobserve(containerRef.current);
       }
     };
   }, [priority]);
 
   return (
-    <div className={containerClassName}>
+    <div ref={containerRef} className={containerClassName}>
       {!isLoaded ? (
         <div className={`${className} bg-gray-200 animate-pulse`} />
       ) : (
         <motion.img
-          ref={imgRef}
           src={src}
           alt={alt}
           className={className}
@@ -296,19 +300,28 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
             >
               <div className="px-4 py-4 flex flex-col gap-3">
                 <button
-                  onClick={() => scrollTo("roles")}
+                  onClick={() => {
+                    scrollTo("roles");
+                    setMobileMenuOpen(false);
+                  }}
                   className="text-sm font-medium text-gray-700 text-left py-2 hover:text-black transition-colors"
                 >
                   For Candidates
                 </button>
                 <button
-                  onClick={() => scrollTo("dual-cta")}
+                  onClick={() => {
+                    scrollTo("dual-cta");
+                    setMobileMenuOpen(false);
+                  }}
                   className="text-sm font-medium text-gray-700 text-left py-2 hover:text-black transition-colors"
                 >
                   For Employers
                 </button>
                 <button
-                  onClick={() => scrollTo("how-it-works")}
+                  onClick={() => {
+                    scrollTo("how-it-works");
+                    setMobileMenuOpen(false);
+                  }}
                   className="text-sm font-medium text-gray-700 text-left py-2 hover:text-black transition-colors"
                 >
                   How it Works
@@ -466,9 +479,9 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                     className="relative rounded-2xl overflow-hidden shadow-2xl"
                   >
                     <LazyImage
-                      src="/assets/hero_3d_illustration_1768418058502.png"
+                      src="/assets/landing/optimized_1.webp"
                       alt="Lune 3D illustration showcasing verified talent platform"
-                      className="w-full h-auto max-w-2xl object-cover"
+                      className="w-full h-auto max-w-5xl object-cover"
                       containerClassName="w-full"
                       priority={true}
                     />
@@ -633,7 +646,7 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-6 relative"
+              className="grid grid-cols-1 md:grid-cols-3 gap-6"
             >
               {[
                 {
@@ -641,25 +654,29 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                   icon: <Zap size={24} />,
                   title: "Take the Assessment",
                   desc: "AI-proctored tests tailored to your exact role — fair, rigorous, and trusted by employers.",
+                  image: "/assets/landing/optimized_2.webp",
                 },
                 {
                   step: "2",
                   icon: <Award size={24} />,
                   title: "Earn Your Certificate",
                   desc: "A tamper-proof credential is added to your Skill Passport, shareable anywhere.",
+                  image: "/assets/landing/optimized_3.webp",
                 },
                 {
                   step: "3",
                   icon: <Search size={24} />,
                   title: "Get Discovered",
                   desc: "Employers search verified talent by role, score, and skill — you rise to the top.",
+                  image: "/assets/landing/optimized_4.webp",
                 },
               ].map((item, i) => (
-                <React.Fragment key={item.step}>
-                  <motion.div
-                    variants={fadeInUp}
-                    className="relative bg-white rounded-2xl border border-gray-100 shadow-sm p-7 flex flex-col gap-4"
-                  >
+                <motion.div
+                  key={item.step}
+                  variants={fadeInUp}
+                  className="relative bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-full"
+                >
+                  <div className="p-6 lg:p-8 flex flex-col gap-4 flex-1">
                     <div className="flex items-center gap-3">
                       <span className="w-8 h-8 rounded-full bg-black text-white text-sm font-bold flex items-center justify-center flex-shrink-0">
                         {item.step}
@@ -674,22 +691,19 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                     <p className="text-gray-500 text-sm leading-relaxed">
                       {item.desc}
                     </p>
-                  </motion.div>
-
-                  {/* Arrow connector (desktop only, not after last) */}
-                  {i < 2 && (
-                    <div
-                      className="hidden md:flex absolute items-center"
-                      style={{
-                        left: `calc(${(i + 1) * 33.333}% - 12px)`,
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                      }}
-                    >
-                      <ChevronRight size={22} className="text-gray-300" />
+                  </div>
+                  {item.image && (
+                    <div className="w-full h-56 overflow-hidden">
+                      <LazyImage
+                        src={item.image}
+                        alt={`${item.title} - Step ${item.step}`}
+                        className="w-full h-full object-cover"
+                        containerClassName="w-full h-full"
+                        priority={false}
+                      />
                     </div>
                   )}
-                </React.Fragment>
+                </motion.div>
               ))}
             </motion.div>
 
@@ -756,9 +770,9 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                     className="relative h-full min-h-96 lg:min-h-auto bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-6 sm:p-8 lg:p-10"
                   >
                     <LazyImage
-                      src="/assets/ui_mockup_ide_1768418073547.png"
+                      src="/assets/landing/optimized_5.webp"
                       alt="Lune platform UI mockup showing skill dashboard and verification interface"
-                      className="w-full h-auto max-w-md object-contain drop-shadow-lg"
+                      className="w-full h-auto max-w-lg object-cover drop-shadow-lg"
                       containerClassName="w-full flex items-center justify-center"
                       priority={false}
                     />
@@ -834,6 +848,43 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                   </p>
                 </motion.div>
               ))}
+            </motion.div>
+
+            {/* Global Community Visual */}
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={stagger}
+              className="mb-12"
+            >
+              <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl overflow-hidden border border-slate-700 p-8 lg:p-12">
+                <motion.div
+                  variants={fadeInUp}
+                  className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center"
+                >
+                  <div className="flex flex-col gap-4">
+                    <h3 className="text-2xl lg:text-3xl font-extrabold text-white leading-tight">
+                      A Global Community of Verified Professionals
+                    </h3>
+                    <p className="text-slate-400 text-base leading-relaxed">
+                      Talent from across continents, all verified by the same
+                      rigorous standards. Join thousands of professionals who've
+                      transformed their careers through skill verification and
+                      global opportunity access.
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <LazyImage
+                      src="/assets/landing/optimized_6.webp"
+                      alt="Global community of verified professionals across 30+ countries"
+                      className="w-full h-auto max-w-md rounded-xl object-cover"
+                      containerClassName="w-full"
+                      priority={false}
+                    />
+                  </div>
+                </motion.div>
+              </div>
             </motion.div>
 
             {/* Testimonials */}
