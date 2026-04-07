@@ -20,6 +20,10 @@ import {
   XCircle as XCircleIcon,
   Mic,
   MicOff,
+  BarChart3,
+  BookOpen,
+  Video,
+  HelpCircle,
 } from "lucide-react";
 import {
   evaluateCodeSubmission,
@@ -44,6 +48,76 @@ interface AssessmentProps {
   difficulty: DifficultyLevel;
   onComplete: (result: EvaluationResult) => void;
 }
+
+// Question type definitions
+type QuestionType = "mcq" | "video" | "situational" | "theory";
+
+interface Question {
+  id: number;
+  type: QuestionType;
+  question: string;
+  options: string[];
+}
+
+interface QuestionDistribution {
+  mcq: { count: number; percentage: number };
+  video: { count: number; percentage: number };
+  situational: { count: number; percentage: number };
+  total: number;
+}
+
+interface ProgressTracker {
+  completed: number;
+  mcqCompleted: number;
+  videoCompleted: number;
+  situationalCompleted: number;
+}
+
+// Helper function to detect question type
+const detectQuestionType = (question: any): QuestionType => {
+  if (!question) return "theory";
+
+  // Check if question has an explicit type field
+  if (
+    question.type &&
+    ["mcq", "video", "situational"].includes(question.type)
+  ) {
+    return question.type;
+  }
+
+  // Fallback: assume theory questions are from theoryQuestions array
+  return "theory";
+};
+
+// Helper function to calculate question distribution
+const calculateDistribution = (questions: any[]): QuestionDistribution => {
+  const distribution: QuestionDistribution = {
+    mcq: { count: 0, percentage: 0 },
+    video: { count: 0, percentage: 0 },
+    situational: { count: 0, percentage: 0 },
+    total: questions.length,
+  };
+
+  if (distribution.total === 0) return distribution;
+
+  questions.forEach((q) => {
+    const type = detectQuestionType(q);
+    if (type !== "theory") {
+      distribution[type].count++;
+    }
+  });
+
+  // Calculate percentages
+  Object.keys(distribution).forEach((key) => {
+    if (key !== "total" && distribution[key as QuestionType]) {
+      distribution[key as QuestionType].percentage = Math.round(
+        (distribution[key as QuestionType].count / distribution.total) * 100,
+      );
+    }
+  });
+
+  return distribution;
+};
 
 const COMPLETION_KEYWORDS = [
   "function",
@@ -134,6 +208,19 @@ export const Assessment: React.FC<AssessmentProps> = ({
   const [showGazeOverlay, setShowGazeOverlay] = useState(false);
   const [gazePosition, setGazePosition] = useState({ x: 50, y: 50 });
 
+  // Question Distribution State
+  const [distribution, setDistribution] = useState<QuestionDistribution | null>(
+    null,
+  );
+  const [progressTracker, setProgressTracker] = useState<ProgressTracker>({
+    completed: 0,
+    mcqCompleted: 0,
+    videoCompleted: 0,
+    situationalCompleted: 0,
+  });
+  const [currentQuestionType, setCurrentQuestionType] =
+    useState<QuestionType | null>(null);
+
   // Code Execution State
   const [isRunning, setIsRunning] = useState(false);
   const [executionResult, setExecutionResult] =
@@ -183,6 +270,13 @@ export const Assessment: React.FC<AssessmentProps> = ({
       const content = await generateAssessment(skill, difficulty);
       setAssessmentContent(content);
       setCode(content.starterCode || "// Start coding here...");
+
+      // Calculate distribution from theory questions
+      if (content.theoryQuestions && content.theoryQuestions.length > 0) {
+        const dist = calculateDistribution(content.theoryQuestions);
+        setDistribution(dist);
+      }
+
       setLoading(false);
     };
     loadContent();
@@ -520,6 +614,32 @@ export const Assessment: React.FC<AssessmentProps> = ({
     }
   };
 
+  const handleTheoryAnswerChange = (
+    questionId: number,
+    optionIndex: number,
+    type: QuestionType,
+  ) => {
+    setTheoryAnswers((prev) => ({
+      ...prev,
+      [questionId]: optionIndex,
+    }));
+
+    // Update progress tracker
+    setProgressTracker((prev) => {
+      const updated = { ...prev };
+
+      // Only count if this is the first time answering
+      if (!(questionId in theoryAnswers)) {
+        updated.completed++;
+        if (type === "mcq") updated.mcqCompleted++;
+        else if (type === "video") updated.videoCompleted++;
+        else if (type === "situational") updated.situationalCompleted++;
+      }
+
+      return updated;
+    });
+  };
+
   const handleSubmit = useCallback(async () => {
     if (!assessmentContent) return;
 
@@ -715,6 +835,163 @@ export const Assessment: React.FC<AssessmentProps> = ({
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 relative">
+            {/* Distribution Overview (Before Starting) */}
+            {distribution &&
+              assessmentContent?.theoryQuestions &&
+              assessmentContent.theoryQuestions.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-6 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border border-gray-700 p-4"
+                >
+                  <div className="flex items-center gap-2 mb-4">
+                    <BarChart3 size={16} className="text-orange-400" />
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300">
+                      Question Distribution ({distribution.total} total)
+                    </h4>
+                  </div>
+
+                  <div className="space-y-3">
+                    {/* MCQ Distribution */}
+                    {distribution.mcq.count > 0 && (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <HelpCircle size={12} className="text-blue-400" />
+                            <span className="font-semibold text-gray-300">
+                              MCQ: {distribution.mcq.count} question
+                              {distribution.mcq.count !== 1 ? "s" : ""}
+                            </span>
+                          </div>
+                          <span className="text-blue-400 font-bold">
+                            {distribution.mcq.percentage}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{
+                              width: `${distribution.mcq.percentage}%`,
+                            }}
+                            transition={{ delay: 0.1, duration: 0.6 }}
+                            className="h-full bg-gradient-to-r from-blue-500 to-blue-600"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Video Distribution */}
+                    {distribution.video.count > 0 && (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <Video size={12} className="text-orange-400" />
+                            <span className="font-semibold text-gray-300">
+                              Video: {distribution.video.count} question
+                              {distribution.video.count !== 1 ? "s" : ""}
+                            </span>
+                          </div>
+                          <span className="text-orange-400 font-bold">
+                            {distribution.video.percentage}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{
+                              width: `${distribution.video.percentage}%`,
+                            }}
+                            transition={{ delay: 0.2, duration: 0.6 }}
+                            className="h-full bg-gradient-to-r from-orange-500 to-orange-600"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Situational Distribution */}
+                    {distribution.situational.count > 0 && (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <BookOpen size={12} className="text-green-400" />
+                            <span className="font-semibold text-gray-300">
+                              Situational: {distribution.situational.count}{" "}
+                              question
+                              {distribution.situational.count !== 1 ? "s" : ""}
+                            </span>
+                          </div>
+                          <span className="text-green-400 font-bold">
+                            {distribution.situational.percentage}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{
+                              width: `${distribution.situational.percentage}%`,
+                            }}
+                            transition={{ delay: 0.3, duration: 0.6 }}
+                            className="h-full bg-gradient-to-r from-green-500 to-green-600"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Progress Summary */}
+                  {progressTracker.completed > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="mt-4 pt-4 border-t border-gray-700 text-xs text-gray-400"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>Progress:</span>
+                        <span className="font-semibold text-teal-400">
+                          {progressTracker.completed}/{distribution.total}{" "}
+                          Complete
+                        </span>
+                      </div>
+                      {(progressTracker.mcqCompleted > 0 ||
+                        progressTracker.videoCompleted > 0 ||
+                        progressTracker.situationalCompleted > 0) && (
+                        <div className="mt-2 space-y-1 text-xs text-gray-500">
+                          {progressTracker.mcqCompleted > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-blue-400">MCQ:</span>
+                              <span>
+                                {progressTracker.mcqCompleted}/
+                                {distribution.mcq.count}
+                              </span>
+                            </div>
+                          )}
+                          {progressTracker.videoCompleted > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-orange-400">Video:</span>
+                              <span>
+                                {progressTracker.videoCompleted}/
+                                {distribution.video.count}
+                              </span>
+                            </div>
+                          )}
+                          {progressTracker.situationalCompleted > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-green-400">
+                                Situational:
+                              </span>
+                              <span>
+                                {progressTracker.situationalCompleted}/
+                                {distribution.situational.count}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </motion.div>
+              )}
+
             <AnimatePresence mode="wait">
               {activeTab === "challenge" ? (
                 <motion.div
@@ -787,49 +1064,101 @@ export const Assessment: React.FC<AssessmentProps> = ({
                   transition={{ duration: 0.2 }}
                   className="space-y-8"
                 >
-                  {assessmentContent?.theoryQuestions?.map((q, idx) => (
-                    <motion.div
-                      key={q.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                      className="text-sm"
-                    >
-                      <p className="text-white font-bold mb-3 flex gap-2">
-                        <span className="text-teal-500">{idx + 1}.</span>{" "}
-                        {q.question}
-                      </p>
-                      <div className="space-y-2">
-                        {(q.options ?? []).map((opt, optIdx) => (
-                          <label
-                            key={optIdx}
-                            className={`flex items-center gap-3 p-3 rounded-lg border transition cursor-pointer group ${theoryAnswers[q.id] === optIdx ? "bg-teal-900/20 border-teal-500/50 text-white" : "border-gray-800 hover:bg-gray-800 hover:border-gray-700 text-gray-400"}`}
-                          >
-                            <div
-                              className={`w-4 h-4 rounded-full border flex items-center justify-center ${theoryAnswers[q.id] === optIdx ? "border-teal-500 bg-teal-500" : "border-gray-600 group-hover:border-gray-500"}`}
+                  {assessmentContent?.theoryQuestions?.map((q, idx) => {
+                    const questionType = detectQuestionType(q);
+                    const typeConfig = {
+                      mcq: {
+                        icon: HelpCircle,
+                        color: "text-blue-400",
+                        bg: "from-blue-900/20",
+                      },
+                      video: {
+                        icon: Video,
+                        color: "text-orange-400",
+                        bg: "from-orange-900/20",
+                      },
+                      situational: {
+                        icon: BookOpen,
+                        color: "text-green-400",
+                        bg: "from-green-900/20",
+                      },
+                      theory: {
+                        icon: HelpCircle,
+                        color: "text-teal-400",
+                        bg: "from-teal-900/20",
+                      },
+                    };
+                    const config = typeConfig[questionType];
+                    const IconComponent = config.icon;
+
+                    return (
+                      <motion.div
+                        key={q.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.1 }}
+                        className={`text-sm bg-gradient-to-br ${config.bg} to-gray-900/10 rounded-lg p-4 border border-gray-700/50`}
+                      >
+                        <div className="flex items-start gap-2 mb-3">
+                          <IconComponent
+                            size={14}
+                            className={`${config.color} mt-0.5 shrink-0`}
+                          />
+                          <p className="text-white font-bold flex gap-2 flex-1">
+                            <span className="text-teal-500 font-mono">
+                              {idx + 1}.
+                            </span>
+                            {q.question}
+                          </p>
+                          {questionType !== "theory" && (
+                            <span
+                              className={`text-xs font-semibold ${config.color} uppercase tracking-wider`}
                             >
-                              {theoryAnswers[q.id] === optIdx && (
-                                <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                              )}
-                            </div>
-                            <input
-                              type="radio"
-                              name={`q-${q.id}`}
-                              checked={theoryAnswers[q.id] === optIdx}
-                              onChange={() =>
-                                setTheoryAnswers((prev) => ({
-                                  ...prev,
-                                  [q.id]: optIdx,
-                                }))
-                              }
-                              className="sr-only"
-                            />
-                            <span>{opt}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </motion.div>
-                  ))}
+                              {questionType}
+                            </span>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          {(q.options ?? []).map((opt, optIdx) => (
+                            <label
+                              key={optIdx}
+                              className={`flex items-center gap-3 p-3 rounded-lg border transition cursor-pointer group ${
+                                theoryAnswers[q.id] === optIdx
+                                  ? "bg-teal-900/20 border-teal-500/50 text-white"
+                                  : "border-gray-800 hover:bg-gray-800 hover:border-gray-700 text-gray-400"
+                              }`}
+                            >
+                              <div
+                                className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                                  theoryAnswers[q.id] === optIdx
+                                    ? "border-teal-500 bg-teal-500"
+                                    : "border-gray-600 group-hover:border-gray-500"
+                                }`}
+                              >
+                                {theoryAnswers[q.id] === optIdx && (
+                                  <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                                )}
+                              </div>
+                              <input
+                                type="radio"
+                                name={`q-${q.id}`}
+                                checked={theoryAnswers[q.id] === optIdx}
+                                onChange={() =>
+                                  handleTheoryAnswerChange(
+                                    q.id,
+                                    optIdx,
+                                    questionType,
+                                  )
+                                }
+                                className="sr-only"
+                              />
+                              <span>{opt}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </motion.div>
               )}
             </AnimatePresence>

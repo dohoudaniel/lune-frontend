@@ -202,31 +202,41 @@ export const AICareerCoach: React.FC<AICareerCoachProps> = ({
         try {
             // Call backend — career-recommendations accepts skills + an optional query field.
             // The backend Gemini layer handles the query contextually.
-            const result = await api.post('/ai/career-recommendations/', {
+            const result = await api.post('/ai/chat/', {
+                messages: updatedWithUser.map(m => ({ role: m.role, content: m.content })),
                 skills: currentSkills,
-                query: text
+                experience: experience,
+                role: currentRole
             });
 
             const jobs: Job[] = result?.jobs ?? [];
             const certifications: RecommendedCertification[] = result?.certifications ?? [];
+            const aiMessage: string = result?.message ?? '';
 
             // Build a meaningful coach message from the response
-            let content = '';
+            let content = aiMessage;
 
             if (jobs.length > 0 || certifications.length > 0) {
                 const parts: string[] = [];
+                if (content) parts.push(content);
 
                 if (jobs.length > 0) {
-                    parts.push(`Based on your profile, here are some relevant opportunities:\n${jobs.slice(0, 3).map(j => `• **${j.title}** at ${j.company}${j.salary ? ` — ${j.salary}` : ''}${j.location ? ` (${j.location})` : ''}`).join('\n')}`);
+                    parts.push(`Based on your profile, here are some relevant opportunities:
+${jobs.slice(0, 3).map(j => `• **${j.title}** at ${j.company}${j.salary ? ` — ${j.salary}` : ''}${j.location ? ` (${j.location})` : ''}`).join('
+')}`);
                 }
 
                 if (certifications.length > 0) {
-                    parts.push(`Recommended certifications to boost your profile:\n${certifications.slice(0, 3).map(c => `• **${c.name}** (${c.provider}) — ${c.reason}`).join('\n')}`);
+                    parts.push(`Recommended certifications to boost your profile:
+${certifications.slice(0, 3).map(c => `• **${c.name}** (${c.provider}) — ${c.reason}`).join('
+')}`);
                 }
 
-                content = parts.join('\n\n');
-            } else {
-                // Backend returned empty data — give a graceful generic response
+                content = parts.join('
+
+');
+            } else if (!content) {
+                // Fallback
                 content = buildFallbackResponse(text, currentSkills, experience, currentRole);
             }
 

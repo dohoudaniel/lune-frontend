@@ -195,7 +195,24 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
   };
 
   // Fetch analytics data
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cached = sessionStorage.getItem("employerAnalytics");
+      if (cached) {
+        try {
+          const { data, timestamp } = JSON.parse(cached);
+          const age = Date.now() - timestamp;
+          if (age < 5 * 60 * 1000) {
+            // 5 minutes TTL
+            setAnalyticsData(data);
+            return;
+          }
+        } catch (e) {
+          // ignore cache parse error
+        }
+      }
+    }
+
     setAnalyticsLoading(true);
     setAnalyticsError(null);
     try {
@@ -215,6 +232,18 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
   useEffect(() => {
     fetchAnalytics();
   }, []);
+
+  useEffect(() => {
+    if (analyticsData) {
+      sessionStorage.setItem(
+        "employerAnalytics",
+        JSON.stringify({
+          data: analyticsData,
+          timestamp: Date.now(),
+        }),
+      );
+    }
+  }, [analyticsData]);
 
   const handleVerify = async (hash: string) => {
     let cleanHash = hash;
@@ -1344,7 +1373,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={fetchAnalytics}
+                onClick={() => fetchAnalytics(true)}
                 className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 px-3 py-2 rounded-lg transition"
                 title="Refresh analytics"
               >
@@ -1367,7 +1396,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
                 {analyticsError}
               </p>
               <button
-                onClick={fetchAnalytics}
+                onClick={() => fetchAnalytics(true)}
                 className="mt-2 text-red-600 hover:text-red-700 text-sm font-semibold hover:underline"
               >
                 Try again

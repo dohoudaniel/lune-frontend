@@ -42,6 +42,11 @@ interface AuthContextType {
     token: string,
     newPassword: string,
   ) => Promise<{ success: boolean; error?: string }>;
+  changePassword: (
+    old_password: string,
+    new_password: string,
+    new_password_confirm: string,
+  ) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   markOnboardingComplete: () => Promise<{ success: boolean; error?: string }>;
 }
@@ -260,6 +265,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     [],
   );
 
+  const changePassword = useCallback(
+    async (
+      old_password: string,
+      new_password: string,
+      new_password_confirm: string,
+    ) => {
+      try {
+        await api.post("/users/me/change-password/", {
+          old_password,
+          new_password,
+          new_password_confirm,
+        });
+        return { success: true };
+      } catch (error: unknown) {
+        return { success: false, error: extractErrorMessage(error) };
+      }
+    },
+    [],
+  );
+
   const markOnboardingComplete = useCallback(async (): Promise<{
     success: boolean;
     error?: string;
@@ -300,6 +325,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     googleLogin,
     requestPasswordReset,
     resetPassword,
+    changePassword,
     logout,
     markOnboardingComplete,
   };
