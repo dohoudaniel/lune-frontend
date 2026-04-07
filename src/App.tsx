@@ -193,6 +193,11 @@ const OnboardingModal = lazy(() =>
     default: m.OnboardingModal,
   })),
 );
+const ProfileCompletionGate = lazy(() =>
+  import("./components/ProfileCompletionGate").then((m) => ({
+    default: m.ProfileCompletionGate,
+  })),
+);
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -346,6 +351,8 @@ function AppContent() {
   const [showQuestionBank, setShowQuestionBank] = useState(false);
   const [showDataConsent, setShowDataConsent] = useState(false);
   const [showSkillPassport, setShowSkillPassport] = useState(false);
+  const [showProfileCompletionGate, setShowProfileCompletionGate] =
+    useState(false);
 
   // Onboarding state
   const [showOnboardingTour, setShowOnboardingTour] = useState(false);
@@ -381,6 +388,18 @@ function AppContent() {
     ViewState.ASSESSMENT,
     ViewState.ASSESSMENT_RESULT,
   ];
+
+  // Check if profile completion gate should be shown
+  useEffect(() => {
+    if (
+      isAuthenticated &&
+      user &&
+      !user.onboarding_completed &&
+      PROTECTED_VIEWS.includes(currentView)
+    ) {
+      setShowProfileCompletionGate(true);
+    }
+  }, [user, isAuthenticated, currentView]);
 
   // Redirect to login when session expires or user logs out while on a protected route
   useEffect(() => {
@@ -1767,6 +1786,18 @@ Verify my certificate: ${certificateUrl}
           onClose={() => setShowOnboarding(false)}
           onComplete={handleOnboardingModalComplete}
           userRole={user?.role === "employer" ? "employer" : "candidate"}
+        />
+      </Suspense>
+
+      {/* Profile Completion Gate - Mandatory for new users */}
+      <Suspense fallback={null}>
+        <ProfileCompletionGate
+          isOpen={showProfileCompletionGate}
+          onComplete={() => {
+            setShowProfileCompletionGate(false);
+            markOnboardingComplete();
+          }}
+          minimumCompletion={100}
         />
       </Suspense>
     </>

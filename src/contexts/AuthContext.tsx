@@ -8,6 +8,10 @@ import React, {
 } from "react";
 import { api } from "../lib/api";
 import { AuthUser } from "../types";
+import {
+  initializeNotifications,
+  disconnectSSE,
+} from "../services/notificationService";
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -168,6 +172,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         }
         setUser(authUser);
         localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(authUser));
+        await initializeNotifications(authUser.id);
         return { success: true };
       } catch (error: unknown) {
         return { success: false, error: extractErrorMessage(error) };
@@ -193,6 +198,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       }
       setUser(authUser);
       localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(authUser));
+      await initializeNotifications(authUser.id);
       return { success: true };
     } catch (error: unknown) {
       return { success: false, error: extractErrorMessage(error) };
@@ -219,6 +225,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         }
         setUser(authUser);
         localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(authUser));
+        await initializeNotifications(authUser.id);
         return { success: true };
       } catch (error: unknown) {
         return { success: false, error: extractErrorMessage(error) };
@@ -272,7 +279,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   }, [user]);
 
   const logout = useCallback(async () => {
-    // Clear local state immediately so the UI responds instantly
+    // Disconnect SSE and clear local state immediately so the UI responds instantly
+    disconnectSSE();
     setUser(null);
     localStorage.removeItem(USER_PROFILE_KEY);
     setShowOnboarding(false);

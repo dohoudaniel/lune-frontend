@@ -30,6 +30,7 @@ import {
   Settings,
   Edit2,
   Save,
+  RefreshCw,
 } from "lucide-react";
 import { dataService } from "../services/dataService";
 import { matchCandidatesToJob } from "../services/geminiService";
@@ -39,6 +40,7 @@ import { notificationService } from "../services/notificationService";
 import { WelcomeBanner } from "./WelcomeBanner";
 import { SEO } from "./SEO";
 import { useToast } from "../lib/toast";
+import { Skeleton } from "./Skeleton";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface EmployerDashboardProps {
@@ -147,6 +149,19 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
   const [jobType, setJobType] = useState("Remote");
   const [jobDescription, setJobDescription] = useState("");
 
+  // Analytics State
+  const [analyticsData, setAnalyticsData] = useState<{
+    profiles_viewed?: number;
+    matches_found?: number;
+    applications_received?: number;
+    hired_candidates?: number;
+    avg_profile_views_per_day?: number;
+    pending_verifications?: number;
+    verified_candidates?: number;
+  } | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
   // Employer Profile State
   const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [employerProfile, setEmployerProfile] = useState({
@@ -178,6 +193,28 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
       toast.error(err.message || "Failed to update profile");
     }
   };
+
+  // Fetch analytics data
+  const fetchAnalytics = async () => {
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
+    try {
+      const data = await api.get("/profiles/employer-analytics/");
+      setAnalyticsData(data);
+    } catch (error: any) {
+      if (import.meta.env.DEV) {
+        console.error("Failed to fetch analytics:", error);
+      }
+      setAnalyticsError("Failed to load analytics data");
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
+
+  // Load analytics on mount
+  useEffect(() => {
+    fetchAnalytics();
+  }, []);
 
   const handleVerify = async (hash: string) => {
     let cleanHash = hash;
@@ -1293,6 +1330,135 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
           onStartTour={onStartTour}
           className="mb-8"
         />
+
+        {/* Analytics Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-8"
+        >
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-bold text-slate-900">Your Analytics</h2>
+            {!analyticsLoading && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={fetchAnalytics}
+                className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 px-3 py-2 rounded-lg transition"
+                title="Refresh analytics"
+              >
+                <RefreshCw
+                  size={14}
+                  className={analyticsLoading ? "animate-spin" : ""}
+                />
+                Refresh
+              </motion.button>
+            )}
+          </div>
+
+          {analyticsError ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-red-50 border border-red-200 rounded-2xl p-4"
+            >
+              <p className="text-red-700 text-sm font-medium">
+                {analyticsError}
+              </p>
+              <button
+                onClick={fetchAnalytics}
+                className="mt-2 text-red-600 hover:text-red-700 text-sm font-semibold hover:underline"
+              >
+                Try again
+              </button>
+            </motion.div>
+          ) : analyticsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm"
+                >
+                  <Skeleton height={16} className="mb-3" width="60%" />
+                  <Skeleton height={28} width="40%" />
+                </div>
+              ))}
+            </div>
+          ) : analyticsData ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Profiles Viewed */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 }}
+                className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition"
+              >
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">
+                  Profiles Viewed
+                </p>
+                <p className="text-2xl font-bold text-slate-900">
+                  {analyticsData.profiles_viewed ?? 0}
+                </p>
+                {analyticsData.avg_profile_views_per_day ? (
+                  <p className="text-xs text-gray-400 mt-1">
+                    ~{analyticsData.avg_profile_views_per_day} per day
+                  </p>
+                ) : null}
+              </motion.div>
+
+              {/* Matches Found */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition"
+              >
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">
+                  Matches Found
+                </p>
+                <p className="text-2xl font-bold text-teal-600">
+                  {analyticsData.matches_found ?? 0}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  AI-ranked candidates
+                </p>
+              </motion.div>
+
+              {/* Applications Received */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition"
+              >
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">
+                  Applications
+                </p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {analyticsData.applications_received ?? 0}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">Total received</p>
+              </motion.div>
+
+              {/* Verified Candidates */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition"
+              >
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">
+                  Verified Candidates
+                </p>
+                <p className="text-2xl font-bold text-green-600">
+                  {analyticsData.verified_candidates ?? 0}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">In your pool</p>
+              </motion.div>
+            </div>
+          ) : null}
+        </motion.div>
 
         {/* Main Header & Tabs */}
         <div className="mb-8">

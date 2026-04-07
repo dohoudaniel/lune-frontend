@@ -1,13 +1,17 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-  <meta charset="UTF-8" />
-  <!-- Security headers via meta (enforced further at hosting layer via netlify.toml / vercel.json) -->
-  <!-- NOTE: X-Frame-Options and frame-ancestors are HTTP-header-only; they are set in vite.config.ts -->
-  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
-  <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
-  <meta http-equiv="Content-Security-Policy" content="
+    <head>
+        <meta charset="UTF-8" />
+        <!-- Security headers via meta (enforced further at hosting layer via netlify.toml / vercel.json) -->
+        <!-- NOTE: X-Frame-Options and frame-ancestors are HTTP-header-only; they are set in vite.config.ts -->
+        <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+        <meta
+            http-equiv="Referrer-Policy"
+            content="strict-origin-when-cross-origin"
+        />
+        <meta
+            http-equiv="Content-Security-Policy"
+            content="
     default-src 'self';
     script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://accounts.google.com https://vercel.live;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://accounts.google.com;
@@ -17,67 +21,170 @@
     connect-src 'self' http://localhost:8000 https://lunemvpphaseone.onrender.com https://generativelanguage.googleapis.com https://accounts.google.com https://vercel.live https://nominatim.openstreetmap.org https://cdn.jsdelivr.net;
     worker-src 'self' blob:;
     frame-src https://accounts.google.com https://vercel.live https://*.supabase.co;
-  " />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
-  <title>Lune | Talent Beyond Borders</title>
+  "
+        />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes"
+        />
+        <title>Lune | Talent Beyond Borders</title>
 
-  <!-- PWA Meta Tags -->
-  <!-- PWA Meta Tags -->
-  <meta name="theme-color" content="#0A9396">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Lune">
-  <meta name="application-name" content="Lune">
-  <meta name="msapplication-TileColor" content="#0A9396">
-  <meta name="msapplication-config" content="/browserconfig.xml">
+        <!-- PWA Meta Tags -->
+        <!-- PWA Meta Tags -->
+        <meta name="theme-color" content="#0A9396" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta
+            name="apple-mobile-web-app-status-bar-style"
+            content="black-translucent"
+        />
+        <meta name="apple-mobile-web-app-title" content="Lune" />
+        <meta name="application-name" content="Lune" />
+        <meta name="msapplication-TileColor" content="#0A9396" />
+        <meta name="msapplication-config" content="/browserconfig.xml" />
 
-  <!-- PWA Manifest -->
-  <link rel="manifest" href="/manifest.json">
+        <!-- PWA Manifest -->
+        <link rel="manifest" href="/manifest.json" />
 
-  <!-- Favicon & Icons -->
-  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
-  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
-  <link rel="mask-icon" href="/icons/safari-pinned-tab.svg" color="#0A9396">
+        <!-- Favicon & Icons -->
+        <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="32x32"
+            href="/icons/favicon-32x32.png"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="16x16"
+            href="/icons/favicon-16x16.png"
+        />
+        <link
+            rel="apple-touch-icon"
+            sizes="180x180"
+            href="/icons/apple-touch-icon.png"
+        />
+        <link
+            rel="mask-icon"
+            href="/icons/safari-pinned-tab.svg"
+            color="#0A9396"
+        />
 
-  <!-- Open Graph / Social handled by React Helmet -->
+        <!-- Open Graph / Social handled by React Helmet -->
 
-    <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            cream: '#F3F0E7',
-            teal: '#1F4D48',
-            orange: '#F26430',
-            darkblue: '#2B4C55',
-            charcoal: '#1E1E1E',
-            editor: '#1e1e1e',
-            editorSide: '#252526',
-          },
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-            mono: ['Fira Code', 'monospace'],
-          }
-        }
-      }
-    }
-  </script>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        colors: {
+                            cream: "#F3F0E7",
+                            teal: "#1F4D48",
+                            orange: "#F26430",
+                            darkblue: "#2B4C55",
+                            charcoal: "#1E1E1E",
+                            editor: "#1e1e1e",
+                            editorSide: "#252526",
+                        },
+                        fontFamily: {
+                            sans: ["Inter", "sans-serif"],
+                            mono: ["Fira Code", "monospace"],
+                        },
+                    },
+                },
+            };
+        </script>
 
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap"
-    rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap"
+            rel="stylesheet"
+        />
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css"
+            rel="stylesheet"
+        />
 
-  <link rel="stylesheet" href="/src/index.css">
-</head>
+        <link rel="stylesheet" href="/src/index.css" />
+    </head>
 
-<body class="bg-cream text-slate-900 antialiased">
-  <div id="root"></div>
-  <script type="module" src="/src/index.tsx"></script>
-</body>
+    <body class="bg-cream text-slate-900 antialiased">
+        <div id="root"></div>
 
+        <!-- JavaScript Required Warning -->
+        <noscript>
+            <div
+                style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: 100vh;
+                    background-color: #f3f0e7;
+                    padding: 20px;
+                    font-family: Inter, sans-serif;
+                "
+            >
+                <div
+                    style="
+                        max-width: 500px;
+                        text-align: center;
+                        background: white;
+                        padding: 40px;
+                        border-radius: 12px;
+                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    "
+                >
+                    <h1
+                        style="
+                            font-size: 24px;
+                            font-weight: 700;
+                            color: #1e1e1e;
+                            margin: 0 0 12px 0;
+                        "
+                    >
+                        JavaScript Required
+                    </h1>
+                    <p style="font-size: 16px; color: #666; margin: 0 0 20px 0">
+                        Lune requires JavaScript to be enabled in your browser
+                        to function properly.
+                    </p>
+                    <p style="font-size: 14px; color: #999; margin: 0 0 20px 0">
+                        Please enable JavaScript in your browser settings and
+                        reload this page to continue.
+                    </p>
+                    <div
+                        style="
+                            text-align: left;
+                            font-size: 13px;
+                            color: #666;
+                            background: #f5f5f5;
+                            padding: 15px;
+                            border-radius: 8px;
+                            margin: 20px 0;
+                        "
+                    >
+                        <p style="margin: 0 0 10px 0; font-weight: 600">
+                            How to enable JavaScript:
+                        </p>
+                        <ul style="margin: 0; padding-left: 20px">
+                            <li style="margin-bottom: 6px">
+                                <strong>Chrome/Edge:</strong> Settings → Privacy
+                                → Site Settings → JavaScript → Allow
+                            </li>
+                            <li style="margin-bottom: 6px">
+                                <strong>Firefox:</strong> about:config →
+                                javascript.enabled → Toggle to true
+                            </li>
+                            <li>
+                                <strong>Safari:</strong> Preferences → Security
+                                → Enable JavaScript
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </noscript>
+
+        <script type="module" src="/src/index.tsx"></script>
+    </body>
 </html>
