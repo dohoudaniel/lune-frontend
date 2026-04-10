@@ -7,38 +7,32 @@ import React, {
   useMemo,
 } from "react";
 import {
-  Code,
   Award,
   TrendingUp,
   Briefcase,
   MapPin,
-  User,
-  Play,
   Plus,
   Sparkles,
   CheckCircle,
   Loader,
   ArrowRight,
-  Video,
   X,
   Bookmark,
   Star,
-  Mic,
   Share2,
   Shield,
   ExternalLink,
   Eye,
-  History,
   Search,
   Zap,
   Target,
-  Home,
-  MessageSquare,
+  Menu,
 } from "lucide-react";
 import { CandidateProfile, RecommendedCertification, Job } from "../types";
 import { getCareerRecommendations } from "../services/geminiService";
 import { notificationService } from "../services/notificationService";
 import { NotificationBell } from "./NotificationBell";
+import { AppSidebar } from "./AppSidebar";
 import { MockInterview } from "./MockInterview";
 import { WelcomeBanner } from "./WelcomeBanner";
 import { AssessmentHistory } from "./AssessmentHistory";
@@ -243,6 +237,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
   const [activeTab, setActiveTab] = useState<
     "overview" | "interview" | "history" | "community"
   >("overview");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(""); // Search state
   const [recommendations, setRecommendations] = useState<{
     certifications: RecommendedCertification[];
@@ -484,78 +479,63 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-cream font-sans pb-16 sm:pb-0">
+    <div className="flex h-screen overflow-hidden bg-gray-50 font-sans">
       <SEO pageType="candidate-dashboard" />
-      {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 flex sm:hidden">
-        {[
-          { icon: <Home size={20} />, label: "Home", tab: "overview" as const },
-          {
-            icon: <Mic size={20} />,
-            label: "Interview",
-            tab: "interview" as const,
-          },
-          {
-            icon: <History size={20} />,
-            label: "Progress",
-            tab: "history" as const,
-          },
-          {
-            icon: <MessageSquare size={20} />,
-            label: "Community",
-            tab: "community" as const,
-          },
-        ].map((item) => (
-          <button
-            key={item.tab}
-            onClick={() => setActiveTab(item.tab)}
-            className={`flex-1 flex flex-col items-center py-2 text-xs font-medium transition ${activeTab === item.tab ? "text-orange" : "text-gray-400"}`}
-          >
-            {item.icon}
-            {item.label}
-          </button>
-        ))}
-      </nav>
-      {/* Header */}
-      <motion.header
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 md:px-8 py-4 sticky top-0 z-30 shadow-md"
-      >
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="bg-black text-white p-1.5 rounded-full">
-              <div className="w-4 h-4 grid grid-cols-2 gap-0.5">
-                <div className="bg-white rounded-full"></div>
-                <div className="bg-white rounded-full"></div>
-                <div className="bg-white rounded-full"></div>
-                <div className="bg-white rounded-full"></div>
-              </div>
-            </div>
-            <span className="font-bold text-xl hidden md:inline">
-              lune{" "}
-              <span className="text-gray-400 font-normal">| Candidate</span>
-            </span>
-            <span className="font-bold text-xl md:hidden">lune</span>
-          </div>
-          <div className="flex items-center gap-4">
-            {/* Notification Bell */}
-            <NotificationBell userId={candidate.id} />
 
-            <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full text-xs font-medium">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+      {/* Sidebar */}
+      <AppSidebar
+        role="candidate"
+        activeTab={activeTab}
+        onTabChange={(tab) =>
+          setActiveTab(
+            tab as "overview" | "interview" | "history" | "community",
+          )
+        }
+        userName={candidate.name}
+        userImage={candidate.image}
+        userSubtitle={
+          candidate.title && candidate.title !== "Candidate"
+            ? candidate.title
+            : undefined
+        }
+        onLogout={onLogout}
+        onNavigateProfile={onNavigateProfile}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+
+      {/* Main area */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {/* Top bar */}
+        <header className="bg-white border-b border-gray-100 px-4 md:px-6 h-16 flex items-center gap-4 flex-shrink-0 shadow-sm z-20">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="md:hidden p-2 -ml-1 rounded-lg hover:bg-gray-100 text-gray-600 transition"
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-sm font-semibold text-slate-700 truncate">
+              {activeTab === "overview"
+                ? "Dashboard"
+                : activeTab === "interview"
+                  ? "Mock Interview"
+                  : activeTab === "history"
+                    ? "Progress"
+                    : "Community"}
+            </h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full text-xs font-semibold text-emerald-700">
+              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
               Open for Work
             </div>
-            <button
-              onClick={onLogout}
-              className="text-sm font-medium text-gray-600 hover:text-red-600 transition"
-            >
-              Log out
-            </button>
+            <NotificationBell userId={candidate.id} />
             <button
               onClick={onNavigateProfile}
               title="View Profile"
-              className="w-8 h-8 bg-orange rounded-full flex items-center justify-center text-white font-bold text-xs shadow-md shadow-orange/20 hover:ring-2 hover:ring-orange/50 transition"
+              className="w-8 h-8 bg-[#F26430] rounded-full flex items-center justify-center text-white font-bold text-xs shadow-md shadow-orange/20 hover:ring-2 hover:ring-orange/50 transition overflow-hidden"
             >
               {candidate.image ? (
                 <img
@@ -568,10 +548,9 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
               )}
             </button>
           </div>
-        </div>
-      </motion.header>
+        </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Welcome Banner */}
         <WelcomeBanner
           userName={candidate.name}
@@ -589,61 +568,69 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+            className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
           >
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md hover:border-orange/30 transition-shadow group">
-              <div className="bg-orange/10 p-3.5 rounded-xl text-orange">
-                <Target size={24} />
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-slate-900">
-                  {userStats.total_assessments}
+            {[
+              {
+                icon: <Target size={20} />,
+                value: userStats.total_assessments,
+                label: "Assessments",
+                sublabel: "Total attempts",
+                bg: "bg-orange/8",
+                iconColor: "text-orange",
+                accent: "border-orange/20",
+              },
+              {
+                icon: <Award size={20} />,
+                value: userStats.passed_assessments,
+                label: "Certified",
+                sublabel: "Skills verified",
+                bg: "bg-teal/8",
+                iconColor: "text-teal",
+                accent: "border-teal/20",
+              },
+              {
+                icon: <TrendingUp size={20} />,
+                value: userStats.total_points.toLocaleString(),
+                label: "Points",
+                sublabel: "Total earned",
+                bg: "bg-purple-50",
+                iconColor: "text-purple-600",
+                accent: "border-purple-100",
+              },
+              {
+                icon: <Zap size={20} />,
+                value: `${userStats.current_streak}d`,
+                label: "Streak",
+                sublabel: `Best: ${userStats.longest_streak}d`,
+                bg: "bg-amber-50",
+                iconColor: "text-amber-500",
+                accent: "border-amber-100",
+              },
+            ].map((stat, i) => (
+              <motion.div
+                key={i}
+                whileHover={{ y: -2 }}
+                className={`bg-white rounded-2xl p-4 sm:p-5 shadow-sm border ${stat.accent} flex flex-col gap-3 transition-shadow hover:shadow-md`}
+              >
+                <div
+                  className={`${stat.bg} ${stat.iconColor} w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0`}
+                >
+                  {stat.icon}
                 </div>
-                <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">
-                  Total Attempts
+                <div>
+                  <div className="text-2xl sm:text-3xl font-bold text-slate-900 leading-none">
+                    {stat.value}
+                  </div>
+                  <div className="text-xs font-semibold text-slate-700 mt-1">
+                    {stat.label}
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">
+                    {stat.sublabel}
+                  </div>
                 </div>
-              </div>
-            </div>
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md hover:border-orange/30 transition-shadow group">
-              <div className="bg-teal/10 p-3.5 rounded-xl text-teal">
-                <Award size={24} />
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-slate-900">
-                  {userStats.passed_assessments}
-                </div>
-                <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">
-                  Certifications
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md hover:border-orange/30 transition-shadow group">
-              <div className="bg-purple-100 p-3.5 rounded-xl text-purple-600">
-                <TrendingUp size={24} />
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-slate-900">
-                  {userStats.total_points.toLocaleString()}
-                </div>
-                <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">
-                  Total Points
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md hover:border-orange/30 transition-shadow group">
-              <div className="bg-red-100 p-3.5 rounded-xl text-red-500">
-                <Zap size={24} />
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-slate-900">
-                  {userStats.current_streak} Day
-                  {userStats.current_streak !== 1 ? "s" : ""}
-                </div>
-                <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">
-                  Streak (Best: {userStats.longest_streak})
-                </div>
-              </div>
-            </div>
+              </motion.div>
+            ))}
           </motion.div>
         )}
 
@@ -659,78 +646,86 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
             className="lg:col-span-4 space-y-6"
           >
             {/* Profile Summary Card */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="flex items-center gap-4 mb-4">
-                {/* Avatar */}
-                <button
-                  onClick={onNavigateProfile}
-                  className="w-14 h-14 rounded-2xl bg-orange flex-shrink-0 overflow-hidden flex items-center justify-center text-white font-bold text-lg shadow-md shadow-orange/20 hover:ring-2 hover:ring-orange/40 transition"
-                  title="Edit profile"
-                >
-                  {candidate.image ? (
-                    <img
-                      src={candidate.image}
-                      alt={candidate.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    candidate.name.substring(0, 2).toUpperCase()
-                  )}
-                </button>
-                <div className="min-w-0">
-                  <p className="font-bold text-slate-900 truncate">
-                    {candidate.name}
-                  </p>
-                  <p className="text-xs text-slate-500 truncate">
-                    {candidate.title && candidate.title !== "Candidate"
-                      ? candidate.title
-                      : "Add your title"}
-                  </p>
-                  {candidate.location && (
-                    <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                      <MapPin size={10} />
-                      {candidate.location}
-                    </p>
-                  )}
-                </div>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow overflow-hidden">
+              {/* Card gradient top */}
+              <div className="h-14 bg-gradient-to-r from-[#1F4D48] to-slate-800 relative">
+                <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.15) 1px, transparent 0)', backgroundSize: '16px 16px' }} />
               </div>
-
-              {/* Profile Completion Bar */}
-              <div>
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="font-semibold text-gray-600">
-                    Profile completion
-                  </span>
-                  <span
-                    className={`font-bold ${profileCompletion >= 80 ? "text-teal" : profileCompletion >= 50 ? "text-orange" : "text-red-500"}`}
-                  >
-                    {profileCompletion}%
-                  </span>
-                </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: "0%" }}
-                    animate={{ width: `${profileCompletion}%` }}
-                    transition={{ duration: 0.7, ease: "easeOut" }}
-                    className={`h-full rounded-full ${
-                      profileCompletion >= 80
-                        ? "bg-teal"
-                        : profileCompletion >= 50
-                          ? "bg-orange"
-                          : "bg-red-400"
-                    }`}
-                  />
-                </div>
-                {profileCompletion < 100 && (
+              <div className="px-5 pb-5">
+                {/* Avatar overlapping gradient */}
+                <div className="flex items-end gap-4 -mt-8 mb-3">
                   <button
                     onClick={onNavigateProfile}
-                    className="mt-2 text-xs text-teal font-semibold hover:underline"
+                    className="w-16 h-16 rounded-2xl bg-[#F26430] flex-shrink-0 overflow-hidden flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-orange/25 hover:ring-2 hover:ring-[#F26430]/40 transition ring-2 ring-white"
+                    title="Edit profile"
                   >
-                    {profileCompletion === 0
-                      ? "Set up your profile →"
-                      : "Complete your profile →"}
+                    {candidate.image ? (
+                      <img
+                        src={candidate.image}
+                        alt={candidate.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      candidate.name.substring(0, 2).toUpperCase()
+                    )}
                   </button>
+                  <div className="min-w-0 pb-1">
+                    <p className="font-bold text-slate-900 truncate text-sm">
+                      {candidate.name}
+                    </p>
+                    <p className="text-xs text-slate-500 truncate">
+                      {candidate.title && candidate.title !== "Candidate"
+                        ? candidate.title
+                        : "Add your title →"}
+                    </p>
+                  </div>
+                </div>
+
+                {candidate.location && (
+                  <p className="text-xs text-slate-400 flex items-center gap-1 mb-4">
+                    <MapPin size={11} className="text-slate-400" />
+                    {candidate.location}
+                  </p>
                 )}
+
+                {/* Profile Completion Bar */}
+                <div>
+                  <div className="flex justify-between text-xs mb-1.5">
+                    <span className="font-semibold text-gray-500">
+                      Profile complete
+                    </span>
+                    <span
+                      className={`font-bold ${profileCompletion >= 80 ? "text-teal" : profileCompletion >= 50 ? "text-orange" : "text-red-500"}`}
+                    >
+                      {profileCompletion}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: "0%" }}
+                      animate={{ width: `${profileCompletion}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      className={`h-full rounded-full ${
+                        profileCompletion >= 80
+                          ? "bg-gradient-to-r from-teal to-emerald-400"
+                          : profileCompletion >= 50
+                            ? "bg-gradient-to-r from-orange to-amber-400"
+                            : "bg-red-400"
+                      }`}
+                    />
+                  </div>
+                  {profileCompletion < 100 && (
+                    <button
+                      onClick={onNavigateProfile}
+                      className="mt-2.5 text-xs text-teal font-semibold hover:underline flex items-center gap-1"
+                    >
+                      {profileCompletion === 0
+                        ? "Set up your profile"
+                        : "Complete your profile"}{" "}
+                      →
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1001,49 +996,6 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
 
           {/* Right Content */}
           <motion.div variants={itemVariants} className="lg:col-span-8">
-            {/* Tab Navigation */}
-            <div
-              role="tablist"
-              className="flex bg-white rounded-2xl p-1.5 shadow-sm border border-gray-100 mb-6 gap-1"
-            >
-              {[
-                {
-                  id: "overview",
-                  label: "Career Path",
-                  icon: <Briefcase size={15} />,
-                },
-                {
-                  id: "interview",
-                  label: "Mock Interview",
-                  icon: <Mic size={15} />,
-                },
-                {
-                  id: "history",
-                  label: "Progress",
-                  icon: <History size={15} />,
-                },
-                {
-                  id: "community",
-                  label: "Community",
-                  icon: <MessageSquare size={15} />,
-                },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  role="tab"
-                  aria-selected={activeTab === tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all ${
-                    activeTab === tab.id
-                      ? "bg-orange text-white shadow-sm shadow-orange/30"
-                      : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-                  }`}
-                >
-                  {tab.icon} {tab.label}
-                </button>
-              ))}
-            </div>
-
             <AnimatePresence mode="wait">
               {activeTab === "overview" && (
                 <motion.div
@@ -1431,7 +1383,8 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
             </AnimatePresence>
           </motion.div>
         </motion.div>
-      </main>
+        </main>
+      </div>
 
       {/* Skill Passport — full-screen page */}
       <AnimatePresence>
