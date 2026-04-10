@@ -42,13 +42,25 @@ export const dataService = {
         }
     },
 
-    async getCandidates(): Promise<CandidateProfile[]> {
+    // PERF-F2: paginated fetch — returns one page (20 candidates) and the total count.
+    async getCandidatesPage(page = 1, pageSize = 20): Promise<{ results: CandidateProfile[]; count: number; next: string | null }> {
         try {
-            return await api.get('/candidates/');
+            const data = await api.get(`/candidates/?page=${page}&page_size=${pageSize}`);
+            // Backend returns DRF paginated shape: { count, next, previous, results }
+            if (data && Array.isArray((data as any).results)) {
+                return data as { results: CandidateProfile[]; count: number; next: string | null };
+            }
+            // Fallback if backend returns a plain array (non-paginated)
+            return { results: Array.isArray(data) ? data : [], count: 0, next: null };
         } catch (error) {
             console.error('Error fetching candidates:', error);
-            return [];
+            return { results: [], count: 0, next: null };
         }
+    },
+
+    async getCandidates(): Promise<CandidateProfile[]> {
+        const { results } = await this.getCandidatesPage(1, 20);
+        return results;
     },
 
     async getAssessments(): Promise<Assessment[]> {
