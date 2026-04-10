@@ -922,11 +922,7 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
                   {difficulty}
                 </span>
                 <span>•</span>
-                <span>
-                  {content.situationalQuestions.length +
-                    (content.oralResponseTask ? 1 : 0)}{" "}
-                  Questions
-                </span>
+                <span>{content.situationalQuestions.length} Questions</span>
               </div>
             </div>
           </div>
@@ -1061,19 +1057,19 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
                           <div className="text-2xl font-bold text-orange mb-1">
                             {
                               content.situationalQuestions.filter(
-                                (q) => q.options,
+                                (q) => q.taskType === "multiple_choice",
                               ).length
                             }
                           </div>
                           <div className="text-xs text-gray-500">
-                            MC Question
+                            MC Questions
                           </div>
                         </div>
                         <div className="bg-white p-3 rounded-lg border border-gray-200">
                           <div className="text-2xl font-bold text-orange mb-1">
                             {
                               content.situationalQuestions.filter(
-                                (q) => !q.options,
+                                (q) => q.taskType === "written_task",
                               ).length
                             }
                           </div>
@@ -1083,15 +1079,22 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
                         </div>
                         <div className="bg-white p-3 rounded-lg border border-gray-200">
                           <div className="text-2xl font-bold text-orange mb-1">
-                            {content.oralResponseTask ? 1 : 0}
+                            {
+                              content.situationalQuestions.filter(
+                                (q) => q.taskType === "oral_response",
+                              ).length
+                            }
                           </div>
                           <div className="text-xs text-gray-500">
-                            Video Response
+                            Video Responses
                           </div>
                         </div>
-                        <div className="bg-white p-3 rounded-lg border border-gray-200">
-                          <div className="text-2xl font-bold text-orange mb-1">
-                            35%
+                        <div className="bg-white p-3 rounded-lg border border-gray-200 overflow-hidden">
+                          <div
+                            className="text-lg font-bold text-orange mb-1 truncate"
+                            title={difficulty}
+                          >
+                            {difficulty}
                           </div>
                           <div className="text-xs text-gray-500">
                             Difficulty

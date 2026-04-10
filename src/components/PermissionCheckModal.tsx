@@ -30,7 +30,7 @@ export const PermissionCheckModal: React.FC<PermissionCheckModalProps> = ({
             setError(null);
             checkPermissions();
         }
-    }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [isOpen]);  
 
     // Clean up stream on unmount or close
     useEffect(() => {

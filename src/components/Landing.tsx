@@ -878,7 +878,7 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                     <LazyImage
                       src="/assets/landing/optimized_6.webp"
                       alt="Global community of verified professionals across 30+ countries"
-                      className="w-full h-auto max-w-md rounded-xl object-cover"
+                      className="w-full h-auto max-w-xl rounded-xl object-cover"
                       containerClassName="w-full"
                       priority={false}
                     />

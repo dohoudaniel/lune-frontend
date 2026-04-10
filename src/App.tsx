@@ -20,6 +20,7 @@ import {
   registerServiceWorker,
 } from "./components/InstallPrompt";
 import { OfflineIndicator } from "./components/OfflineIndicator";
+import { MobileOverlay } from "./components/MobileOverlay";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { CertificateData } from "./services/certificateBadgeService";
 import { onboardingService } from "./services/onboardingService";
@@ -188,11 +189,7 @@ const CVViewerPage = lazy(() =>
     default: m.CVViewerPage,
   })),
 );
-const OnboardingModal = lazy(() =>
-  import("./components/OnboardingModal").then((m) => ({
-    default: m.OnboardingModal,
-  })),
-);
+
 const ProfileCompletionGate = lazy(() =>
   import("./components/ProfileCompletionGate").then((m) => ({
     default: m.ProfileCompletionGate,
@@ -298,15 +295,8 @@ const getViewFromPath = (): ViewState => {
 
 function AppContent() {
   const toast = useToast();
-  const {
-    user,
-    isAuthenticated,
-    isLoading,
-    logout,
-    showOnboarding,
-    setShowOnboarding,
-    markOnboardingComplete,
-  } = useAuth();
+  const { user, isAuthenticated, isLoading, logout, markOnboardingComplete } =
+    useAuth();
   const [currentView, setCurrentView] = useState<ViewState>(getViewFromPath);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<string>("");
@@ -397,7 +387,13 @@ function AppContent() {
       !user.onboarding_completed &&
       PROTECTED_VIEWS.includes(currentView)
     ) {
-      setShowProfileCompletionGate(true);
+      React.startTransition(() => {
+        setShowProfileCompletionGate(true);
+      });
+    } else {
+      React.startTransition(() => {
+        setShowProfileCompletionGate(false);
+      });
     }
   }, [user, isAuthenticated, currentView]);
 
@@ -461,7 +457,6 @@ function AppContent() {
         initializeGamification(user.id);
         initializeAiLearning(user.id);
         initializeNotifications(user.id);
-        onboardingService.setUserId(user.id);
       } else {
         // Fetch real profile from Backend
         getEmployerProfile(user.id).then((profileData) => {
@@ -513,7 +508,11 @@ function AppContent() {
       }
 
       // Initialize onboarding service for this user
-      onboardingService.setUserId(user.id);
+      onboardingService.setUserId(user.id).then(() => {
+        if (user.onboarding_completed) {
+          onboardingService.updateProgress({ profileCompleted: true });
+        }
+      });
 
       // Check if first-time user and show tour (only on dashboard routes)
       const isDashboard =
@@ -642,15 +641,6 @@ function AppContent() {
 
   const handleStartTour = () => {
     setShowOnboardingTour(true);
-  };
-
-  const handleOnboardingModalComplete = async () => {
-    const result = await markOnboardingComplete();
-    if (result.success) {
-      toast.success("🎉 Setup complete! Welcome to Lune.");
-    } else {
-      toast.error(result.error || "Failed to complete onboarding");
-    }
   };
 
   const handleLogout = async () => {
@@ -1779,16 +1769,6 @@ Verify my certificate: ${certificateUrl}
         userRole={userRole === UserRole.EMPLOYER ? "employer" : "candidate"}
       />
 
-      {/* Onboarding Modal for New Users */}
-      <Suspense fallback={null}>
-        <OnboardingModal
-          isOpen={showOnboarding}
-          onClose={() => setShowOnboarding(false)}
-          onComplete={handleOnboardingModalComplete}
-          userRole={user?.role === "employer" ? "employer" : "candidate"}
-        />
-      </Suspense>
-
       {/* Profile Completion Gate - Mandatory for new users */}
       <Suspense fallback={null}>
         <ProfileCompletionGate
@@ -1815,6 +1795,7 @@ function App() {
     <ErrorBoundary>
       {/* PWA Components */}
       <OfflineIndicator />
+      <MobileOverlay />
       <InstallPrompt />
 
       {/* Main App */}

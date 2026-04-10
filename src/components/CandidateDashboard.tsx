@@ -33,6 +33,7 @@ import {
   Zap,
   Target,
   Home,
+  MessageSquare,
 } from "lucide-react";
 import { CandidateProfile, RecommendedCertification, Job } from "../types";
 import { getCareerRecommendations } from "../services/geminiService";
@@ -44,13 +45,10 @@ import { AssessmentHistory } from "./AssessmentHistory";
 import { MessagingUI } from "./messaging/MessagingUI";
 import { SEO } from "./SEO";
 import { useToast } from "../lib/toast";
+import { useAuth } from "../hooks/useAuth";
 import { motion, AnimatePresence } from "framer-motion";
-
-// Lazy load SkillPassport for performance
-const SkillPassport = lazy(() =>
-  import("./SkillPassport").then((m) => ({ default: m.SkillPassport })),
-);
 import { api } from "../lib/api";
+import { onboardingService } from "../services/onboardingService";
 import {
   generatePassport,
   getCandidateProfile,
@@ -63,6 +61,11 @@ import {
   getTotalAssessmentCount,
   MIN_PASSPORT_SESSIONS,
 } from "../services/assessmentHistoryService";
+
+// Lazy load SkillPassport for performance
+const SkillPassport = lazy(() =>
+  import("./SkillPassport").then((m) => ({ default: m.SkillPassport })),
+);
 
 interface CandidateDashboardProps {
   candidate: CandidateProfile;
@@ -200,19 +203,10 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
   onNavigateProfile,
 }) => {
   const toast = useToast();
+  const { checkProfileCompletion } = useAuth();
 
-  // Profile completion % — shared with ProfilePage so both views agree
-  const profileCompletion = calcCompletion(
-    {
-      bio: candidate.bio,
-      title: candidate.title,
-      location: candidate.location,
-      years_of_experience: candidate.yearsOfExperience,
-      preferred_work_mode: candidate.preferredWorkMode,
-      avatar: candidate.image,
-    } as Record<string, unknown>,
-    "candidate",
-  );
+  // Profile completion % — synced from backend
+  const [profileCompletion, setProfileCompletion] = useState(0);
 
   // A profile is "ready" once at least title, bio and one skill are filled
   const isProfileComplete = (): boolean => {
@@ -232,6 +226,14 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
       onNavigateProfile?.();
       return;
     }
+
+    if (!hasPassedAnyAssessment(candidate.id)) {
+      toast.warning(
+        "You must pass at least one assessment to unlock job applications.",
+      );
+      return;
+    }
+
     window.open(
       `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(jobTitle + " " + company)}`,
       "_blank",
@@ -298,9 +300,63 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
   useEffect(() => {
     api
       .get("/users/me/statistics/")
-      .then(setUserStats)
+      .then((stats: any) => {
+        setUserStats(stats);
+        if (stats) {
+          if (stats.total_assessments > 0) {
+            onboardingService.updateProgress({ firstAssessmentTaken: true });
+          }
+          if (stats.passed_assessments > 0) {
+            onboardingService.updateProgress({ firstCertificateEarned: true });
+          }
+        }
+      })
       .catch((err) => console.error("Failed to fetch user stats:", err));
-  }, [candidate.id]);
+
+    if (candidate.videoIntroUrl) {
+      onboardingService.updateProgress({ videoUploaded: true });
+    }
+  }, [candidate.id, candidate.videoIntroUrl]);
+
+  // Check profile completion status on dashboard load to auto-sync onboarding_completed
+  // Use backend as source of truth: if complete=100%, otherwise fall back to local calculation
+  useEffect(() => {
+    checkProfileCompletion()
+      .then((result) => {
+        if (result.is_complete) {
+          // Backend says profile is complete
+          setProfileCompletion(100);
+        } else {
+          // Fall back to local calculation for partial completion
+          const local = calcCompletion(
+            {
+              bio: candidate.bio,
+              title: candidate.title,
+              location: candidate.location,
+              years_of_experience: candidate.yearsOfExperience,
+              preferred_work_mode: candidate.preferredWorkMode,
+            } as Record<string, unknown>,
+            "candidate",
+          );
+          setProfileCompletion(local);
+        }
+      })
+      .catch((err) => {
+        console.debug("Profile completion check skipped:", err);
+        // Fall back to local calculation on error
+        const local = calcCompletion(
+          {
+            bio: candidate.bio,
+            title: candidate.title,
+            location: candidate.location,
+            years_of_experience: candidate.yearsOfExperience,
+            preferred_work_mode: candidate.preferredWorkMode,
+          } as Record<string, unknown>,
+          "candidate",
+        );
+        setProfileCompletion(local);
+      });
+  }, [checkProfileCompletion, candidate]);
 
   // Sync fresh profile data from backend on every dashboard mount so the
   // completion bar and profile card always reflect the actual saved state.
@@ -522,6 +578,8 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
           userRole="candidate"
           onStartTour={onStartTour}
           onCompleteProfile={onNavigateProfile}
+          onStartAssessment={() => onStartAssessment()}
+          onOpenVideoAnalyzer={onOpenVideoAnalyzer}
           className="mb-0"
         />
 

@@ -12,6 +12,7 @@ import {
   initializeNotifications,
   disconnectSSE,
 } from "../services/notificationService";
+import { onboardingService } from "../services/onboardingService";
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -49,6 +50,11 @@ interface AuthContextType {
   ) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   markOnboardingComplete: () => Promise<{ success: boolean; error?: string }>;
+  checkProfileCompletion: () => Promise<{
+    success: boolean;
+    is_complete?: boolean;
+    error?: string;
+  }>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(
@@ -296,8 +302,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         setUser(updatedUser);
         localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(updatedUser));
       }
+      onboardingService.updateProgress({ profileCompleted: true });
       setShowOnboarding(false);
       return { success: true };
+    } catch (error: unknown) {
+      return { success: false, error: extractErrorMessage(error) };
+    }
+  }, [user]);
+
+  const checkProfileCompletion = useCallback(async (): Promise<{
+    success: boolean;
+    is_complete?: boolean;
+    error?: string;
+  }> => {
+    try {
+      const res = (await api.get("/users/me/check-profile-completion/")) as any;
+      if (res.is_complete && user && !user.onboarding_completed) {
+        const updatedUser: AuthUser = { ...user, onboarding_completed: true };
+        setUser(updatedUser);
+        localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(updatedUser));
+        setShowOnboarding(false);
+      }
+      if (res.is_complete) {
+        onboardingService.updateProgress({ profileCompleted: true });
+      }
+      return { success: true, is_complete: res.is_complete };
     } catch (error: unknown) {
       return { success: false, error: extractErrorMessage(error) };
     }
@@ -328,6 +357,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     changePassword,
     logout,
     markOnboardingComplete,
+    checkProfileCompletion,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -118,6 +118,10 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
             about:
               (fetchedProfile as any).about ||
               "Leading technology company focused on innovation and growth.",
+            avatar:
+              (fetchedProfile as any).image_url ||
+              (fetchedProfile as any).avatar ||
+              "",
           };
           setEmployerProfile(newProfile);
           setProfileForm(newProfile);
@@ -171,6 +175,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
     website: "https://techcorpglobal.com",
     location: "San Francisco, CA",
     about: "Leading technology company focused on innovation and growth.",
+    avatar: "",
   });
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState({ ...employerProfile });
@@ -1336,10 +1341,18 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
               onClick={
                 onNavigateProfile ?? (() => setShowProfileSettings(true))
               }
-              className="w-8 h-8 bg-orange rounded-full flex items-center justify-center text-white font-bold text-xs shadow-md shadow-orange/20 cursor-pointer hover:ring-2 hover:ring-orange/50 transition"
+              className="w-8 h-8 bg-orange rounded-full flex items-center justify-center text-white font-bold text-xs shadow-md shadow-orange/20 cursor-pointer hover:ring-2 hover:ring-orange/50 transition overflow-hidden"
               title="View Profile"
             >
-              {userName.charAt(0).toUpperCase()}
+              {(employerProfile as any)?.avatar ? (
+                <img
+                  src={(employerProfile as any).avatar}
+                  alt={userName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                userName.charAt(0).toUpperCase()
+              )}
             </motion.button>
             <button
               onClick={onLogout}

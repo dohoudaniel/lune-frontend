@@ -1,11 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { messagingService, Conversation, Message } from '../../services/messagingService';
+import React, { useState, useEffect } from "react";
+import {
+  messagingService,
+  Conversation,
+  Message,
+} from "../../services/messagingService";
 
 export const MessagingUI: React.FC = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [selectedConversationId, setSelectedConversationId] = useState<
+    string | null
+  >(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState("");
 
   useEffect(() => {
     // Fetch conversations on mount
@@ -27,18 +33,20 @@ export const MessagingUI: React.FC = () => {
   const loadConversations = async () => {
     try {
       const data = await messagingService.getConversations();
-      setConversations(data);
+      setConversations(data || []);
     } catch (error) {
-      console.error('Failed to load conversations', error);
+      console.error("Failed to load conversations", error);
+      setConversations([]);
     }
   };
 
   const loadMessages = async (conversationId: string) => {
     try {
       const data = await messagingService.getMessages(conversationId);
-      setMessages(data);
+      setMessages(data || []);
     } catch (error) {
-      console.error('Failed to load messages', error);
+      console.error("Failed to load messages", error);
+      setMessages([]);
     }
   };
 
@@ -50,16 +58,22 @@ export const MessagingUI: React.FC = () => {
       // Assuming recipient is the other participant in the conversation
       // For simplicity, we just pass the conversation ID here. In a real app,
       // you might need to extract the specific recipient ID.
-      const conversation = conversations.find((c) => c.id === selectedConversationId);
-      const recipientId = conversation?.participants.find((p) => p !== 'me'); // Simplified logic
+      const conversation = conversations.find(
+        (c) => c.id === selectedConversationId,
+      );
+      const recipientId = conversation?.participants.find((p) => p !== "me"); // Simplified logic
 
       if (!recipientId) return;
 
-      const sentMsg = await messagingService.sendMessage(recipientId, newMessage, selectedConversationId);
+      const sentMsg = await messagingService.sendMessage(
+        recipientId,
+        newMessage,
+        selectedConversationId,
+      );
       setMessages([...messages, sentMsg]);
-      setNewMessage('');
+      setNewMessage("");
     } catch (error) {
-      console.error('Failed to send message', error);
+      console.error("Failed to send message", error);
     }
   };
 
@@ -71,15 +85,17 @@ export const MessagingUI: React.FC = () => {
           <h2 className="text-xl font-semibold text-gray-800">Inbox</h2>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {conversations.length === 0 ? (
-            <div className="p-4 text-gray-500 text-center">No conversations found.</div>
+          {!conversations || conversations.length === 0 ? (
+            <div className="p-4 text-gray-500 text-center">
+              No conversations found.
+            </div>
           ) : (
             <ul className="divide-y divide-gray-200">
               {conversations.map((conv) => (
                 <li
                   key={conv.id}
                   className={`p-4 cursor-pointer hover:bg-gray-50 ${
-                    selectedConversationId === conv.id ? 'bg-blue-50' : ''
+                    selectedConversationId === conv.id ? "bg-blue-50" : ""
                   }`}
                   onClick={() => setSelectedConversationId(conv.id)}
                 >
@@ -107,28 +123,30 @@ export const MessagingUI: React.FC = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.length === 0 ? (
-                <div className="text-center text-gray-500 mt-10">No messages yet. Say hi!</div>
+              {!messages || messages.length === 0 ? (
+                <div className="text-center text-gray-500 mt-10">
+                  No messages yet. Say hi!
+                </div>
               ) : (
                 messages.map((msg) => (
                   <div
                     key={msg.id}
                     className={`flex ${
-                      msg.sender === 'me' ? 'justify-end' : 'justify-start'
+                      msg.sender === "me" ? "justify-end" : "justify-start"
                     }`}
                   >
                     <div
                       className={`max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-lg ${
-                        msg.sender === 'me'
-                          ? 'bg-blue-600 text-white rounded-br-none'
-                          : 'bg-gray-100 text-gray-800 rounded-bl-none'
+                        msg.sender === "me"
+                          ? "bg-blue-600 text-white rounded-br-none"
+                          : "bg-gray-100 text-gray-800 rounded-bl-none"
                       }`}
                     >
                       <p className="text-sm">{msg.content}</p>
                       <p className="text-xs mt-1 opacity-70 text-right">
                         {new Date(msg.timestamp).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
+                          hour: "2-digit",
+                          minute: "2-digit",
                         })}
                       </p>
                     </div>

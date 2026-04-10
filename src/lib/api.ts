@@ -149,9 +149,5 @@ export const api = {
   delete: (endpoint: string) =>
     apiInstance.delete(endpoint).then((res) => res.data),
   postForm: (endpoint: string, data: FormData) =>
-    apiInstance
-      .post(endpoint, data, {
-        headers: { "Content-Type": "multipart/form-data" },
-      })
-      .then((res) => res.data),
+    apiInstance.post(endpoint, data).then((res) => res.data),
 };

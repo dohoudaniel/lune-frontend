@@ -426,107 +426,111 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           />
 
           {/* Modal */}
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg z-50"
-          >
-            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-              {/* Header */}
-              <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-4 flex items-center justify-between">
-                <h3 className="text-white font-semibold">
-                  {stepTitles[currentStep]}
-                </h3>
-                <button
-                  onClick={onClose}
-                  disabled={isSubmitting}
-                  className="text-white/60 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              {/* Progress */}
-              <div className="px-6 pt-6 pb-4">
-                <div className="flex gap-2">
-                  {[0, 1, 2, 3].map((index) => (
-                    <div
-                      key={index}
-                      className={`h-1 flex-1 rounded-full transition-all ${
-                        index <= currentStepIndex
-                          ? "bg-gradient-to-r from-orange to-teal"
-                          : "bg-slate-200"
-                      }`}
-                    />
-                  ))}
-                </div>
-                <p className="text-xs text-slate-500 mt-2">
-                  Step {currentStepIndex + 1} of {totalSteps}
-                </p>
-              </div>
-
-              {/* Content */}
-              <div className="px-6 py-6 max-h-96 overflow-y-auto">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={currentStep}
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    {stepContent[currentStep]}
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-
-              {/* Footer */}
-              <div className="bg-slate-50 px-6 py-4 flex items-center justify-between gap-3 border-t border-slate-100">
-                <button
-                  onClick={currentStep === "welcome" ? onClose : handlePrev}
-                  disabled={isSubmitting}
-                  className="px-4 py-2 text-slate-700 font-medium hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {currentStep === "welcome" ? "Skip" : "Back"}
-                </button>
-
-                <div className="flex gap-2">
-                  {currentStep === "welcome" && (
-                    <button
-                      onClick={handleSkip}
-                      disabled={isSubmitting}
-                      className="px-4 py-2 text-slate-600 text-sm hover:text-slate-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Skip for now
-                    </button>
-                  )}
-                  <motion.button
-                    whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
-                    whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
-                    onClick={
-                      currentStep === "complete" ? handleComplete : handleNext
-                    }
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="w-full max-w-lg pointer-events-auto"
+            >
+              <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-4 flex items-center justify-between">
+                  <h3 className="text-white font-semibold">
+                    {stepTitles[currentStep]}
+                  </h3>
+                  <button
+                    onClick={onClose}
                     disabled={isSubmitting}
-                    className="px-6 py-2 bg-gradient-to-r from-orange to-teal text-white font-semibold rounded-lg flex items-center gap-2 hover:shadow-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="text-white/60 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isSubmitting && currentStep === "complete" ? (
-                      <>
-                        <Loader2 className="animate-spin" size={16} />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        {currentStep === "complete" ? "Get Started" : "Next"}
-                        {currentStep !== "complete" && <ArrowRight size={16} />}
-                      </>
+                    <X size={20} />
+                  </button>
+                </div>
+
+                {/* Progress */}
+                <div className="px-6 pt-6 pb-4">
+                  <div className="flex gap-2">
+                    {[0, 1, 2, 3].map((index) => (
+                      <div
+                        key={index}
+                        className={`h-1 flex-1 rounded-full transition-all ${
+                          index <= currentStepIndex
+                            ? "bg-gradient-to-r from-orange to-teal"
+                            : "bg-slate-200"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-2">
+                    Step {currentStepIndex + 1} of {totalSteps}
+                  </p>
+                </div>
+
+                {/* Content */}
+                <div className="px-6 py-6 max-h-96 overflow-y-auto">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={currentStep}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      {stepContent[currentStep]}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+
+                {/* Footer */}
+                <div className="bg-slate-50 px-6 py-4 flex items-center justify-between gap-3 border-t border-slate-100">
+                  <button
+                    onClick={currentStep === "welcome" ? onClose : handlePrev}
+                    disabled={isSubmitting}
+                    className="px-4 py-2 text-slate-700 font-medium hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {currentStep === "welcome" ? "Skip" : "Back"}
+                  </button>
+
+                  <div className="flex gap-2">
+                    {currentStep === "welcome" && (
+                      <button
+                        onClick={handleSkip}
+                        disabled={isSubmitting}
+                        className="px-4 py-2 text-slate-600 text-sm hover:text-slate-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Skip for now
+                      </button>
                     )}
-                  </motion.button>
+                    <motion.button
+                      whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
+                      whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
+                      onClick={
+                        currentStep === "complete" ? handleComplete : handleNext
+                      }
+                      disabled={isSubmitting}
+                      className="px-6 py-2 bg-gradient-to-r from-orange to-teal text-white font-semibold rounded-lg flex items-center gap-2 hover:shadow-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                      {isSubmitting && currentStep === "complete" ? (
+                        <>
+                          <Loader2 className="animate-spin" size={16} />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          {currentStep === "complete" ? "Get Started" : "Next"}
+                          {currentStep !== "complete" && (
+                            <ArrowRight size={16} />
+                          )}
+                        </>
+                      )}
+                    </motion.button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
