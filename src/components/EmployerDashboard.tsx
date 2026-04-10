@@ -31,9 +31,7 @@ import {
   Edit2,
   Save,
   RefreshCw,
-  Menu,
 } from "lucide-react";
-import { AppSidebar } from "./AppSidebar";
 import { dataService } from "../services/dataService";
 import { matchCandidatesToJob } from "../services/geminiService";
 import { CertificateDetails, CandidateProfile, Job } from "../types";
@@ -46,7 +44,8 @@ import { Skeleton } from "./Skeleton";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface EmployerDashboardProps {
-  onLogout: () => void;
+  activeTab: "candidates" | "jobs";
+  onTabChange?: (tab: "candidates" | "jobs") => void;
   onOpenEnterpriseDashboard?: () => void;
   onStartTour?: () => void;
   userName?: string;
@@ -54,17 +53,14 @@ interface EmployerDashboardProps {
 }
 
 export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
-  onLogout,
+  activeTab,
+  onTabChange,
   onOpenEnterpriseDashboard,
   onStartTour,
   userName = "Employer",
   onNavigateProfile,
 }) => {
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState<"candidates" | "jobs">(
-    "candidates",
-  );
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Candidate Interaction State
   const [viewingCandidate, setViewingCandidate] =
@@ -371,7 +367,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
       setJobDescription("");
 
       // 4. Switch view to candidates to show results
-      setActiveTab("candidates");
+      onTabChange?.("candidates");
       setSelectedIndustry("All");
 
       // 5. Show success toast
@@ -486,73 +482,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 font-sans">
-      {/* Sidebar */}
-      <AppSidebar
-        role="employer"
-        activeTab={activeTab}
-        onTabChange={(tab) => setActiveTab(tab as "candidates" | "jobs")}
-        userName={userName}
-        userSubtitle={employerProfile.companyName}
-        onLogout={onLogout}
-        onNavigateProfile={onNavigateProfile}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        onPostJob={() => setShowPostJob(true)}
-        onOpenEnterpriseDashboard={onOpenEnterpriseDashboard}
-        onProfileSettings={() => setShowProfileSettings(true)}
-      />
-
-      {/* Main area */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {/* Top bar */}
-        <header className="bg-white border-b border-gray-100 px-4 md:px-6 h-16 flex items-center gap-4 flex-shrink-0 shadow-sm z-20">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="md:hidden p-2 -ml-1 rounded-lg hover:bg-gray-100 text-gray-600 transition"
-            aria-label="Open menu"
-          >
-            <Menu size={20} />
-          </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-sm font-semibold text-slate-700 truncate">
-              {activeTab === "candidates" ? "Talent Discovery" : "My Jobs"}
-            </h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowPostJob(true)}
-              className="hidden sm:flex items-center gap-2 text-sm font-semibold bg-[#F26430] text-white px-4 py-2 rounded-lg hover:bg-[#e05520] transition shadow-sm shadow-orange/20"
-            >
-              <Plus size={15} /> Post Job
-            </button>
-            <button
-              onClick={() => setShowProfileSettings(true)}
-              className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition"
-              title="Settings"
-            >
-              <Settings size={18} />
-            </button>
-            <button
-              onClick={onNavigateProfile ?? (() => setShowProfileSettings(true))}
-              className="w-8 h-8 bg-[#F26430] rounded-full flex items-center justify-center text-white font-bold text-xs shadow-md shadow-orange/20 hover:ring-2 hover:ring-orange/50 transition overflow-hidden"
-              title="View Profile"
-            >
-              {(employerProfile as any)?.avatar ? (
-                <img
-                  src={(employerProfile as any).avatar}
-                  alt={userName}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                userName.charAt(0).toUpperCase()
-              )}
-            </button>
-          </div>
-        </header>
-
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto">
+    <div>
 
       {/* Independent Verification Modal (Global) */}
       <AnimatePresence>
@@ -1527,7 +1457,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
               <button
                 role="tab"
                 aria-selected={activeTab === "candidates"}
-                onClick={() => setActiveTab("candidates")}
+                onClick={() => onTabChange?.("candidates")}
                 className={`px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2 ${activeTab === "candidates" ? "bg-teal text-white shadow-sm" : "text-gray-500 hover:bg-gray-50"}`}
               >
                 <Search size={16} /> Find Talent
@@ -1535,7 +1465,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
               <button
                 role="tab"
                 aria-selected={activeTab === "jobs"}
-                onClick={() => setActiveTab("jobs")}
+                onClick={() => onTabChange?.("jobs")}
                 className={`px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2 ${activeTab === "jobs" ? "bg-teal text-white shadow-sm" : "text-gray-500 hover:bg-gray-50"}`}
               >
                 <Briefcase size={16} /> My Jobs
@@ -2033,8 +1963,6 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
           </div>
         )}
       </main>
-        </div>
-      </div>
     </div>
   );
 };

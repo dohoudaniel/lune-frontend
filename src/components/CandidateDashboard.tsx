@@ -11,7 +11,6 @@ import {
   TrendingUp,
   Briefcase,
   MapPin,
-  Plus,
   Sparkles,
   CheckCircle,
   Loader,
@@ -21,22 +20,14 @@ import {
   Star,
   Share2,
   Shield,
-  ExternalLink,
   Eye,
   Search,
   Zap,
   Target,
-  Menu,
 } from "lucide-react";
 import { CandidateProfile, RecommendedCertification, Job } from "../types";
 import { getCareerRecommendations } from "../services/geminiService";
-import { notificationService } from "../services/notificationService";
-import { NotificationBell } from "./NotificationBell";
-import { AppSidebar } from "./AppSidebar";
-import { MockInterview } from "./MockInterview";
 import { WelcomeBanner } from "./WelcomeBanner";
-import { AssessmentHistory } from "./AssessmentHistory";
-import { MessagingUI } from "./messaging/MessagingUI";
 import { SEO } from "./SEO";
 import { useToast } from "../lib/toast";
 import { useAuth } from "../hooks/useAuth";
@@ -64,7 +55,6 @@ const SkillPassport = lazy(() =>
 interface CandidateDashboardProps {
   candidate: CandidateProfile;
   onStartAssessment: (skill?: string) => void;
-  onLogout: () => void;
   onUpdateProfile: (profile: Partial<CandidateProfile>) => void;
   onOpenVideoAnalyzer?: () => void;
   onStartTour?: () => void;
@@ -190,7 +180,6 @@ const AVAILABLE_ASSESSMENTS = {
 export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
   candidate,
   onStartAssessment,
-  onLogout,
   onUpdateProfile,
   onOpenVideoAnalyzer,
   onStartTour,
@@ -234,10 +223,6 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
     );
   };
 
-  const [activeTab, setActiveTab] = useState<
-    "overview" | "interview" | "history" | "community"
-  >("overview");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(""); // Search state
   const [recommendations, setRecommendations] = useState<{
     certifications: RecommendedCertification[];
@@ -479,79 +464,9 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 font-sans">
+    <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       <SEO pageType="candidate-dashboard" />
-
-      {/* Sidebar */}
-      <AppSidebar
-        role="candidate"
-        activeTab={activeTab}
-        onTabChange={(tab) =>
-          setActiveTab(
-            tab as "overview" | "interview" | "history" | "community",
-          )
-        }
-        userName={candidate.name}
-        userImage={candidate.image}
-        userSubtitle={
-          candidate.title && candidate.title !== "Candidate"
-            ? candidate.title
-            : undefined
-        }
-        onLogout={onLogout}
-        onNavigateProfile={onNavigateProfile}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
-
-      {/* Main area */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {/* Top bar */}
-        <header className="bg-white border-b border-gray-100 px-4 md:px-6 h-16 flex items-center gap-4 flex-shrink-0 shadow-sm z-20">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="md:hidden p-2 -ml-1 rounded-lg hover:bg-gray-100 text-gray-600 transition"
-            aria-label="Open menu"
-          >
-            <Menu size={20} />
-          </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-sm font-semibold text-slate-700 truncate">
-              {activeTab === "overview"
-                ? "Dashboard"
-                : activeTab === "interview"
-                  ? "Mock Interview"
-                  : activeTab === "history"
-                    ? "Progress"
-                    : "Community"}
-            </h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full text-xs font-semibold text-emerald-700">
-              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-              Open for Work
-            </div>
-            <NotificationBell userId={candidate.id} />
-            <button
-              onClick={onNavigateProfile}
-              title="View Profile"
-              className="w-8 h-8 bg-[#F26430] rounded-full flex items-center justify-center text-white font-bold text-xs shadow-md shadow-orange/20 hover:ring-2 hover:ring-orange/50 transition overflow-hidden"
-            >
-              {candidate.image ? (
-                <img
-                  src={candidate.image}
-                  alt={candidate.name}
-                  className="w-full h-full rounded-full object-cover"
-                />
-              ) : (
-                candidate.name.substring(0, 2).toUpperCase()
-              )}
-            </button>
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        {/* Welcome Banner */}
+      {/* Welcome Banner */}
         <WelcomeBanner
           userName={candidate.name}
           userRole="candidate"
@@ -996,15 +911,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
 
           {/* Right Content */}
           <motion.div variants={itemVariants} className="lg:col-span-8">
-            <AnimatePresence mode="wait">
-              {activeTab === "overview" && (
-                <motion.div
-                  key="overview"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.3 }}
-                >
+            <div>
                   {/* AI Recommendation Banner */}
                   <div className="bg-gradient-to-br from-orange to-slate-900 rounded-2xl p-8 text-white mb-8 relative overflow-hidden shadow-2xl shadow-orange/20">
                     <motion.div
@@ -1339,52 +1246,9 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
                         </p>
                       </motion.div>
                     )}
-                </motion.div>
-              )}
-
-              {activeTab === "interview" && (
-                <motion.div
-                  key="interview"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <MockInterview candidate={candidate} />
-                </motion.div>
-              )}
-
-              {activeTab === "history" && (
-                <motion.div
-                  key="history"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <AssessmentHistory
-                    candidateId={candidate.id}
-                    onRetakeAssessment={(skill) => onStartAssessment(skill)}
-                  />
-                </motion.div>
-              )}
-
-              {activeTab === "community" && (
-                <motion.div
-                  key="community"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <MessagingUI />
-                </motion.div>
-              )}
-            </AnimatePresence>
+            </div>
           </motion.div>
         </motion.div>
-        </main>
-      </div>
 
       {/* Skill Passport — full-screen page */}
       <AnimatePresence>

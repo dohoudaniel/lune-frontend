@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
-  ArrowLeft,
   User,
   Mail,
   Lock,
@@ -660,40 +659,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   // ── Render ──
 
   return (
-    <div className="min-h-screen bg-cream font-sans">
-      {/* Header */}
-      <header className="bg-white/95 backdrop-blur-md border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <button
-              onClick={onBack}
-              className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-teal transition-colors"
-            >
-              <ArrowLeft size={18} />
-              Back
-            </button>
-
-            <h1 className="font-bold text-gray-900 text-base">Your Profile</h1>
-
-            {/* Lune Logo */}
-            <div className="flex items-center gap-2">
-              <div className="bg-black text-white p-1.5 rounded-full">
-                <div className="w-3.5 h-3.5 grid grid-cols-2 gap-[1.5px]">
-                  <div className="bg-white rounded-full"></div>
-                  <div className="bg-white rounded-full"></div>
-                  <div className="bg-white rounded-full"></div>
-                  <div className="bg-white rounded-full"></div>
-                </div>
-              </div>
-              <span className="font-bold text-lg tracking-tight text-slate-900 hidden sm:block">
-                lune
-              </span>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Profile Hero */}
         <div className="bg-white rounded-3xl shadow-lg shadow-gray-200/50 border border-gray-200 overflow-hidden relative">
           {/* Decorative background elements */}
@@ -1764,8 +1730,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             </AnimatePresence>
           </div>
         </div>
-      </main>
-
       {/* Delete Account Modal */}
       <AnimatePresence>
         {showDeleteModal && (
