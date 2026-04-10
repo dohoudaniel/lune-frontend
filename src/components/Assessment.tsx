@@ -41,6 +41,8 @@ import { audioRecordingService } from "../services/audioRecordingService";
 import Prism from "prismjs";
 import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-typescript";
+// PERF-F5: theme bundled here (removed from global CDN link in index.html)
+import "prismjs/themes/prism-tomorrow.css";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface AssessmentProps {

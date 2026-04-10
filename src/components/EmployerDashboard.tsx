@@ -88,22 +88,44 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
   // Job Management State
   const [showPostJob, setShowPostJob] = useState(false);
   const [candidates, setCandidates] = useState<CandidateProfile[]>([]);
+  const [candidatePage, setCandidatePage] = useState(1);
+  const [candidateTotalCount, setCandidateTotalCount] = useState(0);
+  const [candidateNextPage, setCandidateNextPage] = useState<string | null>(null);
+  const [loadingMoreCandidates, setLoadingMoreCandidates] = useState(false);
   const [postedJobs, setPostedJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [candidateError, setCandidateError] = useState<string | null>(null);
   const [matchingLoading, setMatchingLoading] = useState(false);
 
+  const loadMoreCandidates = async () => {
+    if (!candidateNextPage || loadingMoreCandidates) return;
+    setLoadingMoreCandidates(true);
+    try {
+      const nextPageNum = candidatePage + 1;
+      const data = await dataService.getCandidatesPage(nextPageNum);
+      setCandidates(prev => [...prev, ...data.results]);
+      setCandidatePage(nextPageNum);
+      setCandidateNextPage(data.next);
+    } catch {
+      toast.error('Failed to load more candidates.');
+    } finally {
+      setLoadingMoreCandidates(false);
+    }
+  };
+
   // Load Data
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [fetchedCandidates, fetchedJobs, fetchedProfile] =
+        const [candidatePage1, fetchedJobs, fetchedProfile] =
           await Promise.all([
-            dataService.getCandidates(),
+            dataService.getCandidatesPage(1),
             dataService.getJobs(),
             api.get("/profiles/employer/"),
           ]);
-        setCandidates(fetchedCandidates);
+        setCandidates(candidatePage1.results);
+        setCandidateTotalCount(candidatePage1.count);
+        setCandidateNextPage(candidatePage1.next);
         setPostedJobs(fetchedJobs);
 
         if (fetchedProfile) {
@@ -1944,6 +1966,24 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
                     </motion.div>
                   ))}
                 </motion.div>
+              )}
+
+              {/* PERF-F2: Load more — only shown when backend has more pages */}
+              {candidateNextPage && (
+                <div className="flex justify-center mt-6">
+                  <button
+                    onClick={loadMoreCandidates}
+                    disabled={loadingMoreCandidates}
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl border border-teal/30 text-teal font-semibold text-sm hover:bg-teal hover:text-white transition disabled:opacity-50"
+                  >
+                    {loadingMoreCandidates ? (
+                      <Loader size={16} className="animate-spin" />
+                    ) : (
+                      <ChevronDown size={16} />
+                    )}
+                    {loadingMoreCandidates ? 'Loading…' : `Load more (${candidateTotalCount - candidates.length} remaining)`}
+                  </button>
+                </div>
               )}
             </div>
           </div>
