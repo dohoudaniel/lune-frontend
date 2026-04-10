@@ -64,6 +64,7 @@ import { getAssessmentType, getSkillCategory } from "./services/geminiService";
 import {
   addAssessmentEntry,
   getSkillAttemptCount,
+  invalidateHistory,
 } from "./services/assessmentHistoryService";
 import { VideoVerificationResult } from "./services/videoAnalysisService";
 import { seedService } from "./services/seedService";
@@ -711,7 +712,8 @@ function AppContent() {
     setAssessmentResult(result);
     handleNavigate(ViewState.ASSESSMENT_RESULT);
 
-    // Save to assessment history
+    // Save to assessment history, then immediately invalidate the in-memory
+    // cache so the dashboard fetches fresh data (PERF-F1).
     addAssessmentEntry(
       candidateProfile.id,
       selectedSkill,
@@ -725,6 +727,7 @@ function AppContent() {
       result.categoryScores,
       result.certificationHash,
     );
+    invalidateHistory();
 
     // When a skill is passed, invalidate the cached Skill Passport so it regenerates with new data
     if (result.passed) {
@@ -1527,7 +1530,12 @@ Verify my certificate: ${certificateUrl}
 
   return (
     <>
-      <Suspense fallback={<LoadingFallback />}>{renderContent()}</Suspense>
+      {/* PERF-F6: ErrorBoundary around Suspense so chunk-load failures show a
+          retry UI instead of a blank white screen. The existing ErrorBoundary
+          component already handles the auto-reload guard. */}
+      <ErrorBoundary>
+        <Suspense fallback={<LoadingFallback />}>{renderContent()}</Suspense>
+      </ErrorBoundary>
 
       {/* Permission Check Modal for Assessments */}
       <Suspense fallback={null}>

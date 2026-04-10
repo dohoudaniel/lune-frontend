@@ -249,7 +249,9 @@ Phase 2: [Description] - [Duration]
 
     const handleEditorInput = () => {
         if (editorRef.current) {
-            setContent(editorRef.current.innerHTML);
+            // MEDIUM-5: Sanitise at write time so the stored value is always clean,
+            // regardless of how or where it is later rendered or submitted.
+            setContent(sanitizeTextHTML(editorRef.current.innerHTML));
         }
     };
 

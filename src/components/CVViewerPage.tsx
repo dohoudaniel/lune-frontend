@@ -111,6 +111,10 @@ export const CVViewerPage: React.FC<Props> = ({ userId, onBack }) => {
                 title={`${cvData.name}'s CV`}
                 className="w-full rounded-xl shadow-md border border-gray-100 bg-white"
                 style={{ height: 'calc(100vh - 120px)', minHeight: 500 }}
+                // FSEC-2: Sandbox prevents a malicious PDF from accessing window.parent.
+                // allow-same-origin is needed for the PDF viewer to function correctly;
+                // allow-scripts lets the embedded PDF reader render.
+                sandbox="allow-scripts allow-same-origin"
               />
             ) : (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 flex flex-col items-center gap-4">

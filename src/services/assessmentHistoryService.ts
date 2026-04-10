@@ -62,6 +62,15 @@ export interface PerformanceSummary {
 let cachedHistory: AssessmentHistoryEntry[] = [];
 
 /**
+ * Invalidate the in-memory cache so the next call to loadAssessmentHistory
+ * fetches fresh data from the backend instead of returning stale entries.
+ * Call this immediately after an assessment completes (PERF-F1).
+ */
+export const invalidateHistory = (): void => {
+    cachedHistory = [];
+};
+
+/**
  * Initialize history from Supabase (Call this on login)
  */
 export const initializeAssessmentHistory = async (userId: string) => {
@@ -420,6 +429,7 @@ export default {
     initializeAssessmentHistory,
     loadAssessmentHistory,
     addAssessmentEntry,
+    invalidateHistory,
     getPerformanceSummary,
     getSkillHistory,
     canRetakeAssessment,

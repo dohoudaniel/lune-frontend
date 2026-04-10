@@ -138,7 +138,7 @@ export const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({
 
       // Show success message and redirect to login after a delay
       setTimeout(() => {
-        localStorage.removeItem("lune_user_profile");
+        sessionStorage.removeItem("lune_user_profile"); // FSEC-4
         window.dispatchEvent(new Event("auth:session-expired"));
         if (onSuccess) {
           onSuccess();

@@ -126,7 +126,8 @@ apiInstance.interceptors.response.use(
         return apiInstance(originalRequest);
       } catch (refreshError) {
         drainQueue(refreshError); // reject all waiting requests
-        localStorage.removeItem("lune_user_profile");
+        // FSEC-4: profile is cached in sessionStorage (not localStorage)
+        sessionStorage.removeItem("lune_user_profile");
         window.dispatchEvent(new Event("auth:session-expired"));
         return Promise.reject(error);
       } finally {

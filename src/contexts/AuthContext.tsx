@@ -61,9 +61,13 @@ export const AuthContext = createContext<AuthContextType | undefined>(
   undefined,
 );
 
-// Only the non-sensitive user profile is cached in localStorage.
-// JWT tokens are stored exclusively in HttpOnly cookies managed by the backend.
+// FSEC-4: Switched from localStorage to sessionStorage so the cached profile is
+// cleared on tab close and is not accessible by XSS running in other tabs.
+// JWT tokens remain in HttpOnly cookies — this only affects the non-sensitive
+// profile object (id, name, role, onboarding_completed).
 const USER_PROFILE_KEY = "lune_user_profile";
+
+const _profileStorage = sessionStorage;
 
 const extractErrorMessage = (error: unknown): string => {
   const err = error as any;
@@ -93,7 +97,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       try {
         // Only attempt backend verification if there's a cached profile —
         // no cache means no active session, so skip the round-trip entirely.
-        const cached = localStorage.getItem(USER_PROFILE_KEY);
+        const cached = _profileStorage.getItem(USER_PROFILE_KEY);
         if (!cached) {
           setIsLoading(false);
           return;
@@ -115,11 +119,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           setShowOnboarding(true);
         }
         setUser(authUser);
-        localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(authUser));
+        _profileStorage.setItem(USER_PROFILE_KEY, JSON.stringify(authUser));
       } catch {
         // No valid session — clear stale cache
         setUser(null);
-        localStorage.removeItem(USER_PROFILE_KEY);
+        _profileStorage.removeItem(USER_PROFILE_KEY);
       } finally {
         setIsLoading(false);
       }
@@ -129,7 +133,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
     const handleSessionExpired = () => {
       setUser(null);
-      localStorage.removeItem(USER_PROFILE_KEY);
+      _profileStorage.removeItem(USER_PROFILE_KEY);
     };
     window.addEventListener("auth:session-expired", handleSessionExpired);
     return () =>
@@ -182,7 +186,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           setShowOnboarding(true);
         }
         setUser(authUser);
-        localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(authUser));
+        _profileStorage.setItem(USER_PROFILE_KEY, JSON.stringify(authUser));
         await initializeNotifications(authUser.id);
         return { success: true };
       } catch (error: unknown) {
@@ -208,7 +212,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         setShowOnboarding(true);
       }
       setUser(authUser);
-      localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(authUser));
+      _profileStorage.setItem(USER_PROFILE_KEY, JSON.stringify(authUser));
       await initializeNotifications(authUser.id);
       return { success: true };
     } catch (error: unknown) {
@@ -235,7 +239,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           setShowOnboarding(true);
         }
         setUser(authUser);
-        localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(authUser));
+        _profileStorage.setItem(USER_PROFILE_KEY, JSON.stringify(authUser));
         await initializeNotifications(authUser.id);
         return { success: true };
       } catch (error: unknown) {
@@ -300,7 +304,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       if (user) {
         const updatedUser: AuthUser = { ...user, onboarding_completed: true };
         setUser(updatedUser);
-        localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(updatedUser));
+        _profileStorage.setItem(USER_PROFILE_KEY, JSON.stringify(updatedUser));
       }
       onboardingService.updateProgress({ profileCompleted: true });
       setShowOnboarding(false);
@@ -320,7 +324,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       if (res.is_complete && user && !user.onboarding_completed) {
         const updatedUser: AuthUser = { ...user, onboarding_completed: true };
         setUser(updatedUser);
-        localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(updatedUser));
+        _profileStorage.setItem(USER_PROFILE_KEY, JSON.stringify(updatedUser));
         setShowOnboarding(false);
       }
       if (res.is_complete) {
@@ -336,7 +340,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     // Disconnect SSE and clear local state immediately so the UI responds instantly
     disconnectSSE();
     setUser(null);
-    localStorage.removeItem(USER_PROFILE_KEY);
+    _profileStorage.removeItem(USER_PROFILE_KEY);
     setShowOnboarding(false);
     // Fire-and-forget the backend blacklist call
     api.post("/auth/logout/", {}).catch(() => {});
