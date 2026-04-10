@@ -8,11 +8,8 @@ import {
   User,
   Briefcase,
   Search,
-  BarChart3,
-  Settings,
   X,
   LogOut,
-  Plus,
 } from "lucide-react";
 
 interface NavItem {
@@ -33,6 +30,8 @@ const EMPLOYER_NAV: NavItem[] = [
   { icon: Briefcase, label: "My Jobs", tab: "jobs" },
 ];
 
+const PROFILE_NAV: NavItem = { icon: User, label: "My Profile", tab: "profile" };
+
 interface AppSidebarProps {
   role: "candidate" | "employer";
   activeTab: string;
@@ -44,10 +43,6 @@ interface AppSidebarProps {
   onNavigateProfile?: () => void;
   isOpen: boolean;
   onClose: () => void;
-  // employer-specific
-  onPostJob?: () => void;
-  onOpenEnterpriseDashboard?: () => void;
-  onProfileSettings?: () => void;
 }
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({
@@ -61,15 +56,39 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   onNavigateProfile,
   isOpen,
   onClose,
-  onPostJob,
-  onOpenEnterpriseDashboard,
-  onProfileSettings,
 }) => {
-  const navItems = role === "candidate" ? CANDIDATE_NAV : EMPLOYER_NAV;
+  const primaryNav = role === "candidate" ? CANDIDATE_NAV : EMPLOYER_NAV;
 
   const handleNav = (tab: string) => {
     onTabChange(tab);
     onClose();
+  };
+
+  const NavButton = ({ item }: { item: NavItem }) => {
+    const isActive = activeTab === item.tab;
+    const Icon = item.icon;
+    return (
+      <button
+        key={item.tab}
+        onClick={() => handleNav(item.tab)}
+        className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group ${
+          isActive
+            ? "bg-[#F26430]/10 text-[#F26430] border border-[#F26430]/15"
+            : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"
+        }`}
+      >
+        <Icon
+          size={17}
+          className={
+            isActive
+              ? "text-[#F26430]"
+              : "text-slate-500 group-hover:text-slate-300 transition"
+          }
+        />
+        <span className="flex-1 text-left">{item.label}</span>
+        {isActive && <div className="w-1.5 h-1.5 rounded-full bg-[#F26430]" />}
+      </button>
+    );
   };
 
   const SidebarContent = () => (
@@ -100,108 +119,25 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         </button>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {navItems.map((item) => {
-          const isActive = activeTab === item.tab;
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.tab}
-              onClick={() => handleNav(item.tab)}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group ${
-                isActive
-                  ? "bg-[#F26430]/10 text-[#F26430] border border-[#F26430]/15"
-                  : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"
-              }`}
-            >
-              <Icon
-                size={17}
-                className={
-                  isActive
-                    ? "text-[#F26430]"
-                    : "text-slate-500 group-hover:text-slate-300 transition"
-                }
-              />
-              <span className="flex-1 text-left">{item.label}</span>
-              {isActive && (
-                <div className="w-1.5 h-1.5 rounded-full bg-[#F26430]" />
-              )}
-            </button>
-          );
-        })}
+      {/* Primary Navigation */}
+      <nav className="flex-1 px-3 py-4 flex flex-col overflow-y-auto">
+        <div className="space-y-0.5">
+          {primaryNav.map((item) => (
+            <NavButton key={item.tab} item={item} />
+          ))}
+        </div>
 
-        {/* Employer extras */}
-        {role === "employer" && (
-          <div className="pt-3 mt-3 border-t border-white/[0.06] space-y-0.5">
-            {onOpenEnterpriseDashboard && (
-              <button
-                onClick={() => {
-                  onOpenEnterpriseDashboard();
-                  onClose();
-                }}
-                className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-white/[0.04] hover:text-slate-200 transition group"
-              >
-                <BarChart3
-                  size={17}
-                  className="text-slate-500 group-hover:text-slate-300 transition"
-                />
-                <span>Analytics</span>
-              </button>
-            )}
-            <button
-              onClick={() => {
-                onProfileSettings?.();
-                onClose();
-              }}
-              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-white/[0.04] hover:text-slate-200 transition group"
-            >
-              <Settings
-                size={17}
-                className="text-slate-500 group-hover:text-slate-300 transition"
-              />
-              <span>Settings</span>
-            </button>
-            {onPostJob && (
-              <button
-                onClick={() => {
-                  onPostJob();
-                  onClose();
-                }}
-                className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold bg-[#F26430]/10 text-[#F26430] hover:bg-[#F26430]/15 transition border border-[#F26430]/15 mt-2"
-              >
-                <Plus size={17} />
-                <span>Post a Job</span>
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Candidate: profile link */}
-        {role === "candidate" && (
-          <div className="pt-3 mt-3 border-t border-white/[0.06]">
-            <button
-              onClick={() => {
-                onNavigateProfile?.();
-                onClose();
-              }}
-              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-white/[0.04] hover:text-slate-200 transition group"
-            >
-              <User
-                size={17}
-                className="text-slate-500 group-hover:text-slate-300 transition"
-              />
-              <span>My Profile</span>
-            </button>
-          </div>
-        )}
+        {/* Profile — separated by a divider */}
+        <div className="pt-3 mt-3 border-t border-white/[0.06]">
+          <NavButton item={PROFILE_NAV} />
+        </div>
       </nav>
 
       {/* User footer */}
       <div className="px-3 py-3 border-t border-white/[0.06] flex-shrink-0">
         <button
           onClick={onNavigateProfile}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/[0.04] transition group mb-1"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/[0.04] transition mb-1"
         >
           <div className="w-8 h-8 rounded-full bg-[#F26430] flex-shrink-0 flex items-center justify-center text-white text-xs font-bold shadow-md overflow-hidden">
             {userImage ? (
@@ -225,7 +161,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         </button>
         <button
           onClick={onLogout}
-          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:bg-red-500/8 hover:text-red-400 transition"
+          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:bg-red-500/10 hover:text-red-400 transition"
         >
           <LogOut size={15} />
           <span>Sign out</span>

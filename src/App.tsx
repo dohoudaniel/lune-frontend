@@ -9,6 +9,7 @@ import React, {
   ReactNode,
 } from "react";
 import { Landing } from "./components/Landing";
+import { AppShell } from "./components/AppShell";
 import { NotFoundPage } from "./components/NotFoundPage";
 import { LoginPage } from "./components/auth/LoginPage";
 import { SignupPage } from "./components/auth/SignupPage";
@@ -185,6 +186,21 @@ const AdminDashboard = lazy(() =>
 const ProfilePage = lazy(() =>
   import("./components/ProfilePage").then((m) => ({ default: m.ProfilePage })),
 );
+const MockInterview = lazy(() =>
+  import("./components/MockInterview").then((m) => ({
+    default: m.MockInterview,
+  })),
+);
+const AssessmentHistory = lazy(() =>
+  import("./components/AssessmentHistory").then((m) => ({
+    default: m.AssessmentHistory,
+  })),
+);
+const MessagingUI = lazy(() =>
+  import("./components/messaging/MessagingUI").then((m) => ({
+    default: m.MessagingUI,
+  })),
+);
 const CVViewerPage = lazy(() =>
   import("./components/CVViewerPage").then((m) => ({
     default: m.CVViewerPage,
@@ -283,6 +299,9 @@ const getViewFromPath = (): ViewState => {
   if (path === "/forgot-password") return ViewState.FORGOT_PASSWORD;
   if (path === "/check-email") return ViewState.CHECK_EMAIL;
   if (path === "/dashboard") return ViewState.CANDIDATE_DASHBOARD;
+  if (path === "/dashboard/interview") return ViewState.CANDIDATE_INTERVIEW;
+  if (path === "/dashboard/progress") return ViewState.CANDIDATE_PROGRESS;
+  if (path === "/dashboard/community") return ViewState.CANDIDATE_COMMUNITY;
   if (path === "/dashboard/assess") return ViewState.SKILL_SELECTION;
   if (path === "/dashboard/assessment") return ViewState.ASSESSMENT;
   if (path === "/dashboard/result") return ViewState.ASSESSMENT_RESULT;
@@ -327,6 +346,7 @@ function AppContent() {
       return newProfile;
     });
   };
+  const [employerActiveTab, setEmployerActiveTab] = useState<"candidates" | "jobs">("candidates");
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
   // New state for integrated components
@@ -372,6 +392,9 @@ function AppContent() {
   // Routes that require an authenticated session
   const PROTECTED_VIEWS: ViewState[] = [
     ViewState.CANDIDATE_DASHBOARD,
+    ViewState.CANDIDATE_INTERVIEW,
+    ViewState.CANDIDATE_PROGRESS,
+    ViewState.CANDIDATE_COMMUNITY,
     ViewState.EMPLOYER_DASHBOARD,
     ViewState.ADMIN_DASHBOARD,
     ViewState.PROFILE,
@@ -553,6 +576,15 @@ function AppContent() {
         break;
       case ViewState.CANDIDATE_DASHBOARD:
         path = "/dashboard";
+        break;
+      case ViewState.CANDIDATE_INTERVIEW:
+        path = "/dashboard/interview";
+        break;
+      case ViewState.CANDIDATE_PROGRESS:
+        path = "/dashboard/progress";
+        break;
+      case ViewState.CANDIDATE_COMMUNITY:
+        path = "/dashboard/community";
         break;
       case ViewState.SKILL_SELECTION:
         path = "/dashboard/assess";
@@ -1268,6 +1300,9 @@ Verify my certificate: ${certificateUrl}
       case ViewState.LANDING:
         return <Landing onNavigate={handleNavigate} />;
       case ViewState.CANDIDATE_DASHBOARD:
+      case ViewState.CANDIDATE_INTERVIEW:
+      case ViewState.CANDIDATE_PROGRESS:
+      case ViewState.CANDIDATE_COMMUNITY:
         if (!user) return <LoginPage onNavigate={handleNavigate} />;
         return (
           <>
@@ -1287,25 +1322,55 @@ Verify my certificate: ${certificateUrl}
               </div>
             )}
             <div className={impersonatedUser ? "pt-8" : ""}>
-              <CandidateDashboard
-                candidate={candidateProfile}
-                onStartAssessment={handleStartAssessment}
-                onLogout={
-                  impersonatedUser ? handleStopImpersonation : handleLogout
-                }
-                onUpdateProfile={(updates) =>
-                  setCandidateProfile((prev) => ({ ...prev, ...updates }))
-                }
-                onOpenVideoAnalyzer={() =>
-                  startTransition(() => setShowVideoAnalyzer(true))
-                }
-                onStartTour={handleStartTour}
-                onNavigateProfile={
-                  !impersonatedUser
-                    ? () => handleNavigate(ViewState.PROFILE)
+              <AppShell
+                user={user}
+                userImage={candidateProfile.image}
+                userSubtitle={
+                  candidateProfile.title && candidateProfile.title !== "Candidate"
+                    ? candidateProfile.title
                     : undefined
                 }
-              />
+                currentView={currentView}
+                onNavigate={handleNavigate}
+                onLogout={impersonatedUser ? handleStopImpersonation : handleLogout}
+              >
+                {currentView === ViewState.CANDIDATE_DASHBOARD && (
+                  <CandidateDashboard
+                    candidate={candidateProfile}
+                    onStartAssessment={handleStartAssessment}
+                    onUpdateProfile={(updates) =>
+                      setCandidateProfile((prev) => ({ ...prev, ...updates }))
+                    }
+                    onOpenVideoAnalyzer={() =>
+                      startTransition(() => setShowVideoAnalyzer(true))
+                    }
+                    onStartTour={handleStartTour}
+                    onNavigateProfile={
+                      !impersonatedUser
+                        ? () => handleNavigate(ViewState.PROFILE)
+                        : undefined
+                    }
+                  />
+                )}
+                {currentView === ViewState.CANDIDATE_INTERVIEW && (
+                  <div className="px-4 sm:px-6 lg:px-8 py-8">
+                    <MockInterview candidate={candidateProfile} />
+                  </div>
+                )}
+                {currentView === ViewState.CANDIDATE_PROGRESS && (
+                  <div className="px-4 sm:px-6 lg:px-8 py-8">
+                    <AssessmentHistory
+                      candidateId={candidateProfile.id}
+                      onRetakeAssessment={handleStartAssessment}
+                    />
+                  </div>
+                )}
+                {currentView === ViewState.CANDIDATE_COMMUNITY && (
+                  <div className="px-4 sm:px-6 lg:px-8 py-8">
+                    <MessagingUI />
+                  </div>
+                )}
+              </AppShell>
             </div>
           </>
         );
@@ -1329,21 +1394,29 @@ Verify my certificate: ${certificateUrl}
               </div>
             )}
             <div className={impersonatedUser ? "pt-8" : ""}>
-              <EmployerDashboard
-                onLogout={
-                  impersonatedUser ? handleStopImpersonation : handleLogout
-                }
-                onOpenEnterpriseDashboard={() =>
-                  startTransition(() => setShowEnterpriseDashboard(true))
-                }
-                onStartTour={handleStartTour}
-                userName={user?.name || "Employer"}
-                onNavigateProfile={
-                  !impersonatedUser
-                    ? () => handleNavigate(ViewState.PROFILE)
-                    : undefined
-                }
-              />
+              <AppShell
+                user={user}
+                currentView={currentView}
+                onNavigate={handleNavigate}
+                onLogout={impersonatedUser ? handleStopImpersonation : handleLogout}
+                employerActiveTab={employerActiveTab}
+                onEmployerTabChange={setEmployerActiveTab}
+              >
+                <EmployerDashboard
+                  activeTab={employerActiveTab}
+                  onTabChange={setEmployerActiveTab}
+                  onOpenEnterpriseDashboard={() =>
+                    startTransition(() => setShowEnterpriseDashboard(true))
+                  }
+                  onStartTour={handleStartTour}
+                  userName={user?.name || "Employer"}
+                  onNavigateProfile={
+                    !impersonatedUser
+                      ? () => handleNavigate(ViewState.PROFILE)
+                      : undefined
+                  }
+                />
+              </AppShell>
             </div>
           </>
         );
@@ -1397,42 +1470,59 @@ Verify my certificate: ${certificateUrl}
       case ViewState.PROFILE:
         if (!user) return <LoginPage onNavigate={handleNavigate} />;
         return (
-          <ProfilePage
+          <AppShell
             user={user}
-            onBack={() => {
-              if (user.role === "employer")
-                handleNavigate(ViewState.EMPLOYER_DASHBOARD);
-              else if (user.role === "admin")
-                handleNavigate(ViewState.ADMIN_DASHBOARD);
-              else handleNavigate(ViewState.CANDIDATE_DASHBOARD);
-            }}
+            userImage={candidateProfile.image}
+            userSubtitle={
+              user.role === "candidate" &&
+              candidateProfile.title &&
+              candidateProfile.title !== "Candidate"
+                ? candidateProfile.title
+                : undefined
+            }
+            currentView={currentView}
+            onNavigate={handleNavigate}
             onLogout={handleLogout}
-            onStartAssessment={(skill) => {
-              setSelectedSkill(skill);
-              handleNavigate(ViewState.SKILL_SELECTION);
-            }}
-            onProfileUpdated={(updates) => {
-              setCandidateProfile((prev) => ({
-                ...prev,
-                ...(updates.image !== undefined
-                  ? { image: updates.image }
-                  : {}),
-                ...(updates.title !== undefined
-                  ? { title: updates.title! }
-                  : {}),
-                ...(updates.bio !== undefined ? { bio: updates.bio } : {}),
-                ...(updates.location !== undefined
-                  ? { location: updates.location! }
-                  : {}),
-                ...(updates.yearsOfExperience !== undefined
-                  ? { yearsOfExperience: updates.yearsOfExperience }
-                  : {}),
-                ...(updates.preferredWorkMode !== undefined
-                  ? { preferredWorkMode: updates.preferredWorkMode as any }
-                  : {}),
-              }));
-            }}
-          />
+            employerActiveTab={employerActiveTab}
+            onEmployerTabChange={setEmployerActiveTab}
+          >
+            <ProfilePage
+              user={user}
+              onBack={() => {
+                if (user.role === "employer")
+                  handleNavigate(ViewState.EMPLOYER_DASHBOARD);
+                else if (user.role === "admin")
+                  handleNavigate(ViewState.ADMIN_DASHBOARD);
+                else handleNavigate(ViewState.CANDIDATE_DASHBOARD);
+              }}
+              onLogout={handleLogout}
+              onStartAssessment={(skill) => {
+                setSelectedSkill(skill);
+                handleNavigate(ViewState.SKILL_SELECTION);
+              }}
+              onProfileUpdated={(updates) => {
+                setCandidateProfile((prev) => ({
+                  ...prev,
+                  ...(updates.image !== undefined
+                    ? { image: updates.image }
+                    : {}),
+                  ...(updates.title !== undefined
+                    ? { title: updates.title! }
+                    : {}),
+                  ...(updates.bio !== undefined ? { bio: updates.bio } : {}),
+                  ...(updates.location !== undefined
+                    ? { location: updates.location! }
+                    : {}),
+                  ...(updates.yearsOfExperience !== undefined
+                    ? { yearsOfExperience: updates.yearsOfExperience }
+                    : {}),
+                  ...(updates.preferredWorkMode !== undefined
+                    ? { preferredWorkMode: updates.preferredWorkMode as any }
+                    : {}),
+                }));
+              }}
+            />
+          </AppShell>
         );
       case ViewState.VIEW_CV: {
         const cvUserId = window.location.pathname
