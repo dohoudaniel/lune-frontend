@@ -31,7 +31,9 @@ import {
   Edit2,
   Save,
   RefreshCw,
+  Menu,
 } from "lucide-react";
+import { AppSidebar } from "./AppSidebar";
 import { dataService } from "../services/dataService";
 import { matchCandidatesToJob } from "../services/geminiService";
 import { CertificateDetails, CandidateProfile, Job } from "../types";
@@ -62,6 +64,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
   const [activeTab, setActiveTab] = useState<"candidates" | "jobs">(
     "candidates",
   );
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Candidate Interaction State
   const [viewingCandidate, setViewingCandidate] =
@@ -483,7 +486,74 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-cream font-sans relative">
+    <div className="flex h-screen overflow-hidden bg-gray-50 font-sans">
+      {/* Sidebar */}
+      <AppSidebar
+        role="employer"
+        activeTab={activeTab}
+        onTabChange={(tab) => setActiveTab(tab as "candidates" | "jobs")}
+        userName={userName}
+        userSubtitle={employerProfile.companyName}
+        onLogout={onLogout}
+        onNavigateProfile={onNavigateProfile}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onPostJob={() => setShowPostJob(true)}
+        onOpenEnterpriseDashboard={onOpenEnterpriseDashboard}
+        onProfileSettings={() => setShowProfileSettings(true)}
+      />
+
+      {/* Main area */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {/* Top bar */}
+        <header className="bg-white border-b border-gray-100 px-4 md:px-6 h-16 flex items-center gap-4 flex-shrink-0 shadow-sm z-20">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="md:hidden p-2 -ml-1 rounded-lg hover:bg-gray-100 text-gray-600 transition"
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-sm font-semibold text-slate-700 truncate">
+              {activeTab === "candidates" ? "Talent Discovery" : "My Jobs"}
+            </h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowPostJob(true)}
+              className="hidden sm:flex items-center gap-2 text-sm font-semibold bg-[#F26430] text-white px-4 py-2 rounded-lg hover:bg-[#e05520] transition shadow-sm shadow-orange/20"
+            >
+              <Plus size={15} /> Post Job
+            </button>
+            <button
+              onClick={() => setShowProfileSettings(true)}
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition"
+              title="Settings"
+            >
+              <Settings size={18} />
+            </button>
+            <button
+              onClick={onNavigateProfile ?? (() => setShowProfileSettings(true))}
+              className="w-8 h-8 bg-[#F26430] rounded-full flex items-center justify-center text-white font-bold text-xs shadow-md shadow-orange/20 hover:ring-2 hover:ring-orange/50 transition overflow-hidden"
+              title="View Profile"
+            >
+              {(employerProfile as any)?.avatar ? (
+                <img
+                  src={(employerProfile as any).avatar}
+                  alt={userName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                userName.charAt(0).toUpperCase()
+              )}
+            </button>
+          </div>
+        </header>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto">
+
       {/* Independent Verification Modal (Global) */}
       <AnimatePresence>
         {showVerification && (
@@ -1311,81 +1381,6 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Header */}
-      <motion.header
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="bg-white/95 backdrop-blur-md border-b border-gray-200 px-6 py-4 sticky top-0 z-30 shadow-md"
-      >
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="bg-black text-white p-1.5 rounded-full">
-              <div className="w-4 h-4 grid grid-cols-2 gap-0.5">
-                <div className="bg-white rounded-full"></div>
-                <div className="bg-white rounded-full"></div>
-                <div className="bg-white rounded-full"></div>
-                <div className="bg-white rounded-full"></div>
-              </div>
-            </div>
-            <span className="font-bold text-xl">
-              lune <span className="text-gray-400 font-normal">| Employer</span>
-            </span>
-          </div>
-          <div className="flex items-center gap-4">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowProfileSettings(true)}
-              className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:bg-gray-100 px-3 py-2 rounded-lg transition"
-            >
-              <Settings size={16} /> Settings
-            </motion.button>
-            {onOpenEnterpriseDashboard && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={onOpenEnterpriseDashboard}
-                className="flex items-center gap-2 text-sm font-medium text-purple-700 hover:bg-purple-50 px-3 py-2 rounded-lg transition"
-              >
-                <BarChart3 size={16} /> Analytics
-              </motion.button>
-            )}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowPostJob(true)}
-              className="flex items-center gap-2 text-sm font-medium bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition shadow-lg shadow-black/20"
-            >
-              <Plus size={16} /> Post Job
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              onClick={
-                onNavigateProfile ?? (() => setShowProfileSettings(true))
-              }
-              className="w-8 h-8 bg-orange rounded-full flex items-center justify-center text-white font-bold text-xs shadow-md shadow-orange/20 cursor-pointer hover:ring-2 hover:ring-orange/50 transition overflow-hidden"
-              title="View Profile"
-            >
-              {(employerProfile as any)?.avatar ? (
-                <img
-                  src={(employerProfile as any).avatar}
-                  alt={userName}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                userName.charAt(0).toUpperCase()
-              )}
-            </motion.button>
-            <button
-              onClick={onLogout}
-              className="text-sm font-medium text-gray-600 hover:text-red-600 transition"
-            >
-              Log out
-            </button>
-          </div>
-        </div>
-      </motion.header>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Banner for Employers */}
         <WelcomeBanner
@@ -1450,76 +1445,60 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
               ))}
             </div>
           ) : analyticsData ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Profiles Viewed */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 }}
-                className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition"
-              >
-                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">
-                  Profiles Viewed
-                </p>
-                <p className="text-2xl font-bold text-slate-900">
-                  {analyticsData.profiles_viewed ?? 0}
-                </p>
-                {analyticsData.avg_profile_views_per_day ? (
-                  <p className="text-xs text-gray-400 mt-1">
-                    ~{analyticsData.avg_profile_views_per_day} per day
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              {[
+                {
+                  label: "Profiles Viewed",
+                  value: analyticsData.profiles_viewed ?? 0,
+                  sublabel: analyticsData.avg_profile_views_per_day
+                    ? `~${analyticsData.avg_profile_views_per_day}/day`
+                    : "Total views",
+                  color: "text-slate-900",
+                  bg: "bg-slate-50",
+                  border: "border-slate-100",
+                },
+                {
+                  label: "Matches Found",
+                  value: analyticsData.matches_found ?? 0,
+                  sublabel: "AI-ranked candidates",
+                  color: "text-teal-700",
+                  bg: "bg-teal-50/50",
+                  border: "border-teal-100",
+                },
+                {
+                  label: "Applications",
+                  value: analyticsData.applications_received ?? 0,
+                  sublabel: "Total received",
+                  color: "text-blue-700",
+                  bg: "bg-blue-50/50",
+                  border: "border-blue-100",
+                },
+                {
+                  label: "Verified in Pool",
+                  value: analyticsData.verified_candidates ?? 0,
+                  sublabel: "Certified candidates",
+                  color: "text-green-700",
+                  bg: "bg-green-50/50",
+                  border: "border-green-100",
+                },
+              ].map((stat, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  whileHover={{ y: -2 }}
+                  className={`${stat.bg} rounded-2xl border ${stat.border} p-4 sm:p-5 shadow-sm hover:shadow-md transition-shadow`}
+                >
+                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-3">
+                    {stat.label}
                   </p>
-                ) : null}
-              </motion.div>
-
-              {/* Matches Found */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition"
-              >
-                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">
-                  Matches Found
-                </p>
-                <p className="text-2xl font-bold text-teal-600">
-                  {analyticsData.matches_found ?? 0}
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  AI-ranked candidates
-                </p>
-              </motion.div>
-
-              {/* Applications Received */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-                className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition"
-              >
-                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">
-                  Applications
-                </p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {analyticsData.applications_received ?? 0}
-                </p>
-                <p className="text-xs text-gray-400 mt-1">Total received</p>
-              </motion.div>
-
-              {/* Verified Candidates */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition"
-              >
-                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">
-                  Verified Candidates
-                </p>
-                <p className="text-2xl font-bold text-green-600">
-                  {analyticsData.verified_candidates ?? 0}
-                </p>
-                <p className="text-xs text-gray-400 mt-1">In your pool</p>
-              </motion.div>
+                  <p className={`text-2xl sm:text-3xl font-bold leading-none ${stat.color}`}>
+                    {stat.value}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1.5">{stat.sublabel}</p>
+                </motion.div>
+              ))}
             </div>
           ) : null}
         </motion.div>
@@ -1589,7 +1568,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
         {activeTab === "candidates" && (
           <div className="flex gap-8 items-start">
             {/* Filter Sidebar — desktop only */}
-            <aside className="w-64 flex-shrink-0 hidden lg:block sticky top-24 self-start rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden">
+            <aside className="w-64 flex-shrink-0 hidden lg:block sticky top-4 self-start rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden">
               {/* Compact verified pool banner */}
               <div className="bg-gradient-to-br from-teal-500 to-emerald-600 p-5">
                 <div className="flex items-center gap-2 text-white font-bold mb-1">
@@ -2054,6 +2033,8 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
           </div>
         )}
       </main>
+        </div>
+      </div>
     </div>
   );
 };
