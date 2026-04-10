@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       port: 3000,
-      host: '0.0.0.0',
+      host: 'localhost', // FSEC-7: restrict to localhost; set '0.0.0.0' only for LAN demos
       headers: {
         'X-Frame-Options': 'DENY',
         'X-Content-Type-Options': 'nosniff',
@@ -32,7 +32,10 @@ export default defineConfig(({ mode }) => {
             if (id.includes('react-helmet-async')) return 'vendor-react';
             if (id.includes('@supabase')) return 'vendor-supabase';
             if (id.includes('framer-motion')) return 'vendor-motion';
-            if (id.includes('ethers')) return 'vendor-blockchain';
+            // PERF-F4: Explicit chunks for heavy, route-specific libraries
+            if (id.includes('ethers')) return 'vendor-ethers';
+            if (id.includes('prismjs')) return 'vendor-prism';
+            if (id.includes('dompurify')) return 'vendor-dompurify';
           }
         }
       }
