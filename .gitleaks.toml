@@ -1,0 +1,20 @@
+# gitleaks configuration — https://github.com/gitleaks/gitleaks
+# Run manually: gitleaks detect --source . -v
+
+title = "Lune secret detection rules"
+
+[extend]
+# Use the default upstream ruleset
+useDefault = true
+
+[allowlist]
+description = "Global allowlist"
+paths = [
+  # Never flag .env.example files — they contain placeholder values
+  '''.env\.example''',
+  # Lock files never contain secrets
+  '''package-lock\.json''',
+  '''yarn\.lock''',
+  # Django migration files don't need scanning
+  '''migrations/.*\.py''',
+]
