@@ -43,18 +43,18 @@ export const dataService = {
     },
 
     // PERF-F2: paginated fetch — returns one page (20 candidates) and the total count.
-    async getCandidatesPage(page = 1, pageSize = 20): Promise<{ results: CandidateProfile[]; count: number; next: string | null }> {
+    async getCandidatesPage(page = 1, pageSize = 20): Promise<{ results: CandidateProfile[]; count: number; next: string | null; employer_verified: boolean }> {
         try {
             const data = await api.get(`/candidates/?page=${page}&page_size=${pageSize}`);
-            // Backend returns DRF paginated shape: { count, next, previous, results }
+            // Backend returns DRF paginated shape: { count, next, previous, results, employer_verified }
             if (data && Array.isArray((data as any).results)) {
-                return data as { results: CandidateProfile[]; count: number; next: string | null };
+                return data as { results: CandidateProfile[]; count: number; next: string | null; employer_verified: boolean };
             }
             // Fallback if backend returns a plain array (non-paginated)
-            return { results: Array.isArray(data) ? data : [], count: 0, next: null };
+            return { results: Array.isArray(data) ? data : [], count: 0, next: null, employer_verified: false };
         } catch (error) {
             console.error('Error fetching candidates:', error);
-            return { results: [], count: 0, next: null };
+            return { results: [], count: 0, next: null, employer_verified: false };
         }
     },
 

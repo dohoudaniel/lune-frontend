@@ -75,7 +75,8 @@ export const invalidateHistory = (): void => {
  */
 export const initializeAssessmentHistory = async (userId: string) => {
     try {
-        const data = await api.get('/assessments/history/');
+        const raw = await api.get('/assessments/history/') as any;
+        const data: any[] = Array.isArray(raw) ? raw : (raw?.results ?? []);
         cachedHistory = data.map((row: any) => ({
             id: row.id,
             candidateId: row.user,

@@ -20,23 +20,6 @@ export interface HeaderProps {
   hideOnMobile?: boolean;
 }
 
-/**
- * Reusable Header component for consistent page headers across the Lune platform.
- * Provides navigation, title display, and customizable actions.
- *
- * @example
- * ```tsx
- * <Header
- *   title="Candidate Dashboard"
- *   subtitle="Welcome back, John!"
- *   showBackButton
- *   onBack={() => navigate('/')}
- *   rightActions={[
- *     { icon: <Bell />, label: "Notifications", onClick: handleNotifications }
- *   ]}
- * />
- * ```
- */
 export const Header: React.FC<HeaderProps> = ({
   title,
   subtitle,
@@ -71,7 +54,6 @@ export const Header: React.FC<HeaderProps> = ({
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-4">
-          {/* Left Section: Back Button + Title */}
           <div className="flex items-center gap-3 flex-1 min-w-0">
             {showBackButton && (
               <motion.button
@@ -90,7 +72,6 @@ export const Header: React.FC<HeaderProps> = ({
               </motion.button>
             )}
 
-            {/* Title & Subtitle */}
             <div className="flex-1 min-w-0">
               <motion.h1
                 initial={{ opacity: 0 }}
@@ -120,7 +101,6 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Right Section: Actions */}
           {rightActions && rightActions.length > 0 && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -156,8 +136,3 @@ export const Header: React.FC<HeaderProps> = ({
 };
 
 export default Header;
-```
-
-Now let me create the Footer component:
-
-Now I'll create the Footer component. Let me enable tools again to proceed:

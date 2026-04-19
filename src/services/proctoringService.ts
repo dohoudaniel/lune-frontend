@@ -666,9 +666,7 @@ class ProctoringService {
         try {
             await document.documentElement.requestFullscreen();
             this.isFullscreen = true;
-        } catch (error) {
-
-        }
+        } catch { /* fullscreen not supported */ }
     }
 
     private getBrowserType(): string {

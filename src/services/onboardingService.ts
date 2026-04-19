@@ -38,7 +38,7 @@ class OnboardingService {
         const profile = JSON.parse(profileStr);
         return profile?.role || "candidate";
       }
-    } catch (e) {}
+    } catch { /* ignore */ }
     return "candidate";
   }
 

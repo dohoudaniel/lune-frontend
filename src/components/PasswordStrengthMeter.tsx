@@ -25,7 +25,7 @@ const calculatePasswordStrength = (password: string, minLength = 8): StrengthMet
     hasUpperCase: /[A-Z]/.test(password),
     hasLowerCase: /[a-z]/.test(password),
     hasNumbers: /\d/.test(password),
-    hasSpecialChars: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+    hasSpecialChars: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password),
     score: 0,
     level: 'weak',
   };

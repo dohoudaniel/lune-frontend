@@ -268,12 +268,7 @@ export const generateScenarioAssessment = async (
   skill: string,
   difficulty: DifficultyLevel,
 ): Promise<ScenarioAssessmentContent> => {
-  try {
-    return await callBackend("generate-scenario", { skill, difficulty });
-  } catch (e) {
-    // Fallback logic could be re-implemented here if needed, but keeping it simple for now
-    throw e;
-  }
+  return callBackend("generate-scenario", { skill, difficulty });
 };
 
 export const evaluateCodeSubmission = async (
@@ -415,14 +410,9 @@ export const generateSkillPassport = async (
   certifications: CertificationItem[],
   candidateName: string,
 ): Promise<SkillPassportAnalysis> => {
-  try {
-    return await callBackend("generate-passport", {
-      assessmentHistory,
-      certifications,
-      candidateName,
-    });
-  } catch (e) {
-    // Return empty/safe default
-    throw e;
-  }
+  return callBackend("generate-passport", {
+    assessmentHistory,
+    certifications,
+    candidateName,
+  });
 };
