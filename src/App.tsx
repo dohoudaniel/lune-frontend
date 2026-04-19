@@ -206,6 +206,21 @@ const CVViewerPage = lazy(() =>
     default: m.CVViewerPage,
   })),
 );
+const LeaderboardPage = lazy(() =>
+  import("./components/LeaderboardPage").then((m) => ({
+    default: m.LeaderboardPage,
+  })),
+);
+const PublicPassportPage = lazy(() =>
+  import("./components/PublicPassportPage").then((m) => ({
+    default: m.PublicPassportPage,
+  })),
+);
+const SubscriptionPage = lazy(() =>
+  import("./components/SubscriptionPage").then((m) => ({
+    default: m.SubscriptionPage,
+  })),
+);
 
 const ProfileCompletionGate = lazy(() =>
   import("./components/ProfileCompletionGate").then((m) => ({
@@ -302,6 +317,7 @@ const getViewFromPath = (): ViewState => {
   if (path === "/dashboard/interview") return ViewState.CANDIDATE_INTERVIEW;
   if (path === "/dashboard/progress") return ViewState.CANDIDATE_PROGRESS;
   if (path === "/dashboard/community") return ViewState.CANDIDATE_COMMUNITY;
+  if (path === "/leaderboard") return ViewState.LEADERBOARD;
   if (path === "/dashboard/assess") return ViewState.SKILL_SELECTION;
   if (path === "/dashboard/assessment") return ViewState.ASSESSMENT;
   if (path === "/dashboard/result") return ViewState.ASSESSMENT_RESULT;
@@ -309,6 +325,8 @@ const getViewFromPath = (): ViewState => {
   if (path === "/admin") return ViewState.ADMIN_DASHBOARD;
   if (path === "/profile") return ViewState.PROFILE;
   if (path.startsWith("/app/user/view-cv/")) return ViewState.VIEW_CV;
+  if (path.startsWith("/passport/")) return ViewState.PUBLIC_PASSPORT;
+  if (path === "/subscription") return ViewState.SUBSCRIPTION;
   if (path === "/") return ViewState.LANDING;
   return ViewState.NOT_FOUND;
 };
@@ -395,12 +413,14 @@ function AppContent() {
     ViewState.CANDIDATE_INTERVIEW,
     ViewState.CANDIDATE_PROGRESS,
     ViewState.CANDIDATE_COMMUNITY,
+    ViewState.LEADERBOARD,
     ViewState.EMPLOYER_DASHBOARD,
     ViewState.ADMIN_DASHBOARD,
     ViewState.PROFILE,
     ViewState.SKILL_SELECTION,
     ViewState.ASSESSMENT,
     ViewState.ASSESSMENT_RESULT,
+    ViewState.SUBSCRIPTION,
   ];
 
   // Check if profile completion gate should be shown
@@ -586,6 +606,9 @@ function AppContent() {
       case ViewState.CANDIDATE_COMMUNITY:
         path = "/dashboard/community";
         break;
+      case ViewState.LEADERBOARD:
+        path = "/leaderboard";
+        break;
       case ViewState.SKILL_SELECTION:
         path = "/dashboard/assess";
         break;
@@ -607,7 +630,10 @@ function AppContent() {
       case ViewState.LANDING:
         path = "/";
         break;
-      // VIEW_CV path is set externally via window.history.pushState before calling navigate
+      case ViewState.SUBSCRIPTION:
+        path = "/subscription";
+        break;
+      // VIEW_CV and PUBLIC_PASSPORT paths are set externally via window.history.pushState before calling navigate
       default:
         path = window.location.pathname;
         break;
@@ -1299,6 +1325,30 @@ Verify my certificate: ${certificateUrl}
     switch (currentView) {
       case ViewState.LANDING:
         return <Landing onNavigate={handleNavigate} />;
+      case ViewState.LEADERBOARD:
+        if (!user) return <LoginPage onNavigate={handleNavigate} />;
+        return (
+          <AppShell
+            user={user}
+            userImage={candidateProfile.image}
+            userSubtitle={
+              candidateProfile.title && candidateProfile.title !== "Candidate"
+                ? candidateProfile.title
+                : undefined
+            }
+            currentView={currentView}
+            onNavigate={handleNavigate}
+            onLogout={handleLogout}
+            employerActiveTab={employerActiveTab}
+            onEmployerTabChange={setEmployerActiveTab}
+          >
+            <div className="px-4 sm:px-6 lg:px-8 py-8">
+              <Suspense fallback={<LoadingFallback />}>
+                <LeaderboardPage />
+              </Suspense>
+            </div>
+          </AppShell>
+        );
       case ViewState.CANDIDATE_DASHBOARD:
       case ViewState.CANDIDATE_INTERVIEW:
       case ViewState.CANDIDATE_PROGRESS:
@@ -1537,6 +1587,33 @@ Verify my certificate: ${certificateUrl}
                 : handleNavigate(ViewState.LANDING)
             }
           />
+        );
+      }
+      case ViewState.SUBSCRIPTION:
+        if (!user) return <LoginPage onNavigate={handleNavigate} />;
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <SubscriptionPage
+              onBack={() =>
+                user.role === "employer"
+                  ? handleNavigate(ViewState.EMPLOYER_DASHBOARD)
+                  : handleNavigate(ViewState.CANDIDATE_DASHBOARD)
+              }
+            />
+          </Suspense>
+        );
+      case ViewState.PUBLIC_PASSPORT: {
+        const passportId = window.location.pathname
+          .replace("/passport/", "")
+          .split("/")[0];
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <PublicPassportPage
+              passportId={passportId}
+              isAuthenticated={isAuthenticated}
+              onLogin={() => handleNavigate(ViewState.LOGIN)}
+            />
+          </Suspense>
         );
       }
       case ViewState.NOT_FOUND:

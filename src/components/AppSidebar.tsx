@@ -10,6 +10,8 @@ import {
   Search,
   X,
   LogOut,
+  Trophy,
+  Zap,
 } from "lucide-react";
 
 interface NavItem {
@@ -22,12 +24,16 @@ const CANDIDATE_NAV: NavItem[] = [
   { icon: Home, label: "Dashboard", tab: "overview" },
   { icon: Mic, label: "Mock Interview", tab: "interview" },
   { icon: History, label: "Progress", tab: "history" },
+  { icon: Trophy, label: "Leaderboard", tab: "leaderboard" },
   { icon: MessageSquare, label: "Community", tab: "community" },
+  { icon: Zap, label: "Upgrade", tab: "subscription" },
 ];
 
 const EMPLOYER_NAV: NavItem[] = [
   { icon: Search, label: "Find Talent", tab: "candidates" },
   { icon: Briefcase, label: "My Jobs", tab: "jobs" },
+  { icon: Trophy, label: "Leaderboard", tab: "leaderboard" },
+  { icon: Zap, label: "Upgrade", tab: "subscription" },
 ];
 
 const PROFILE_NAV: NavItem = { icon: User, label: "My Profile", tab: "profile" };

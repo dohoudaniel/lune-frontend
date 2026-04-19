@@ -5,6 +5,7 @@ import {
   Award,
   MapPin,
   CheckCircle,
+  AlertCircle,
   Sliders,
   FileText,
   ShieldCheck,
@@ -91,6 +92,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
   const [candidateTotalCount, setCandidateTotalCount] = useState(0);
   const [candidateNextPage, setCandidateNextPage] = useState<string | null>(null);
   const [loadingMoreCandidates, setLoadingMoreCandidates] = useState(false);
+  const [employerVerified, setEmployerVerified] = useState<boolean | null>(null);
   const [postedJobs, setPostedJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [candidateError, setCandidateError] = useState<string | null>(null);
@@ -125,6 +127,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
         setCandidates(candidatePage1.results);
         setCandidateTotalCount(candidatePage1.count);
         setCandidateNextPage(candidatePage1.next);
+        setEmployerVerified(candidatePage1.employer_verified ?? false);
         setPostedJobs(fetchedJobs);
 
         if (fetchedProfile) {
@@ -276,7 +279,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
     try {
       const parsed = JSON.parse(hash);
       if (parsed.hash) cleanHash = parsed.hash;
-    } catch (e) {}
+    } catch { /* ignore parse errors */ }
 
     if (!cleanHash) return;
     setVerifyStatus("loading");
@@ -1494,6 +1497,22 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
           )}
         </div>
 
+        {/* Employer unverified warning */}
+        {employerVerified === false && (
+          <div className="mb-6 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
+            <AlertCircle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-amber-800">
+                Your employer account is not yet verified
+              </p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Candidates see an unverified badge on your outreach. Contact
+                support to complete employer verification.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* CONTENT GRID */}
         {activeTab === "candidates" && (
           <div className="flex gap-8 items-start">
@@ -1794,7 +1813,7 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
                                   try {
                                     const parsed = JSON.parse(cert);
                                     if (parsed.hash) cert = parsed.hash;
-                                  } catch (e) {}
+                                  } catch { /* ignore parse errors */ }
                                   setVerifyHash(cert);
                                   setShowVerification(true);
                                 }}
@@ -1805,6 +1824,11 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({
                               </button>
                             )}
                           </>
+                        )}
+                        {!candidate.verified && (
+                          <div className="absolute top-4 right-4 bg-white/80 text-gray-500 text-xs font-semibold px-2 py-1 rounded-full border border-gray-200 backdrop-blur-sm">
+                            Unverified
+                          </div>
                         )}
                         {candidate.matchScore && (
                           <div className="absolute bottom-4 left-4 bg-white text-teal-700 text-xs font-bold px-2 py-1 rounded-full shadow-lg border border-teal-100">

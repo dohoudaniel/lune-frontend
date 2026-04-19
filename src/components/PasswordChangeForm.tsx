@@ -56,7 +56,7 @@ export const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({
     hasUppercase: /[A-Z]/.test(formData.new_password),
     hasLowercase: /[a-z]/.test(formData.new_password),
     hasNumbers: /\d/.test(formData.new_password),
-    hasSpecial: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(
+    hasSpecial: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(
       formData.new_password,
     ),
   };

@@ -66,7 +66,7 @@ export interface ProfilePageProps {
   onStartAssessment?: (skill: string) => void;
 }
 
-type Tab = "account" | "profile" | "security" | "danger" | "cv";
+type Tab = "account" | "profile" | "security" | "danger" | "cv" | "privacy";
 
 interface CandidateProfileData {
   bio?: string;
@@ -321,6 +321,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [manualCvText, setManualCvText] = useState("");
   const cvInputRef = useRef<HTMLInputElement>(null);
 
+  // Privacy settings (candidates only)
+  const [privacySettings, setPrivacySettings] = useState({
+    profile_discoverable: true,
+    show_full_name: true,
+    show_email: false,
+    show_cv: false,
+    show_contact: false,
+  });
+  const [savingPrivacy, setSavingPrivacy] = useState(false);
+
   // Location detection
   const [detectingLocation, setDetectingLocation] = useState(false);
 
@@ -430,6 +440,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         setSessions(data);
         setLoadingSessions(false);
       });
+    }
+    if (activeTab === "privacy" && user.role === "candidate") {
+      api.get("/users/me/privacy/").then((data: any) => {
+        if (data) setPrivacySettings(data);
+      }).catch(() => {});
     }
   }, [activeTab]);
 
@@ -630,6 +645,25 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     }
   };
 
+  // ── Privacy save ──
+
+  const handleTogglePrivacy = async (
+    key: keyof typeof privacySettings,
+    value: boolean,
+  ) => {
+    const updated = { ...privacySettings, [key]: value };
+    setPrivacySettings(updated);
+    setSavingPrivacy(true);
+    try {
+      await api.patch("/users/me/privacy/", { [key]: value });
+    } catch {
+      setPrivacySettings(privacySettings);
+      toast.error("Failed to save privacy setting");
+    } finally {
+      setSavingPrivacy(false);
+    }
+  };
+
   // ── Tab definitions ──
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
@@ -653,6 +687,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         ]
       : []),
     { id: "security", label: "Security", icon: <Lock size={18} /> },
+    ...(user.role === "candidate"
+      ? [
+          {
+            id: "privacy" as Tab,
+            label: "Privacy",
+            icon: <EyeOff size={18} />,
+          },
+        ]
+      : []),
     { id: "danger", label: "Danger Zone", icon: <AlertTriangle size={18} /> },
   ];
 
@@ -1678,6 +1721,110 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                       </p>
                     </div>
                   )}
+                </motion.div>
+              )}
+
+              {/* ── Privacy Tab ── */}
+              {activeTab === "privacy" && user.role === "candidate" && (
+                <motion.div
+                  key="privacy"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.2 }}
+                  className="bg-white rounded-3xl shadow-sm border border-gray-200 p-6 md:p-8 space-y-6"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-teal/10 flex items-center justify-center text-teal shadow-inner border border-teal/20">
+                      <EyeOff size={24} />
+                    </div>
+                    <div>
+                      <h2 className="font-bold text-slate-900 text-xl">Privacy Controls</h2>
+                      <p className="text-sm text-slate-500 font-medium">
+                        Control what employers can see on your profile
+                        {savingPrivacy && (
+                          <span className="ml-2 inline-flex items-center gap-1 text-teal text-xs">
+                            <RefreshCw size={11} className="animate-spin" /> Saving…
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {(
+                      [
+                        {
+                          key: "profile_discoverable" as const,
+                          label: "Profile Discoverable",
+                          description:
+                            "Allow employers to find and view your profile in candidate searches.",
+                        },
+                        {
+                          key: "show_full_name" as const,
+                          label: "Show Full Name",
+                          description:
+                            "Display your full name on your public profile.",
+                        },
+                        {
+                          key: "show_email" as const,
+                          label: "Show Email Address",
+                          description:
+                            "Let employers see your email directly on your profile.",
+                        },
+                        {
+                          key: "show_cv" as const,
+                          label: "Show CV",
+                          description:
+                            "Allow employers to view and download your CV.",
+                        },
+                        {
+                          key: "show_contact" as const,
+                          label: "Show Contact Info",
+                          description:
+                            "Make your phone number and other contact details visible.",
+                        },
+                      ] as const
+                    ).map(({ key, label, description }) => (
+                      <div
+                        key={key}
+                        className="flex items-start gap-4 p-4 bg-gray-50 border border-gray-100 rounded-2xl"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900">
+                            {label}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {description}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() =>
+                            handleTogglePrivacy(key, !privacySettings[key])
+                          }
+                          disabled={savingPrivacy}
+                          className={`flex-shrink-0 relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-teal/30 disabled:opacity-60 ${
+                            privacySettings[key] ? "bg-teal" : "bg-gray-300"
+                          }`}
+                          role="switch"
+                          aria-checked={privacySettings[key]}
+                        >
+                          <span
+                            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+                              privacySettings[key]
+                                ? "translate-x-5"
+                                : "translate-x-0"
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-xs text-gray-400">
+                    Changes take effect immediately. Hiding your profile removes
+                    you from all employer candidate searches.
+                  </p>
                 </motion.div>
               )}
 

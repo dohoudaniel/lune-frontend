@@ -30,7 +30,6 @@ import { getCareerRecommendations } from "../services/geminiService";
 import { WelcomeBanner } from "./WelcomeBanner";
 import { SEO } from "./SEO";
 import { useToast } from "../lib/toast";
-import { useAuth } from "../hooks/useAuth";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../lib/api";
 import { onboardingService } from "../services/onboardingService";
@@ -38,7 +37,6 @@ import {
   generatePassport,
   getCandidateProfile,
 } from "../services/profileService";
-import { calcCompletion } from "./ProfilePage";
 import {
   hasPassedAnyAssessment,
   getSkillAttemptCount,
@@ -186,10 +184,6 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
   onNavigateProfile,
 }) => {
   const toast = useToast();
-  const { checkProfileCompletion } = useAuth();
-
-  // Profile completion % — synced from backend
-  const [profileCompletion, setProfileCompletion] = useState(0);
 
   // A profile is "ready" once at least title, bio and one skill are filled
   const isProfileComplete = (): boolean => {
@@ -298,45 +292,6 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
     }
   }, [candidate.id, candidate.videoIntroUrl]);
 
-  // Check profile completion status on dashboard load to auto-sync onboarding_completed
-  // Use backend as source of truth: if complete=100%, otherwise fall back to local calculation
-  useEffect(() => {
-    checkProfileCompletion()
-      .then((result) => {
-        if (result.is_complete) {
-          // Backend says profile is complete
-          setProfileCompletion(100);
-        } else {
-          // Fall back to local calculation for partial completion
-          const local = calcCompletion(
-            {
-              bio: candidate.bio,
-              title: candidate.title,
-              location: candidate.location,
-              years_of_experience: candidate.yearsOfExperience,
-              preferred_work_mode: candidate.preferredWorkMode,
-            } as Record<string, unknown>,
-            "candidate",
-          );
-          setProfileCompletion(local);
-        }
-      })
-      .catch((err) => {
-        console.debug("Profile completion check skipped:", err);
-        // Fall back to local calculation on error
-        const local = calcCompletion(
-          {
-            bio: candidate.bio,
-            title: candidate.title,
-            location: candidate.location,
-            years_of_experience: candidate.yearsOfExperience,
-            preferred_work_mode: candidate.preferredWorkMode,
-          } as Record<string, unknown>,
-          "candidate",
-        );
-        setProfileCompletion(local);
-      });
-  }, [checkProfileCompletion, candidate]);
 
   // Sync fresh profile data from backend on every dashboard mount so the
   // completion bar and profile card always reflect the actual saved state.
@@ -477,6 +432,42 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
           className="mb-0"
         />
 
+        {/* Streak Hero Banner */}
+        {userStats && userStats.current_streak >= 2 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl px-5 py-4 flex items-center gap-4 shadow-md shadow-amber-200"
+          >
+            <div className="text-3xl select-none">🔥</div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-bold text-sm leading-tight">
+                {userStats.current_streak}-day streak — keep it going!
+              </p>
+              <p className="text-amber-100 text-xs mt-0.5">
+                Take an assessment today to protect your streak. Best ever: {userStats.longest_streak} days.
+              </p>
+            </div>
+          </motion.div>
+        )}
+        {userStats && userStats.current_streak === 1 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 flex items-center gap-4"
+          >
+            <div className="text-2xl select-none">⚡</div>
+            <div className="flex-1 min-w-0">
+              <p className="text-amber-800 font-bold text-sm leading-tight">
+                Streak started — don't let it die today!
+              </p>
+              <p className="text-amber-600 text-xs mt-0.5">
+                Complete another assessment to build your streak to 2 days.
+              </p>
+            </div>
+          </motion.div>
+        )}
+
         {/* Stats Overview */}
         {userStats && (
           <motion.div
@@ -560,90 +551,6 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
             variants={itemVariants}
             className="lg:col-span-4 space-y-6"
           >
-            {/* Profile Summary Card */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow overflow-hidden">
-              {/* Card gradient top */}
-              <div className="h-14 bg-gradient-to-r from-[#1F4D48] to-slate-800 relative">
-                <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.15) 1px, transparent 0)', backgroundSize: '16px 16px' }} />
-              </div>
-              <div className="px-5 pb-5">
-                {/* Avatar overlapping gradient */}
-                <div className="flex items-end gap-4 -mt-8 mb-3">
-                  <button
-                    onClick={onNavigateProfile}
-                    className="w-16 h-16 rounded-2xl bg-[#F26430] flex-shrink-0 overflow-hidden flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-orange/25 hover:ring-2 hover:ring-[#F26430]/40 transition ring-2 ring-white"
-                    title="Edit profile"
-                  >
-                    {candidate.image ? (
-                      <img
-                        src={candidate.image}
-                        alt={candidate.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      candidate.name.substring(0, 2).toUpperCase()
-                    )}
-                  </button>
-                  <div className="min-w-0 pb-1">
-                    <p className="font-bold text-slate-900 truncate text-sm">
-                      {candidate.name}
-                    </p>
-                    <p className="text-xs text-slate-500 truncate">
-                      {candidate.title && candidate.title !== "Candidate"
-                        ? candidate.title
-                        : "Add your title →"}
-                    </p>
-                  </div>
-                </div>
-
-                {candidate.location && (
-                  <p className="text-xs text-slate-400 flex items-center gap-1 mb-4">
-                    <MapPin size={11} className="text-slate-400" />
-                    {candidate.location}
-                  </p>
-                )}
-
-                {/* Profile Completion Bar */}
-                <div>
-                  <div className="flex justify-between text-xs mb-1.5">
-                    <span className="font-semibold text-gray-500">
-                      Profile complete
-                    </span>
-                    <span
-                      className={`font-bold ${profileCompletion >= 80 ? "text-teal" : profileCompletion >= 50 ? "text-orange" : "text-red-500"}`}
-                    >
-                      {profileCompletion}%
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: "0%" }}
-                      animate={{ width: `${profileCompletion}%` }}
-                      transition={{ duration: 0.8, ease: "easeOut" }}
-                      className={`h-full rounded-full ${
-                        profileCompletion >= 80
-                          ? "bg-gradient-to-r from-teal to-emerald-400"
-                          : profileCompletion >= 50
-                            ? "bg-gradient-to-r from-orange to-amber-400"
-                            : "bg-red-400"
-                      }`}
-                    />
-                  </div>
-                  {profileCompletion < 100 && (
-                    <button
-                      onClick={onNavigateProfile}
-                      className="mt-2.5 text-xs text-teal font-semibold hover:underline flex items-center gap-1"
-                    >
-                      {profileCompletion === 0
-                        ? "Set up your profile"
-                        : "Complete your profile"}{" "}
-                      →
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
             {/* Verified Skills Card */}
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
               <div className="flex justify-between items-center mb-4">

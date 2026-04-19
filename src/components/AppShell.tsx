@@ -1,8 +1,11 @@
-import React, { useState } from "react";
+import React, { lazy, Suspense, useState } from "react";
 import { Menu } from "lucide-react";
 import { AppSidebar } from "./AppSidebar";
-import { NotificationBell } from "./NotificationBell";
 import { ViewState } from "../types";
+
+const NotificationBell = lazy(() =>
+  import("./NotificationBell").then((m) => ({ default: m.NotificationBell }))
+);
 
 interface AppShellProps {
   user: {
@@ -28,6 +31,8 @@ const PAGE_TITLES: Partial<Record<ViewState, string>> = {
   [ViewState.CANDIDATE_INTERVIEW]: "Mock Interview",
   [ViewState.CANDIDATE_PROGRESS]: "Progress",
   [ViewState.CANDIDATE_COMMUNITY]: "Community",
+  [ViewState.LEADERBOARD]: "Leaderboard",
+  [ViewState.SUBSCRIPTION]: "Upgrade Plan",
   [ViewState.PROFILE]: "My Profile",
   [ViewState.EMPLOYER_DASHBOARD]: "Talent Discovery",
 };
@@ -60,6 +65,10 @@ export const AppShell: React.FC<AppShellProps> = ({
           return "history";
         case ViewState.CANDIDATE_COMMUNITY:
           return "community";
+        case ViewState.LEADERBOARD:
+          return "leaderboard";
+        case ViewState.SUBSCRIPTION:
+          return "subscription";
         default:
           return "overview";
       }
@@ -88,9 +97,21 @@ export const AppShell: React.FC<AppShellProps> = ({
         case "community":
           onNavigate(ViewState.CANDIDATE_COMMUNITY);
           break;
+        case "leaderboard":
+          onNavigate(ViewState.LEADERBOARD);
+          break;
+        case "subscription":
+          onNavigate(ViewState.SUBSCRIPTION);
+          break;
       }
     } else {
-      onEmployerTabChange?.(tab as "candidates" | "jobs");
+      if (tab === "leaderboard") {
+        onNavigate(ViewState.LEADERBOARD);
+      } else if (tab === "subscription") {
+        onNavigate(ViewState.SUBSCRIPTION);
+      } else {
+        onEmployerTabChange?.(tab as "candidates" | "jobs");
+      }
     }
     setSidebarOpen(false);
   };
@@ -143,7 +164,11 @@ export const AppShell: React.FC<AppShellProps> = ({
                 Open for Work
               </div>
             )}
-            {isCandidate && <NotificationBell userId={user.id} />}
+            {isCandidate && (
+              <Suspense fallback={<div className="w-8 h-8" />}>
+                <NotificationBell userId={user.id} />
+              </Suspense>
+            )}
             <button
               onClick={() => onNavigate(ViewState.PROFILE)}
               title="My Profile"

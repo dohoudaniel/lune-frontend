@@ -11,7 +11,7 @@ interface MockInterviewProps {
 export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
   const [mode, setMode] = useState<'setup' | 'interview' | 'feedback'>('setup');
   // Behavioral-only: technical questions are reserved for tech assessments
-  const topic: 'behavioral' = 'behavioral';
+  const topic = 'behavioral' as const;
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [interimTranscript, setInterimTranscript] = useState('');

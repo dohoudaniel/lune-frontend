@@ -13,7 +13,7 @@
 const SENSITIVE_PATTERNS = {
   EMAIL: /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi,
   UUID: /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi,
-  API_ENDPOINT: /\/api\/[a-zA-Z0-9\-_\/]+/g,
+  API_ENDPOINT: /[/]api[/][a-zA-Z0-9\-_/]+/g,
   TOKEN: /token[:\s=]+[a-zA-Z0-9._-]+/gi,
   SECRET: /secret[:\s=]+[a-zA-Z0-9._-]+/gi,
   API_KEY: /api[_-]?key[:\s=]+[a-zA-Z0-9._-]+/gi,
