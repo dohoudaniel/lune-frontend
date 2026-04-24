@@ -38,6 +38,7 @@ import {
 } from "../services/codeExecutionService";
 import { EvaluationResult, AssessmentContent, DifficultyLevel } from "../types";
 import { audioRecordingService } from "../services/audioRecordingService";
+import { createFaceProctor } from "../services/faceProctorService";
 import Prism from "prismjs";
 import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-typescript";
@@ -253,6 +254,7 @@ export const Assessment: React.FC<AssessmentProps> = ({
   const leaveTime = useRef<number>(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const faceProctorRef = useRef<ReturnType<typeof createFaceProctor> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
@@ -417,6 +419,14 @@ export const Assessment: React.FC<AssessmentProps> = ({
             /* autoplay policy — muted video plays anyway */
           });
           setWebcamActive(true);
+
+          // Start real face-presence proctoring
+          faceProctorRef.current = createFaceProctor(videoRef.current, (secondsAbsent) => {
+            setCheatingEvents((prev) => [...prev, `Face absent ${secondsAbsent}s`]);
+            setActiveAlert(`Proctor: No face detected for ${secondsAbsent} seconds. Please stay in frame.`);
+            setTimeout(() => setActiveAlert(null), 4000);
+          });
+          faceProctorRef.current.start();
         }
 
         // Start audio recording for assessment
@@ -443,6 +453,7 @@ export const Assessment: React.FC<AssessmentProps> = ({
 
     return () => {
       // Cleanup: stop all media streams
+      faceProctorRef.current?.stop();
       if (stream) {
         stream.getTracks().forEach((t) => t.stop());
       }
@@ -456,6 +467,9 @@ export const Assessment: React.FC<AssessmentProps> = ({
    */
   const stopAllMediaStreams = useCallback(() => {
     try {
+      // Stop face proctoring first
+      faceProctorRef.current?.stop();
+
       // 1. Detach srcObject FIRST — browser releases the camera indicator immediately
       //    once the video element no longer holds a live reference to the stream.
       if (videoRef.current) {
@@ -709,6 +723,7 @@ export const Assessment: React.FC<AssessmentProps> = ({
       cheatingDetected: cheatAnalysis.isCheating,
       cheatingReason: cheatAnalysis.reason,
       certificationHash: txHash,
+      evalToken: evaluation.eval_token,
     });
   }, [
     code,

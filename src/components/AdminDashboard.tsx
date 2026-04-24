@@ -227,7 +227,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onImpe
   const { user: authUser } = useAuth() as any;
 
   // State
-  const [activeTab, setActiveTab] = useState<'users' | 'stats'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'stats' | 'verifications'>('users');
   const [roleFilter, setRoleFilter] = useState<'all' | 'candidate' | 'employer'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -359,6 +359,51 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onImpe
     }
   };
 
+  // ── Employer Verifications ──
+
+  interface PendingVerification {
+    user_id: string;
+    email: string;
+    company_name: string;
+    company_website: string | null;
+    requested_at: string;
+  }
+
+  const [pendingVerifications, setPendingVerifications] = useState<PendingVerification[]>([]);
+  const [loadingVerifications, setLoadingVerifications] = useState(false);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+
+  const fetchPendingVerifications = useCallback(async () => {
+    setLoadingVerifications(true);
+    try {
+      const data = await api.get('/admin/employers/pending-verification/') as any;
+      setPendingVerifications(data.pending ?? []);
+    } catch {
+      toast.error('Failed to load pending verifications');
+    } finally {
+      setLoadingVerifications(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'verifications') fetchPendingVerifications();
+  }, [activeTab, fetchPendingVerifications]);
+
+  const handleVerifyEmployer = async (userId: string, approve: boolean) => {
+    if (approve) setApprovingId(userId); else setRejectingId(userId);
+    try {
+      await api.patch(`/admin/employers/${userId}/verify/`, { is_verified: approve });
+      toast.success(approve ? 'Employer verified.' : 'Employer rejected.');
+      setPendingVerifications((prev) => prev.filter((v) => v.user_id !== userId));
+    } catch {
+      toast.error('Action failed.');
+    } finally {
+      setApprovingId(null);
+      setRejectingId(null);
+    }
+  };
+
   // ── Filtered users ──
 
   const filteredUsers = users.filter((u) => {
@@ -474,7 +519,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onImpe
 
         {/* Tabs */}
         <div className="flex gap-1 bg-white rounded-2xl p-1 border border-gray-100 shadow-sm w-fit">
-          {(['users', 'stats'] as const).map((tab) => (
+          {(['users', 'stats', 'verifications'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -484,7 +529,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onImpe
                   : 'text-gray-500 hover:text-gray-900'
               }`}
             >
-              {tab === 'users' ? 'Users' : 'Platform Stats'}
+              {tab === 'users' ? 'Users' : tab === 'stats' ? 'Platform Stats' : (
+                <span className="flex items-center gap-1.5">
+                  Verifications
+                  {pendingVerifications.length > 0 && (
+                    <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-orange-500 text-white text-[10px] font-bold">
+                      {pendingVerifications.length}
+                    </span>
+                  )}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -813,6 +867,87 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onImpe
                   </div>
                 </div>
               )}
+            </motion.div>
+          )}
+
+          {/* ── Verifications Tab ── */}
+          {activeTab === 'verifications' && (
+            <motion.div
+              key="verifications"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <Shield size={20} className="text-teal" />
+                    <h2 className="font-bold text-gray-900 text-lg">Employer Verification Requests</h2>
+                  </div>
+                  <button
+                    onClick={fetchPendingVerifications}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                  >
+                    <RefreshCw size={14} className={loadingVerifications ? 'animate-spin' : ''} />
+                    Refresh
+                  </button>
+                </div>
+
+                {loadingVerifications ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => <Skeleton key={i} height={72} className="rounded-2xl" />)}
+                  </div>
+                ) : pendingVerifications.length === 0 ? (
+                  <div className="text-center py-12">
+                    <CheckCircle size={40} className="mx-auto text-teal mb-3" />
+                    <p className="font-semibold text-gray-700">No pending requests</p>
+                    <p className="text-sm text-gray-400 mt-1">All employer verifications are up to date.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {pendingVerifications.map((v) => (
+                      <div key={v.user_id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border border-gray-100 bg-gray-50/60">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-gray-800 text-sm truncate">{v.company_name}</p>
+                          <p className="text-xs text-gray-500 truncate">{v.email}</p>
+                          {v.company_website && (
+                            <a
+                              href={v.company_website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-teal hover:underline"
+                            >
+                              {v.company_website}
+                            </a>
+                          )}
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            Requested {new Date(v.requested_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <button
+                            onClick={() => handleVerifyEmployer(v.user_id, false)}
+                            disabled={!!approvingId || !!rejectingId}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-colors disabled:opacity-50"
+                          >
+                            {rejectingId === v.user_id ? <RefreshCw size={12} className="animate-spin" /> : <XCircle size={12} />}
+                            Reject
+                          </button>
+                          <button
+                            onClick={() => handleVerifyEmployer(v.user_id, true)}
+                            disabled={!!approvingId || !!rejectingId}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-teal rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
+                          >
+                            {approvingId === v.user_id ? <RefreshCw size={12} className="animate-spin" /> : <CheckCircle size={12} />}
+                            Approve
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

@@ -791,6 +791,7 @@ function AppContent() {
       result.feedback,
       result.categoryScores,
       result.certificationHash,
+      result.evalToken,
     );
     invalidateHistory();
 
@@ -872,6 +873,7 @@ function AppContent() {
       },
       cheatingDetected: false,
       integrityScore: 100,
+      evalToken: result.eval_token,
     };
 
     // Call the existing assessment complete handler

@@ -109,6 +109,7 @@ export interface EvaluationResult {
   timeSpentSeconds?: number;
   integrityScore?: number;
   categoryScores?: Record<string, number>;
+  evalToken?: string;
 }
 
 export interface AssessmentContent {

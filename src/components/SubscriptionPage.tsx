@@ -91,6 +91,19 @@ export const SubscriptionPage: React.FC<Props> = ({ onBack }) => {
   const [upgrading, setUpgrading] = useState<string | null>(null);
 
   useEffect(() => {
+    // Handle Stripe redirect with ?stripe=success|canceled
+    const params = new URLSearchParams(window.location.search);
+    const stripeStatus = params.get("stripe");
+    if (stripeStatus === "success") {
+      toast.success("Payment successful! Your plan will be activated shortly.");
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (stripeStatus === "canceled") {
+      toast.error("Checkout canceled.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
     api
       .get("/users/me/subscription/")
       .then((d: any) => setPlanInfo(d))
@@ -102,21 +115,22 @@ export const SubscriptionPage: React.FC<Props> = ({ onBack }) => {
     if (planId === planInfo?.plan) return;
     setUpgrading(planId);
     try {
-      const res = (await api.post("/users/me/subscription/", {
-        plan: planId,
-      })) as any;
-      setPlanInfo((prev) =>
-        prev
-          ? {
-              ...prev,
-              plan: res.plan,
-              plan_display: res.plan_display,
-              credits: res.credits,
-              credits_unlimited: res.credits === -1,
-            }
-          : prev,
-      );
-      toast.success(`Switched to ${res.plan_display} plan`);
+      if (planId === "free") {
+        // Downgrade: no payment needed
+        const res = (await api.post("/users/me/subscription/", { plan: "free" })) as any;
+        setPlanInfo((prev) =>
+          prev ? { ...prev, plan: res.plan, plan_display: res.plan_display, credits: res.credits, credits_unlimited: false } : prev,
+        );
+        toast.success("Downgraded to Free plan.");
+      } else {
+        // Paid plan: redirect to Stripe Checkout
+        const res = (await api.post("/users/me/subscription/checkout/", { plan: planId })) as any;
+        if (res.checkout_url) {
+          window.location.href = res.checkout_url;
+        } else {
+          toast.error("Could not initiate checkout. Please try again.");
+        }
+      }
     } catch {
       toast.error("Failed to change plan. Please try again.");
     } finally {
@@ -254,7 +268,9 @@ export const SubscriptionPage: React.FC<Props> = ({ onBack }) => {
                   {isCurrent
                     ? "Current Plan"
                     : isUpgrade
-                      ? `Upgrade to ${plan.name}`
+                      ? plan.id !== "free"
+                        ? `Upgrade to ${plan.name} →`
+                        : `Upgrade to ${plan.name}`
                       : `Switch to ${plan.name}`}
                 </button>
               </motion.div>
@@ -264,8 +280,8 @@ export const SubscriptionPage: React.FC<Props> = ({ onBack }) => {
       )}
 
       <p className="text-center text-xs text-gray-400">
-        Plan changes take effect immediately. Payments are processed securely.
-        Contact support for enterprise pricing.
+        Paid plans redirect to Stripe for secure checkout. Subscriptions activate
+        automatically after payment. Cancel anytime.
       </p>
     </div>
   );

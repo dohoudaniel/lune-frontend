@@ -23,6 +23,7 @@ export interface VideoAnalysisResult {
     improvements: string[];
     duration: number;             // seconds
     videoUrl?: string;            // public URL after upload
+    eval_token?: string;          // HMAC-signed token from backend
 }
 
 // Extended interface for Video Verification Assessment
@@ -332,7 +333,8 @@ export const analyzeVideoVerification = async (
     videoFile: File,
     roleContext: string,
     assessmentType: 'customer_service' | 'sales' | 'general' = 'general',
-    transcript: string = ''
+    transcript: string = '',
+    skillName: string = '',
 ): Promise<VideoVerificationResult> => {
     try {
         const duration = await getVideoDuration(videoFile);
@@ -341,6 +343,7 @@ export const analyzeVideoVerification = async (
             transcript,
             roleContext,
             assessmentType,
+            skillName,
         });
 
         const overallScore = Math.round(
@@ -377,6 +380,7 @@ export const analyzeVideoVerification = async (
             },
             recommendedPass: analysis.recommendedPass ?? overallScore >= 65,
             assessmentType,
+            eval_token: analysis.eval_token,
         };
     } catch (error) {
         if (import.meta.env.DEV) { console.error('Video verification analysis error:', error); } else { console.error('Video verification analysis error:'); }

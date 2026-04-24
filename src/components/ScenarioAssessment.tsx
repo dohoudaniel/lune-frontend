@@ -71,6 +71,7 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
     score: number;
     feedback: string;
     categoryScores: Record<string, number>;
+    eval_token?: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -826,6 +827,7 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
       integrityScore: integrityScore,
       categoryScores: result.categoryScores,
       certificationHash: txHash,
+      evalToken: result.eval_token,
     });
   };
 

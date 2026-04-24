@@ -149,7 +149,8 @@ export const addAssessmentEntry = (
     integrityScore: number = 100,
     feedback?: string,
     categoryScores?: Record<string, number>,
-    certificationHash?: string
+    certificationHash?: string,
+    evalToken?: string,
 ): AssessmentHistoryEntry => {
     const entry: AssessmentHistoryEntry = {
         id: `assessment_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
@@ -185,6 +186,7 @@ export const addAssessmentEntry = (
                 theory_answers: {},
                 feedback: feedback || '',
                 cheating_detected: cheatingDetected,
+                eval_token: evalToken || '',
             });
         } catch (err) {
             if (import.meta.env.DEV) { console.error('Failed to sync assessment:', err); } else { console.error('Failed to sync assessment:'); }
