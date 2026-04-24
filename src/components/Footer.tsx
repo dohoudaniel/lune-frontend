@@ -127,11 +127,13 @@ export const Footer: React.FC<FooterProps> = ({
                 className="flex items-center gap-2"
               >
                 {/* Lune Brand Mark */}
-                <div className="w-6 h-6 grid grid-cols-2 gap-1">
-                  <div className="bg-teal-600 rounded-full" />
-                  <div className="bg-teal-600 rounded-full" />
-                  <div className="bg-orange-500 rounded-full" />
-                  <div className="bg-orange-500 rounded-full" />
+                <div className="w-7 h-7 bg-black rounded-md flex items-center justify-center flex-shrink-0">
+                  <div className="w-3.5 h-3.5 grid grid-cols-2 gap-0.5">
+                    <div className="bg-white rounded-full" />
+                    <div className="bg-white rounded-full" />
+                    <div className="bg-white rounded-full" />
+                    <div className="bg-white rounded-full" />
+                  </div>
                 </div>
                 <span className="font-bold text-gray-900 dark:text-white">
                   {companyName}

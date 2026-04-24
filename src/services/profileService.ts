@@ -64,6 +64,11 @@ export const getCandidateProfile = async (_userId?: string): Promise<Partial<Can
             yearsOfExperience: data.years_of_experience ?? data.yearsOfExperience ?? undefined,
             preferredWorkMode: data.preferred_work_mode ?? data.preferredWorkMode ?? undefined,
             videoIntroUrl: data.video_intro_url ?? data.videoIntroUrl ?? undefined,
+            cvText: data.cv_text ?? data.cvText ?? undefined,
+            cvFileUrl: data.cv_file_url ?? data.cvFileUrl ?? undefined,
+            // Guard arrays/objects so they never override defaults with undefined
+            certifications: data.certifications ?? [],
+            skills: data.skills ?? {},
         };
     } catch (error) {
         if (import.meta.env.DEV) { console.error('Error in getCandidateProfile:', error); } else { console.error('Error in getCandidateProfile:'); }

@@ -1,16 +1,16 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Send, RefreshCw, Volume2, Play, AlertCircle, CheckCircle, Sparkles, MessageSquare, User, Brain, ArrowRight, X } from 'lucide-react';
+import { Mic, MicOff, Send, RefreshCw, Volume2, Play, AlertCircle, CheckCircle, Sparkles, MessageSquare, User, Brain, ArrowRight, X, Upload, FileText, RotateCcw } from 'lucide-react';
 import { generateInterviewQuestion, evaluateInterviewResponse } from '../services/geminiService';
 import { InterviewFeedback, CandidateProfile } from '../types';
+import { api } from '../lib/api';
 
 interface MockInterviewProps {
   candidate: CandidateProfile;
 }
 
 export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
-  const [mode, setMode] = useState<'setup' | 'interview' | 'feedback'>('setup');
-  // Behavioral-only: technical questions are reserved for tech assessments
+  const [mode, setMode] = useState<'cv' | 'setup' | 'interview' | 'feedback'>('cv');
   const topic = 'behavioral' as const;
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
@@ -22,16 +22,31 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
 
+  // CV state
+  const [cvText, setCvText] = useState<string>(candidate.cvText ?? '');
+  const [cvFileName, setCvFileName] = useState<string>(
+    candidate.cvFileUrl ? 'CV on file' : ''
+  );
+  const [uploadingCv, setUploadingCv] = useState(false);
+  const [cvError, setCvError] = useState<string | null>(null);
+  const cvInputRef = useRef<HTMLInputElement>(null);
+
+  // If candidate already has a CV, skip straight to setup
+  useEffect(() => {
+    if (candidate.cvText) {
+      setCvText(candidate.cvText);
+      setCvFileName(candidate.cvFileUrl ? 'CV on file' : 'CV on file');
+      setMode('setup');
+    }
+  }, [candidate.cvText, candidate.cvFileUrl]);
+
   const recognitionRef = useRef<any>(null);
-  // Use a ref to track isListening so onend closure never goes stale
   const isListeningRef = useRef(false);
 
-  // Keep ref in sync with state
   useEffect(() => {
     isListeningRef.current = isListening;
   }, [isListening]);
 
-  // Recording timer
   useEffect(() => {
     if (!isListening) {
       setRecordingSeconds(0);
@@ -49,7 +64,6 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  // Initialize speech recognition once on mount
   useEffect(() => {
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -79,8 +93,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
     };
 
     recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
-      if (event.error === 'aborted') return; // user manually stopped — silent
+      if (event.error === 'aborted') return;
       setIsListening(false);
       isListeningRef.current = false;
       setInterimTranscript('');
@@ -94,12 +107,10 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
     };
 
     recognition.onend = () => {
-      // Auto-restart only if we're still supposed to be listening
       if (isListeningRef.current) {
         try {
           recognition.start();
         } catch (e) {
-          if (import.meta.env.DEV) { console.error('Failed to restart recognition:', e); } else { console.error('Failed to restart recognition:'); }
           setIsListening(false);
           isListeningRef.current = false;
           setInterimTranscript('');
@@ -108,20 +119,54 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
     };
 
     recognitionRef.current = recognition;
-
     return () => {
       try { recognition.abort(); } catch { /* ignore */ }
     };
   }, []);
+
+  const handleCvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setCvError(null);
+
+    const allowed = ['application/pdf', 'text/plain', 'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!allowed.includes(file.type)) {
+      setCvError('Please upload a PDF, TXT, or Word document.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setCvError('CV must be under 10MB.');
+      return;
+    }
+
+    setUploadingCv(true);
+    try {
+      const formData = new FormData();
+      formData.append('cv', file);
+      const res = (await api.postForm('/profiles/upload-cv/', formData)) as any;
+      if (res?.cv_text) {
+        setCvText(res.cv_text);
+        setCvFileName(file.name);
+        setMode('setup');
+      } else {
+        setCvError('Could not extract text from this CV. Try a PDF or TXT file.');
+      }
+    } catch {
+      setCvError('Upload failed. Please try again.');
+    } finally {
+      setUploadingCv(false);
+    }
+  };
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
       setMicError('Voice input not supported in this browser. Please type your answer.');
       return;
     }
-
     if (isListening) {
-      isListeningRef.current = false; // update ref BEFORE calling stop so onend doesn't restart
+      isListeningRef.current = false;
       recognitionRef.current.stop();
       setIsListening(false);
       setInterimTranscript('');
@@ -131,8 +176,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
         isListeningRef.current = true;
         recognitionRef.current.start();
         setIsListening(true);
-      } catch (error) {
-        if (import.meta.env.DEV) { console.error('Failed to start recognition:', error); } else { console.error('Failed to start recognition:'); }
+      } catch {
         isListeningRef.current = false;
         setMicError('Microphone access denied. Enable permissions in your browser settings, or type your answer below.');
       }
@@ -152,13 +196,13 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
           skills: candidate.skills ? Object.keys(candidate.skills).join(', ') : '',
           experienceYears: String(candidate.yearsOfExperience ?? ''),
           bio: candidate.bio ?? '',
+          cvText,
         }
       );
       setQuestion(q);
       setMode('interview');
       speak(q);
-    } catch (err) {
-      if (import.meta.env.DEV) { console.error('Failed to generate interview question:', err); } else { console.error('Failed to generate interview question:'); }
+    } catch {
       setSubmitError('Failed to load interview question. Please try again.');
     } finally {
       setLoading(false);
@@ -177,20 +221,17 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
 
   const handleSubmit = async () => {
     if (!answer.trim()) return;
-
     if (isListening && recognitionRef.current) {
       recognitionRef.current.stop();
       setIsListening(false);
     }
-
     setLoading(true);
     setSubmitError(null);
     try {
       const result = await evaluateInterviewResponse(question, answer);
       setFeedback(result);
       setMode('feedback');
-    } catch (err) {
-      if (import.meta.env.DEV) { console.error('Failed to evaluate response:', err); } else { console.error('Failed to evaluate response:'); }
+    } catch {
       setSubmitError('Failed to get AI feedback. Please try again.');
     } finally {
       setLoading(false);
@@ -207,10 +248,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
         <span className={score >= 80 ? 'text-green-600' : score >= 60 ? 'text-orange' : 'text-red-500'}>{score}/100</span>
       </div>
       <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-        <div
-          className={`h-full transition-all duration-1000 ${color}`}
-          style={{ width: `${score}%` }}
-        ></div>
+        <div className={`h-full transition-all duration-1000 ${color}`} style={{ width: `${score}%` }} />
       </div>
     </div>
   );
@@ -219,7 +257,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
     <div className="max-w-4xl mx-auto animate-in fade-in duration-500">
       {/* Header */}
       <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-8 rounded-3xl mb-8 relative overflow-hidden shadow-xl">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-orange rounded-full mix-blend-overlay filter blur-3xl opacity-20 -translate-y-1/2 translate-x-1/2"></div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-orange rounded-full mix-blend-overlay filter blur-3xl opacity-20 -translate-y-1/2 translate-x-1/2" />
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-2">
             <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm">
@@ -231,21 +269,85 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
         </div>
       </div>
 
+      {/* Step 1: CV Upload (mandatory) */}
+      {mode === 'cv' && (
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FileText size={36} className="text-slate-600" />
+            </div>
+            <h3 className="text-2xl font-bold text-slate-900 mb-2">Upload Your CV First</h3>
+            <p className="text-slate-500 max-w-md mx-auto">
+              Your CV lets the AI tailor questions to your actual experience — referencing your real projects, roles, and skills instead of generic questions.
+            </p>
+          </div>
+
+          {/* Upload zone */}
+          <div
+            className="border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center cursor-pointer hover:border-slate-400 hover:bg-slate-50 transition-all"
+            onClick={() => cvInputRef.current?.click()}
+          >
+            <input
+              ref={cvInputRef}
+              type="file"
+              accept=".pdf,.txt,.doc,.docx"
+              onChange={handleCvUpload}
+              className="hidden"
+            />
+            {uploadingCv ? (
+              <div className="flex flex-col items-center gap-3">
+                <RefreshCw size={32} className="text-slate-400 animate-spin" />
+                <p className="text-slate-500 font-medium">Extracting CV text...</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-3">
+                <Upload size={32} className="text-slate-400" />
+                <p className="font-semibold text-slate-700">Click to upload your CV</p>
+                <p className="text-sm text-slate-400">PDF, TXT, or Word — up to 10MB</p>
+              </div>
+            )}
+          </div>
+
+          {cvError && (
+            <div className="mt-4 flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <AlertCircle size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-red-700">{cvError}</p>
+            </div>
+          )}
+
+          <p className="text-center text-xs text-slate-400 mt-6">
+            Your CV is used only to personalise interview questions and is not shared with anyone.
+          </p>
+        </div>
+      )}
+
+      {/* Step 2: Setup (CV loaded) */}
       {mode === 'setup' && (
-        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 text-center py-16">
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 text-center py-12">
+          {/* CV indicator */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-full text-sm text-green-700 font-medium mb-8">
+            <CheckCircle size={16} className="text-green-500" />
+            <span className="max-w-xs truncate">{cvFileName || 'CV loaded'}</span>
+            <button
+              onClick={() => { setCvText(''); setCvFileName(''); setMode('cv'); }}
+              className="ml-1 text-green-400 hover:text-green-600 transition"
+              title="Replace CV"
+            >
+              <RotateCcw size={13} />
+            </button>
+          </div>
+
           <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-6">
             <Brain size={40} className="text-orange" />
           </div>
           <h3 className="text-2xl font-bold text-slate-900 mb-4">Ready to practice?</h3>
           <p className="text-slate-500 mb-8 max-w-md mx-auto">
-            Practice real-world behavioral interview questions tailored to your profile.
-            I'll ask you STAR-method questions on topics like conflict resolution,
-            teamwork, leadership, and adaptability.
+            Questions will be tailored to your actual experience from your CV — your real projects, roles, and skills.
           </p>
 
           <div className="flex justify-center mb-8">
             <span className="px-6 py-3 rounded-xl font-bold border-2 border-orange bg-orange-50 text-orange-900">
-              Behavioral Interview
+              Behavioral Interview · CV-Tailored
             </span>
           </div>
 
@@ -274,7 +376,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
             <span className="absolute top-6 right-6 text-xs font-bold text-gray-400 uppercase tracking-wider">AI Interviewer</span>
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center flex-shrink-0">
-                <div className="w-6 h-6 bg-orange rounded-full animate-pulse"></div>
+                <div className="w-6 h-6 bg-orange rounded-full animate-pulse" />
               </div>
               <div className="flex-1">
                 <div className="bg-gray-100 p-4 rounded-2xl rounded-tl-none text-slate-800 font-medium text-lg leading-relaxed mb-2">
@@ -290,7 +392,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
             </div>
           </div>
 
-          {/* Answer Area (Visible in Interview Mode) */}
+          {/* Answer Area */}
           {mode === 'interview' && (
             <div className="bg-white p-6 rounded-3xl shadow-lg border border-orange-100 animate-in slide-in-from-bottom-4">
               <div className="flex items-center justify-between mb-4">
@@ -305,54 +407,34 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
                 </button>
               </div>
 
-              {/* Microphone error banner */}
               {micError && (
                 <div className="mb-3 flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl animate-in slide-in-from-top">
                   <AlertCircle size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
                   <p className="text-sm text-amber-800 flex-1">{micError}</p>
-                  <button
-                    onClick={() => setMicError(null)}
-                    aria-label="Dismiss microphone error"
-                    className="text-amber-400 hover:text-amber-600 transition flex-shrink-0"
-                  >
+                  <button onClick={() => setMicError(null)} className="text-amber-400 hover:text-amber-600 transition flex-shrink-0">
                     <X size={16} />
                   </button>
                 </div>
               )}
 
-              {/* Recording Status Indicator */}
               {isListening && (
-                <div
-                  role="status"
-                  className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl animate-in slide-in-from-top"
-                >
+                <div role="status" className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl animate-in slide-in-from-top">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                       <span className="text-xs font-bold text-red-700 uppercase">Listening...</span>
                     </div>
-                    {/* Recording timer */}
-                    <span className="text-xs font-mono font-bold text-red-600 ml-1">
-                      {formatRecordingTime(recordingSeconds)}
-                    </span>
-                    {/* Audio level visualization */}
+                    <span className="text-xs font-mono font-bold text-red-600 ml-1">{formatRecordingTime(recordingSeconds)}</span>
                     <div className="flex items-center gap-1 ml-2">
                       {[...Array(5)].map((_, i) => (
-                        <div
-                          key={i}
-                          className="w-1 bg-red-400 rounded animate-pulse"
-                          style={{
-                            animationDelay: `${i * 100}ms`,
-                            height: `${Math.random() * 12 + 6}px`
-                          }}
-                        />
+                        <div key={i} className="w-1 bg-red-400 rounded animate-pulse" style={{ animationDelay: `${i * 100}ms`, height: `${Math.random() * 12 + 6}px` }} />
                       ))}
                     </div>
                   </div>
                   {interimTranscript && (
                     <p className="text-sm text-gray-500 italic">
                       <span className="font-medium">Live transcript (not saved yet): </span>
-                      <span className="text-gray-500 italic">{interimTranscript}</span>
+                      <span className="italic">{interimTranscript}</span>
                     </p>
                   )}
                 </div>
@@ -360,7 +442,6 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
 
               <p className="text-xs text-gray-400 mt-2 mb-3 text-center">Speak clearly into your microphone, or type your answer below.</p>
 
-              {/* Answer textarea — visible at all times for manual input or editing */}
               <textarea
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
@@ -368,18 +449,11 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
                 className="w-full h-32 p-4 border border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-orange focus:border-transparent text-sm text-gray-800 mb-3"
               />
 
-              {/* Submit error */}
               {submitError && (
                 <div className="mb-3 flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
                   <AlertCircle size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
                   <p className="text-sm text-red-700 flex-1">{submitError}</p>
-                  <button
-                    onClick={() => setSubmitError(null)}
-                    aria-label="Dismiss error"
-                    className="text-red-400 hover:text-red-600 transition flex-shrink-0"
-                  >
-                    <X size={16} />
-                  </button>
+                  <button onClick={() => setSubmitError(null)} className="text-red-400 hover:text-red-600 transition flex-shrink-0"><X size={16} /></button>
                 </div>
               )}
 
@@ -396,7 +470,7 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
             </div>
           )}
 
-          {/* Feedback Area (Visible in Feedback Mode) */}
+          {/* Feedback */}
           {mode === 'feedback' && feedback && (
             <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden animate-in slide-in-from-bottom-4">
               <div className="bg-orange-50 p-6 border-b border-orange-100">
@@ -404,44 +478,23 @@ export const MockInterview: React.FC<MockInterviewProps> = ({ candidate }) => {
                   <Sparkles className="text-orange" /> Analysis Results
                 </h3>
               </div>
-
               <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-12">
-                {/* Scores */}
                 <div>
                   <h4 className="font-bold text-slate-900 mb-6 uppercase text-xs tracking-wider">Performance Metrics</h4>
-                  <ScoreBar
-                    label="Communication Clarity"
-                    score={feedback.clarity}
-                    color="bg-blue-500"
-                    subtitle="how clearly you communicated"
-                  />
-                  <ScoreBar
-                    label="Confidence Tone"
-                    score={feedback.confidence}
-                    color="bg-purple-500"
-                    subtitle="vocal delivery and assertiveness"
-                  />
-                  <ScoreBar
-                    label="Content Relevance"
-                    score={feedback.relevance}
-                    color="bg-teal-500"
-                    subtitle="how well your answer addressed the question"
-                  />
-
+                  <ScoreBar label="Communication Clarity" score={feedback.clarity} color="bg-blue-500" subtitle="how clearly you communicated" />
+                  <ScoreBar label="Confidence Tone" score={feedback.confidence} color="bg-purple-500" subtitle="vocal delivery and assertiveness" />
+                  <ScoreBar label="Content Relevance" score={feedback.relevance} color="bg-teal-500" subtitle="how well your answer addressed the question" />
                   <div className="mt-8 p-4 bg-gray-50 rounded-xl border border-gray-100">
                     <h4 className="font-bold text-slate-900 mb-2 text-sm">AI Feedback</h4>
                     <p className="text-sm text-slate-600 leading-relaxed">{feedback.feedback}</p>
                   </div>
                 </div>
-
-                {/* Improved Answer */}
                 <div>
                   <h4 className="font-bold text-slate-900 mb-6 uppercase text-xs tracking-wider">Suggested Improvement</h4>
                   <div className="bg-green-50 p-6 rounded-xl border border-green-100 relative">
-                    <div className="absolute -left-1 top-6 bottom-6 w-1 bg-green-400 rounded-r-full"></div>
+                    <div className="absolute -left-1 top-6 bottom-6 w-1 bg-green-400 rounded-r-full" />
                     <p className="text-sm text-green-800 italic leading-relaxed">"{feedback.improvedAnswer}"</p>
                   </div>
-
                   <div className="mt-8 flex justify-end">
                     <button
                       onClick={() => { setMode('setup'); setSubmitError(null); }}

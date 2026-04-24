@@ -456,21 +456,25 @@ export const Assessment: React.FC<AssessmentProps> = ({
    */
   const stopAllMediaStreams = useCallback(() => {
     try {
-      // Stop audio recording
-      audioRecordingService.stopAllStreams();
-      setIsAudioRecording(false);
+      // 1. Detach srcObject FIRST — browser releases the camera indicator immediately
+      //    once the video element no longer holds a live reference to the stream.
+      if (videoRef.current) {
+        const liveStream = videoRef.current.srcObject as MediaStream | null;
+        if (liveStream) {
+          liveStream.getTracks().forEach((t) => t.stop());
+        }
+        videoRef.current.srcObject = null;
+      }
 
-      // Stop video stream
+      // 2. Belt-and-suspenders: stop any tracks still in the ref
       if (audioStreamRef.current) {
-        audioStreamRef.current.getTracks().forEach((track) => {
-          track.stop();
-        });
+        audioStreamRef.current.getTracks().forEach((t) => t.stop());
         audioStreamRef.current = null;
       }
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
+      // 3. Stop the audio recording service's separate audio-only stream
+      audioRecordingService.stopAllStreams();
+      setIsAudioRecording(false);
 
       setWebcamActive(false);
     } catch (error: any) {
@@ -662,12 +666,24 @@ export const Assessment: React.FC<AssessmentProps> = ({
       code,
     );
 
-    setStatusMessage("Evaluating code performance...");
+    const hasCode = code.trim().length > 0;
+    setStatusMessage(hasCode ? "Evaluating code performance..." : "Evaluating your answers...");
+    const formattedTheoryAnswers = (assessmentContent.theoryQuestions || [])
+      .map((q) => {
+        const selectedIdx = theoryAnswers[q.id];
+        const selectedOption =
+          selectedIdx !== undefined && q.options[selectedIdx]
+            ? q.options[selectedIdx]
+            : "No answer provided";
+        return `Q: ${q.question}\nAnswer: ${selectedOption}`;
+      })
+      .join("\n\n");
+
     const evaluation = await evaluateCodeSubmission(
       code,
       skill,
       assessmentContent.description,
-      theoryAnswers,
+      formattedTheoryAnswers,
     );
 
     let txHash = undefined;
@@ -681,6 +697,9 @@ export const Assessment: React.FC<AssessmentProps> = ({
         console.error("Mint failed", e);
       }
     }
+
+    // Release camera and microphone before handing off to results screen
+    stopAllMediaStreams();
 
     setIsSubmitting(false);
     onComplete({
@@ -702,6 +721,7 @@ export const Assessment: React.FC<AssessmentProps> = ({
     onComplete,
     assessmentContent,
     theoryAnswers,
+    stopAllMediaStreams,
   ]);
 
   const isLowTime = timeLeft < 300; // Less than 5 mins

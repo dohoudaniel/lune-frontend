@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = "lune-cache-v1";
-const RUNTIME_CACHE = "lune-runtime-v1";
+const CACHE_NAME = "lune-cache-v2";
+const RUNTIME_CACHE = "lune-runtime-v2";
 
 // Static assets to cache on install
 const STATIC_ASSETS = ["/", "/index.html", "/manifest.json"];
@@ -55,6 +55,16 @@ self.addEventListener("fetch", (event) => {
 
   // Skip API requests - always fetch fresh
   if (url.pathname.startsWith("/api/")) {
+    return;
+  }
+
+  // Skip Vite dev-server internals — never cache these; hashes change on re-optimization
+  if (
+    url.pathname.startsWith("/node_modules/.vite/") ||
+    url.pathname.startsWith("/@vite/") ||
+    url.pathname.startsWith("/@fs/") ||
+    url.pathname.startsWith("/src/")
+  ) {
     return;
   }
 

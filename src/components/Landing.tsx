@@ -227,11 +227,11 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
               aria-label="Lune home"
             >
               <div className="w-8 h-8 bg-black rounded-md flex items-center justify-center flex-shrink-0">
-                <div className="grid grid-cols-2 gap-0.5">
-                  <div className="w-2.5 h-2.5 bg-white rounded-full" />
-                  <div className="w-2.5 h-2.5 bg-white rounded-full" />
-                  <div className="w-2.5 h-2.5 bg-white rounded-full" />
-                  <div className="w-2.5 h-2.5 bg-white rounded-full" />
+                <div className="w-4 h-4 grid grid-cols-2 gap-0.5">
+                  <div className="bg-white rounded-full" />
+                  <div className="bg-white rounded-full" />
+                  <div className="bg-white rounded-full" />
+                  <div className="bg-white rounded-full" />
                 </div>
               </div>
               <span className="text-xl font-bold text-gray-900 tracking-tight">
@@ -498,8 +498,8 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                     className="absolute -bottom-1 -left-1 sm:-bottom-4 sm:-left-4 bg-white rounded-lg sm:rounded-2xl shadow-md sm:shadow-lg border border-gray-100 p-2 sm:p-4 max-w-xs scale-50 sm:scale-75 lg:scale-90 origin-bottom-left z-10"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center flex-shrink-0">
-                        <CheckCircle size={20} className="text-white" />
+                      <div className="w-10 h-10 rounded-full bg-orange flex items-center justify-center flex-shrink-0">
+                        <CheckCircle size={20} color="white" strokeWidth={2.5} />
                       </div>
                       <div>
                         <p className="font-semibold text-gray-900 text-sm">
@@ -977,13 +977,13 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                     <br />
                     Get hired faster.
                   </h3>
-                  <p className="text-orange-100 text-sm mb-5">
+                  <p className="text-white/85 text-sm mb-5">
                     Take a free AI-proctored assessment and earn a credential
                     employers actually trust.
                   </p>
                   <button
                     onClick={() => onNavigate(ViewState.SIGNUP)}
-                    className="inline-flex items-center gap-2 bg-white text-orange-600 font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-orange-50 transition-colors"
+                    className="inline-flex items-center gap-2 bg-white text-orange font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-white/90 transition-colors"
                   >
                     Start Free Assessment <ArrowRight size={15} />
                   </button>
@@ -995,10 +995,10 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                 variants={fadeInUp}
                 className="relative overflow-hidden rounded-2xl p-8 flex flex-col gap-5 bg-slate-900"
               >
-                <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-teal-500/10" />
-                <div className="absolute -bottom-6 -left-6 w-28 h-28 rounded-full bg-teal-500/10" />
+                <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/5" />
+                <div className="absolute -bottom-6 -left-6 w-28 h-28 rounded-full bg-white/5" />
                 <div className="relative">
-                  <span className="inline-block bg-teal-500/20 text-teal-400 text-xs font-semibold px-3 py-1 rounded-full mb-4">
+                  <span className="inline-block bg-white/15 text-white text-xs font-semibold px-3 py-1 rounded-full mb-4">
                     For Employers
                   </span>
                   <h3 className="text-2xl font-extrabold text-white leading-tight mb-2">
@@ -1006,13 +1006,13 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                     <br />
                     Hire verified.
                   </h3>
-                  <p className="text-slate-400 text-sm mb-5">
+                  <p className="text-slate-300 text-sm mb-5">
                     Browse a curated pool of skill-verified professionals ready
                     to contribute from day one.
                   </p>
                   <button
                     onClick={() => onNavigate(ViewState.SIGNUP)}
-                    className="inline-flex items-center gap-2 bg-teal-500 text-white font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-teal-400 transition-colors"
+                    className="inline-flex items-center gap-2 bg-white text-slate-900 font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-slate-100 transition-colors"
                   >
                     Browse Talent <ArrowRight size={15} />
                   </button>
@@ -1027,11 +1027,11 @@ export const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 bg-black rounded-md flex items-center justify-center flex-shrink-0">
-                <div className="grid grid-cols-2 gap-0.5">
-                  <div className="w-2 h-2 bg-white rounded-full" />
-                  <div className="w-2 h-2 bg-white rounded-full" />
-                  <div className="w-2 h-2 bg-white rounded-full" />
-                  <div className="w-2 h-2 bg-white rounded-full" />
+                <div className="w-3.5 h-3.5 grid grid-cols-2 gap-0.5">
+                  <div className="bg-white rounded-full" />
+                  <div className="bg-white rounded-full" />
+                  <div className="bg-white rounded-full" />
+                  <div className="bg-white rounded-full" />
                 </div>
               </div>
               <span className="font-bold text-gray-900">lune</span>

@@ -51,8 +51,9 @@ apiInstance.interceptors.request.use(
     if (isStateChanging) {
       let csrfToken = getCSRFToken();
 
-      // If CSRF token is missing, attempt to fetch it via a GET request
-      if (!csrfToken) {
+      // If CSRF token is missing, attempt to fetch it via a GET request.
+      // Skip if session is already known-expired to avoid piling on 401s.
+      if (!csrfToken && !sessionKnownExpired) {
         try {
           await axios.get(`${config.baseURL || API_URL}/users/me/`, {
             withCredentials: true,
@@ -82,6 +83,10 @@ apiInstance.interceptors.request.use(
 // succeed — subsequent calls would use the already-rotated (now invalid) token
 // and trigger a session-expired event even though the session is still valid.
 let isRefreshing = false;
+// Once a refresh attempt fails, all subsequent 401s are rejected immediately
+// without retrying — prevents the storm of /auth/refresh/ calls when the
+// session is fully expired (e.g. token rotated out, server restart, etc.)
+let sessionKnownExpired = false;
 type QueueEntry = { resolve: () => void; reject: (err: unknown) => void };
 let pendingQueue: QueueEntry[] = [];
 
@@ -89,6 +94,13 @@ const drainQueue = (error: unknown | null) => {
   pendingQueue.forEach((entry) =>
     error ? entry.reject(error) : entry.resolve(),
   );
+  pendingQueue = [];
+};
+
+// Call this on successful login/signup to re-arm the refresh mechanism.
+export const resetAuthState = () => {
+  sessionKnownExpired = false;
+  isRefreshing = false;
   pendingQueue = [];
 };
 // ────────────────────────────────────────────────────────────────────────────
@@ -106,6 +118,11 @@ apiInstance.interceptors.response.use(
       !originalRequest._retry &&
       !originalRequest.url?.includes("/auth/refresh/")
     ) {
+      // Session is already known-expired — reject immediately, no refresh attempt.
+      if (sessionKnownExpired) {
+        return Promise.reject(error);
+      }
+
       if (isRefreshing) {
         // Another request is already refreshing — queue this one and
         // retry it once the refresh settles.
@@ -125,6 +142,7 @@ apiInstance.interceptors.response.use(
         drainQueue(null); // unblock all waiting requests
         return apiInstance(originalRequest);
       } catch (refreshError) {
+        sessionKnownExpired = true; // arm the circuit-breaker
         drainQueue(refreshError); // reject all waiting requests
         // FSEC-4: profile is cached in sessionStorage (not localStorage)
         sessionStorage.removeItem("lune_user_profile");

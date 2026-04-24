@@ -23,6 +23,24 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [react()],
 
+    optimizeDeps: {
+      // Pre-bundle all React + heavy deps upfront so lazy-loaded components
+      // never trigger a runtime re-optimization (which re-hashes all chunks,
+      // causing a duplicate-React split when HMR can't force a page reload).
+      include: [
+        'react',
+        'react-dom',
+        'react-dom/client',
+        'react/jsx-runtime',
+        'react/jsx-dev-runtime',
+        'framer-motion',
+        'react-helmet-async',
+        '@sentry/react',
+        '@react-oauth/google',
+        'lucide-react',
+      ],
+    },
+
     build: {
       rollupOptions: {
         output: {
