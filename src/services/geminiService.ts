@@ -275,8 +275,8 @@ export const evaluateCodeSubmission = async (
   code: string,
   language: string,
   taskDescription: string,
-  theoryAnswers: Record<number, number>,
-): Promise<{ score: number; feedback: string }> => {
+  theoryAnswers: string,
+): Promise<{ score: number; feedback: string; eval_token?: string }> => {
   try {
     return await callBackend("evaluate-submission", {
       code,
@@ -318,6 +318,7 @@ export const evaluateScenarioResponse = async (
   feedback: string;
   categoryScores: Record<string, number>;
   verbalCommunicationScore?: number;
+  eval_token?: string;
 }> => {
   try {
     return await callBackend("evaluate-scenario", {
@@ -374,7 +375,7 @@ export const matchCandidatesToJob = async (
 export const generateInterviewQuestion = async (
   role: string,
   topic: "behavioral" | "technical",
-  profileContext?: { skills?: string; experienceYears?: string; bio?: string },
+  profileContext?: { skills?: string; experienceYears?: string; bio?: string; cvText?: string },
 ): Promise<string> => {
   try {
     const res = await callBackend("interview-question", {

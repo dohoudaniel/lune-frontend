@@ -6,7 +6,7 @@ import React, {
   useCallback,
   ReactNode,
 } from "react";
-import { api } from "../lib/api";
+import { api, resetAuthState } from "../lib/api";
 import { AuthUser } from "../types";
 import {
   initializeNotifications,
@@ -185,6 +185,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         if (!authUser.onboarding_completed) {
           setShowOnboarding(true);
         }
+        resetAuthState();
         setUser(authUser);
         _profileStorage.setItem(USER_PROFILE_KEY, JSON.stringify(authUser));
         await initializeNotifications(authUser.id);
@@ -211,6 +212,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       if (!authUser.onboarding_completed) {
         setShowOnboarding(true);
       }
+      resetAuthState();
       setUser(authUser);
       _profileStorage.setItem(USER_PROFILE_KEY, JSON.stringify(authUser));
       await initializeNotifications(authUser.id);
@@ -238,6 +240,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         if (!authUser.onboarding_completed) {
           setShowOnboarding(true);
         }
+        resetAuthState();
         setUser(authUser);
         _profileStorage.setItem(USER_PROFILE_KEY, JSON.stringify(authUser));
         await initializeNotifications(authUser.id);

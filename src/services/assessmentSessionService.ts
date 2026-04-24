@@ -30,10 +30,28 @@ const simpleHash = (str: string): string => {
     return hash.toString(36);
 };
 
-import { api } from '../lib/api';
+import { api, resetAuthState as _resetAuth } from '../lib/api';
 
 let cachedSessions: AssessmentSession[] = [];
 let defaultUserId: string | null = null;
+let syncTimer: ReturnType<typeof setTimeout> | null = null;
+
+const scheduleSyncToServer = (sessions: AssessmentSession[]) => {
+    if (!defaultUserId) return;
+    if (syncTimer) clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => {
+        syncTimer = null;
+        api.get(`/users/${defaultUserId}/preferences/`)
+            .then(async (data) => {
+                const prefs = data || {};
+                prefs.sessions = sessions;
+                await api.put(`/users/${defaultUserId}/preferences/`, prefs);
+            })
+            .catch(() => {
+                // Swallow — circuit-breaker in api.ts handles auth errors
+            });
+    }, 5000); // debounce: sync at most once per 5 seconds
+};
 
 /**
  * Initialize sessions from DB
@@ -77,18 +95,7 @@ const saveSessions = (sessions: AssessmentSession[]): void => {
     try {
         localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
 
-        // Background sync
-        if (defaultUserId) {
-            api.get(`/users/${defaultUserId}/preferences/`)
-                .then(async (data) => {
-                    const prefs = data || {};
-                    prefs.sessions = sessions;
-                    await api.put(`/users/${defaultUserId}/preferences/`, prefs);
-                })
-                .catch(error => {
-                    console.error('Failed to sync sessions', error);
-                });
-        }
+        scheduleSyncToServer(sessions);
     } catch (error) {
         console.error('Failed to save assessment sessions:', error);
     }

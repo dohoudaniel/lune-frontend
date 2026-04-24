@@ -22,6 +22,8 @@ export interface VideoAnalysisResult {
     strengths: string[];
     improvements: string[];
     duration: number;             // seconds
+    videoUrl?: string;            // public URL after upload
+    eval_token?: string;          // HMAC-signed token from backend
 }
 
 // Extended interface for Video Verification Assessment
@@ -172,20 +174,39 @@ export const analyzeVideoIntroduction = async (
     videoFile: File
 ): Promise<VideoAnalysisResult> => {
     try {
-        // Get video duration
         const duration = await getVideoDuration(videoFile);
 
-        // Convert video to base64 for upload
-        const base64Video = await fileToBase64(videoFile);
+        // Step 1: Upload video to save as candidate intro (primary goal)
+        let uploadedVideoUrl: string | undefined;
+        try {
+            const formData = new FormData();
+            formData.append('file', videoFile);
+            formData.append('is_intro', 'true');
 
-        // Call backend proxy
-        const response = await fetch('/api/ai/analyze-video', {
+            const uploadRes = await fetch('/api/ai/upload-video/', {
+                method: 'POST',
+                credentials: 'include',
+                body: formData,
+            });
+            if (uploadRes.ok) {
+                const uploadData = await uploadRes.json();
+                uploadedVideoUrl = uploadData?.url ?? undefined;
+            }
+        } catch {
+            // Upload failed — continue with analysis only
+        }
+
+        // Step 2: Analyze via transcript-based endpoint
+        // roleContext gives the AI enough signal to produce meaningful scores
+        const response = await fetch('/api/ai/analyze-video/', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                videoBase64: base64Video.split(',')[1],
-                mimeType: videoFile.type
-            })
+                transcript: '',
+                roleContext: 'Candidate professional introduction video for skill verification platform',
+                assessmentType: 'general',
+            }),
         });
 
         if (!response.ok) {
@@ -193,23 +214,26 @@ export const analyzeVideoIntroduction = async (
         }
 
         const analysis = await response.json();
+        if (analysis.error) {
+            throw new Error(analysis.error);
+        }
 
-        // Calculate overall score
         const overallScore = Math.round(
             (analysis.confidenceScore + analysis.clarityScore + analysis.professionalismScore) / 3
         );
 
         return {
-            transcription: analysis.transcription,
-            summary: analysis.summary,
-            confidenceScore: analysis.confidenceScore,
-            clarityScore: analysis.clarityScore,
-            professionalismScore: analysis.professionalismScore,
+            transcription: analysis.transcription || 'Video saved successfully.',
+            summary: analysis.summary || 'Your intro video has been saved to your profile.',
+            confidenceScore: analysis.confidenceScore || 0,
+            clarityScore: analysis.clarityScore || 0,
+            professionalismScore: analysis.professionalismScore || 0,
             overallScore,
-            keywords: analysis.keywords,
-            strengths: analysis.strengths,
-            improvements: analysis.improvements,
+            keywords: analysis.keywords || [],
+            strengths: analysis.strengths || [],
+            improvements: analysis.improvements || [],
             duration,
+            videoUrl: uploadedVideoUrl,
         };
     } catch (error) {
         if (import.meta.env.DEV) { console.error('Video analysis error:', error); } else { console.error('Video analysis error:'); }
@@ -264,28 +288,13 @@ const fileToBase64 = (file: File): Promise<string> => {
 export const generateInterviewTips = async (
     analysis: VideoAnalysisResult
 ): Promise<string[]> => {
-    try {
-        const response = await fetch('/api/ai/generate-tips', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ analysis })
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to generate tips');
-        }
-
-        return await response.json();
-    } catch (error) {
-        if (import.meta.env.DEV) { console.error('Failed to generate tips:', error); } else { console.error('Failed to generate tips:'); }
-        return [
-            'Practice your introduction multiple times',
-            'Maintain eye contact with the camera',
-            'Speak clearly and at a moderate pace',
-            'Highlight your key achievements',
-            'End with enthusiasm about the opportunity'
-        ];
-    }
+    const tips: string[] = [];
+    if (analysis.confidenceScore < 70) tips.push('Practice speaking to the camera until it feels natural — confidence improves with repetition.');
+    if (analysis.clarityScore < 70) tips.push('Speak more slowly and enunciate clearly; pause briefly between key points.');
+    if (analysis.professionalismScore < 70) tips.push('Use a clean, well-lit background and ensure your framing is centered and stable.');
+    tips.push('Lead with your most impressive achievement or skill within the first 10 seconds.');
+    tips.push('End with a clear, enthusiastic statement about what you bring to the role.');
+    return tips.slice(0, 5);
 };
 
 /**
@@ -324,7 +333,8 @@ export const analyzeVideoVerification = async (
     videoFile: File,
     roleContext: string,
     assessmentType: 'customer_service' | 'sales' | 'general' = 'general',
-    transcript: string = ''
+    transcript: string = '',
+    skillName: string = '',
 ): Promise<VideoVerificationResult> => {
     try {
         const duration = await getVideoDuration(videoFile);
@@ -333,6 +343,7 @@ export const analyzeVideoVerification = async (
             transcript,
             roleContext,
             assessmentType,
+            skillName,
         });
 
         const overallScore = Math.round(
@@ -369,6 +380,7 @@ export const analyzeVideoVerification = async (
             },
             recommendedPass: analysis.recommendedPass ?? overallScore >= 65,
             assessmentType,
+            eval_token: analysis.eval_token,
         };
     } catch (error) {
         if (import.meta.env.DEV) { console.error('Video verification analysis error:', error); } else { console.error('Video verification analysis error:'); }

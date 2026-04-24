@@ -259,7 +259,8 @@ export const VideoVerificationAssessment: React.FC<VideoVerificationAssessmentPr
                 videoFile,
                 prompt,
                 getAssessmentType(),
-                finalTranscript || accumulatedTranscriptRef.current
+                finalTranscript || accumulatedTranscriptRef.current,
+                skill,
             );
 
             setAnalysis(result);

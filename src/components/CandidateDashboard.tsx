@@ -719,7 +719,7 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
                 <div>
                   <div className="text-2xl font-bold text-slate-900">
                     {userStats?.passed_assessments ||
-                      candidate.certifications.length}
+                      (candidate.certifications ?? []).length}
                   </div>
                   <div className="text-xs text-slate-500">Passed</div>
                 </div>

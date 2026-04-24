@@ -70,14 +70,7 @@ export const PublicPassportPage: React.FC<Props> = ({
 
   useEffect(() => {
     setLoading(true);
-    const endpoint = `/profiles/passport/${passportId}/`;
-    const req = isAuthenticated
-      ? api.get(endpoint)
-      : fetch(`/api${endpoint}`)
-          .then((r) => r.json())
-          .catch(() => null);
-
-    Promise.resolve(req)
+    api.get(`/profiles/passport/${passportId}/`)
       .then((data: any) => {
         if (!data || data.detail) {
           setError("Passport not found.");
@@ -85,9 +78,9 @@ export const PublicPassportPage: React.FC<Props> = ({
           setPassport(data);
         }
       })
-      .catch(() => setError("Failed to load passport."))
+      .catch(() => setError("Passport not found."))
       .finally(() => setLoading(false));
-  }, [passportId, isAuthenticated]);
+  }, [passportId]);
 
   const handleShare = () => {
     const url = window.location.href;
@@ -120,7 +113,42 @@ export const PublicPassportPage: React.FC<Props> = ({
     : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
+      {/* Navbar */}
+      <nav className="bg-white border-b border-gray-100 sticky top-0 z-20">
+        <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
+          <a href="/" className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-black rounded-md flex items-center justify-center flex-shrink-0">
+              <div className="w-3.5 h-3.5 grid grid-cols-2 gap-0.5">
+                <div className="bg-white rounded-full" />
+                <div className="bg-white rounded-full" />
+                <div className="bg-white rounded-full" />
+                <div className="bg-white rounded-full" />
+              </div>
+            </div>
+            <span className="font-bold text-gray-900">lune</span>
+          </a>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+            >
+              <Share2 size={15} />
+              Share
+            </button>
+            {!isAuthenticated && onLogin && (
+              <button
+                onClick={onLogin}
+                className="text-sm font-semibold text-white bg-black px-4 py-1.5 rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                Log In
+              </button>
+            )}
+          </div>
+        </div>
+      </nav>
+
+      <div className="py-10 px-4">
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header card */}
         <motion.div
@@ -250,6 +278,7 @@ export const PublicPassportPage: React.FC<Props> = ({
           <span className="font-semibold text-teal">Lune</span> — skills
           verified through proctored assessments.
         </p>
+      </div>
       </div>
     </div>
   );

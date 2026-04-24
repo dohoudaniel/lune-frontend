@@ -8,6 +8,7 @@ import React, {
   ErrorInfo,
   ReactNode,
 } from "react";
+import { flushSync } from "react-dom";
 import { Landing } from "./components/Landing";
 import { AppShell } from "./components/AppShell";
 import { NotFoundPage } from "./components/NotFoundPage";
@@ -387,6 +388,8 @@ function AppContent() {
   const [showOnboardingTour, setShowOnboardingTour] = useState(false);
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(true);
 
+  const [signingOut, setSigningOut] = useState(false);
+
   // Permission modal state for assessments
   const [showPermissionModal, setShowPermissionModal] = useState(false);
 
@@ -703,10 +706,14 @@ function AppContent() {
   };
 
   const handleLogout = async () => {
-    await logout();
+    flushSync(() => setSigningOut(true));
+    const [_] = await Promise.all([
+      logout(),
+      new Promise((r) => setTimeout(r, 900)),
+    ]);
     setUserRole(null);
     handleNavigate(ViewState.LANDING);
-    toast.success("👋 Logged out successfully!");
+    setSigningOut(false);
   };
 
   const handleStartAssessment = (skill?: string) => {
@@ -784,6 +791,7 @@ function AppContent() {
       result.feedback,
       result.categoryScores,
       result.certificationHash,
+      result.evalToken,
     );
     invalidateHistory();
 
@@ -865,6 +873,7 @@ function AppContent() {
       },
       cheatingDetected: false,
       integrityScore: 100,
+      evalToken: result.eval_token,
     };
 
     // Call the existing assessment complete handler
@@ -1592,15 +1601,32 @@ Verify my certificate: ${certificateUrl}
       case ViewState.SUBSCRIPTION:
         if (!user) return <LoginPage onNavigate={handleNavigate} />;
         return (
-          <Suspense fallback={<LoadingFallback />}>
-            <SubscriptionPage
-              onBack={() =>
-                user.role === "employer"
-                  ? handleNavigate(ViewState.EMPLOYER_DASHBOARD)
-                  : handleNavigate(ViewState.CANDIDATE_DASHBOARD)
-              }
-            />
-          </Suspense>
+          <AppShell
+            user={user}
+            userImage={candidateProfile.image}
+            userSubtitle={
+              user.role === "candidate" &&
+              candidateProfile.title &&
+              candidateProfile.title !== "Candidate"
+                ? candidateProfile.title
+                : undefined
+            }
+            currentView={currentView}
+            onNavigate={handleNavigate}
+            onLogout={handleLogout}
+            employerActiveTab={employerActiveTab}
+            onEmployerTabChange={setEmployerActiveTab}
+          >
+            <Suspense fallback={<LoadingFallback />}>
+              <SubscriptionPage
+                onBack={() =>
+                  user.role === "employer"
+                    ? handleNavigate(ViewState.EMPLOYER_DASHBOARD)
+                    : handleNavigate(ViewState.CANDIDATE_DASHBOARD)
+                }
+              />
+            </Suspense>
+          </AppShell>
         );
       case ViewState.PUBLIC_PASSPORT: {
         const passportId = window.location.pathname
@@ -1808,30 +1834,40 @@ Verify my certificate: ${certificateUrl}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto"
             onClick={() => setShowVideoAnalyzer(false)}
           >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative max-w-2xl w-full my-8"
-            >
-              <button
-                onClick={() => setShowVideoAnalyzer(false)}
-                className="absolute -top-4 -right-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition z-10"
+            {/* min-h-full + flex centers when content is short; scrolls when content overflows */}
+            <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative w-full max-w-2xl"
               >
-                <X size={20} />
-              </button>
-              <VideoAnalyzer
-                onAnalysisComplete={(result) => {
-                  toast.success(
-                    `Video analyzed! Overall score: ${result.overallScore}/100`,
-                  );
-                }}
-              />
-            </motion.div>
+                <button
+                  onClick={() => setShowVideoAnalyzer(false)}
+                  className="absolute -top-4 -right-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition z-10"
+                >
+                  <X size={20} />
+                </button>
+                <VideoAnalyzer
+                  existingVideoUrl={candidateProfile.videoIntroUrl}
+                  onAnalysisComplete={(result) => {
+                    if (result.videoUrl) {
+                      setCandidateProfile((prev) => ({
+                        ...prev,
+                        videoIntroUrl: result.videoUrl,
+                      }));
+                    }
+                    toast.success(
+                      `Video analyzed! Overall score: ${result.overallScore}/100`,
+                    );
+                  }}
+                />
+              </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1955,6 +1991,50 @@ Verify my certificate: ${certificateUrl}
           minimumCompletion={100}
         />
       </Suspense>
+
+      {/* Sign Out Loading Overlay */}
+      {signingOut && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 99999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.35)",
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: "1rem",
+              boxShadow: "0 25px 50px rgba(0,0,0,0.18)",
+              padding: "2.5rem 3rem",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "1rem",
+            }}
+          >
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                border: "4px solid #e5e7eb",
+                borderTopColor: "#1F4D48",
+                animation: "spin 0.75s linear infinite",
+              }}
+            />
+            <p style={{ fontSize: 15, fontWeight: 600, color: "#1e293b", margin: 0 }}>
+              Signing You Out...
+            </p>
+          </div>
+        </div>
+      )}
     </>
   );
 }

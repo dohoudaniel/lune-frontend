@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Video, Upload, Loader, CheckCircle, XCircle,
     Mic, Eye, Sparkles, TrendingUp, MessageSquare,
-    Clock, Volume2, AlertCircle, Download, Share2
+    Clock, Volume2, AlertCircle, Download, Share2, RotateCcw
 } from 'lucide-react';
 import {
     analyzeVideoIntroduction,
@@ -21,6 +21,8 @@ export const VideoAnalyzer: React.FC<VideoAnalyzerProps> = ({
     onAnalysisComplete,
     existingVideoUrl
 }) => {
+    // Track whether we're viewing the previously uploaded video vs a new upload
+    const [isViewingExisting, setIsViewingExisting] = useState<boolean>(!!existingVideoUrl);
     const [videoFile, setVideoFile] = useState<File | null>(null);
     const [videoUrl, setVideoUrl] = useState<string | null>(existingVideoUrl || null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -31,6 +33,14 @@ export const VideoAnalyzer: React.FC<VideoAnalyzerProps> = ({
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
+
+    const handleReplaceVideo = () => {
+        setIsViewingExisting(false);
+        setVideoUrl(null);
+        setVideoFile(null);
+        setAnalysis(null);
+        setError(null);
+    };
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -47,6 +57,7 @@ export const VideoAnalyzer: React.FC<VideoAnalyzerProps> = ({
             return;
         }
 
+        setIsViewingExisting(false);
         setVideoFile(file);
         setVideoUrl(URL.createObjectURL(file));
         setError(null);
@@ -106,6 +117,23 @@ export const VideoAnalyzer: React.FC<VideoAnalyzerProps> = ({
             </div>
 
             <div className="p-6">
+                {/* Existing video banner */}
+                {isViewingExisting && (
+                    <div className="flex items-center justify-between gap-3 mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-xl">
+                        <div className="flex items-center gap-2 text-green-700">
+                            <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+                            <span className="text-sm font-medium">You already have an intro video on your profile.</span>
+                        </div>
+                        <button
+                            onClick={handleReplaceVideo}
+                            className="flex items-center gap-1.5 text-xs font-semibold text-green-600 hover:text-green-800 transition shrink-0"
+                        >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            Replace
+                        </button>
+                    </div>
+                )}
+
                 {/* Upload Area */}
                 {!videoUrl && (
                     <motion.div
@@ -143,19 +171,18 @@ export const VideoAnalyzer: React.FC<VideoAnalyzerProps> = ({
                         {!analysis && (
                             <div className="flex gap-3">
                                 <button
-                                    onClick={() => {
-                                        setVideoUrl(null);
-                                        setVideoFile(null);
-                                    }}
+                                    onClick={isViewingExisting ? handleReplaceVideo : () => { setVideoUrl(null); setVideoFile(null); }}
                                     className="flex-1 py-3 px-4 border border-gray-200 rounded-xl font-medium text-gray-600 hover:bg-gray-50 transition"
                                 >
-                                    Change Video
+                                    {isViewingExisting ? 'Upload New Video' : 'Change Video'}
                                 </button>
+                                {/* Only show Analyze for newly uploaded videos, not existing ones */}
+                                {!isViewingExisting && (
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                     onClick={handleAnalyze}
-                                    disabled={isAnalyzing}
+                                    disabled={isAnalyzing || !videoFile}
                                     className="flex-1 py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl font-bold hover:opacity-90 transition flex items-center justify-center gap-2 disabled:opacity-50"
                                 >
                                     {isAnalyzing ? (
@@ -170,6 +197,7 @@ export const VideoAnalyzer: React.FC<VideoAnalyzerProps> = ({
                                         </>
                                     )}
                                 </motion.button>
+                                )}
                             </div>
                         )}
                     </div>
@@ -329,6 +357,7 @@ export const VideoAnalyzer: React.FC<VideoAnalyzerProps> = ({
                                         setAnalysis(null);
                                         setVideoUrl(null);
                                         setVideoFile(null);
+                                        setIsViewingExisting(false);
                                     }}
                                     className="flex-1 py-3 px-4 border border-gray-200 rounded-xl font-medium text-gray-600 hover:bg-gray-50 transition flex items-center justify-center gap-2"
                                 >

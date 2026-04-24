@@ -182,8 +182,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             onClick={() => onNavigate(ViewState.LANDING)}
             className="flex items-center gap-2"
           >
-            <div className="bg-black text-white p-1.5 rounded-full">
-              <div className="w-3.5 h-3.5 grid grid-cols-2 gap-[1.5px]">
+            <div className="w-8 h-8 bg-black rounded-md flex items-center justify-center flex-shrink-0">
+              <div className="w-4 h-4 grid grid-cols-2 gap-0.5">
                 <div className="bg-white rounded-full"></div>
                 <div className="bg-white rounded-full"></div>
                 <div className="bg-white rounded-full"></div>

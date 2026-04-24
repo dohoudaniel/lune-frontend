@@ -75,6 +75,8 @@ export interface CandidateProfile {
   preferredWorkMode?: "Remote" | "Hybrid" | "On-site";
   verified?: boolean; // UI helper
   passportId?: string;
+  cvText?: string;
+  cvFileUrl?: string;
 }
 
 export interface Job {
@@ -107,6 +109,7 @@ export interface EvaluationResult {
   timeSpentSeconds?: number;
   integrityScore?: number;
   categoryScores?: Record<string, number>;
+  evalToken?: string;
 }
 
 export interface AssessmentContent {

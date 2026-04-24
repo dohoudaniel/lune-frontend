@@ -38,6 +38,7 @@ import {
 } from "../services/codeExecutionService";
 import { EvaluationResult, AssessmentContent, DifficultyLevel } from "../types";
 import { audioRecordingService } from "../services/audioRecordingService";
+import { createFaceProctor } from "../services/faceProctorService";
 import Prism from "prismjs";
 import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-typescript";
@@ -253,6 +254,7 @@ export const Assessment: React.FC<AssessmentProps> = ({
   const leaveTime = useRef<number>(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const faceProctorRef = useRef<ReturnType<typeof createFaceProctor> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
@@ -417,6 +419,14 @@ export const Assessment: React.FC<AssessmentProps> = ({
             /* autoplay policy — muted video plays anyway */
           });
           setWebcamActive(true);
+
+          // Start real face-presence proctoring
+          faceProctorRef.current = createFaceProctor(videoRef.current, (secondsAbsent) => {
+            setCheatingEvents((prev) => [...prev, `Face absent ${secondsAbsent}s`]);
+            setActiveAlert(`Proctor: No face detected for ${secondsAbsent} seconds. Please stay in frame.`);
+            setTimeout(() => setActiveAlert(null), 4000);
+          });
+          faceProctorRef.current.start();
         }
 
         // Start audio recording for assessment
@@ -443,6 +453,7 @@ export const Assessment: React.FC<AssessmentProps> = ({
 
     return () => {
       // Cleanup: stop all media streams
+      faceProctorRef.current?.stop();
       if (stream) {
         stream.getTracks().forEach((t) => t.stop());
       }
@@ -456,21 +467,28 @@ export const Assessment: React.FC<AssessmentProps> = ({
    */
   const stopAllMediaStreams = useCallback(() => {
     try {
-      // Stop audio recording
-      audioRecordingService.stopAllStreams();
-      setIsAudioRecording(false);
+      // Stop face proctoring first
+      faceProctorRef.current?.stop();
 
-      // Stop video stream
+      // 1. Detach srcObject FIRST — browser releases the camera indicator immediately
+      //    once the video element no longer holds a live reference to the stream.
+      if (videoRef.current) {
+        const liveStream = videoRef.current.srcObject as MediaStream | null;
+        if (liveStream) {
+          liveStream.getTracks().forEach((t) => t.stop());
+        }
+        videoRef.current.srcObject = null;
+      }
+
+      // 2. Belt-and-suspenders: stop any tracks still in the ref
       if (audioStreamRef.current) {
-        audioStreamRef.current.getTracks().forEach((track) => {
-          track.stop();
-        });
+        audioStreamRef.current.getTracks().forEach((t) => t.stop());
         audioStreamRef.current = null;
       }
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
+      // 3. Stop the audio recording service's separate audio-only stream
+      audioRecordingService.stopAllStreams();
+      setIsAudioRecording(false);
 
       setWebcamActive(false);
     } catch (error: any) {
@@ -662,12 +680,24 @@ export const Assessment: React.FC<AssessmentProps> = ({
       code,
     );
 
-    setStatusMessage("Evaluating code performance...");
+    const hasCode = code.trim().length > 0;
+    setStatusMessage(hasCode ? "Evaluating code performance..." : "Evaluating your answers...");
+    const formattedTheoryAnswers = (assessmentContent.theoryQuestions || [])
+      .map((q) => {
+        const selectedIdx = theoryAnswers[q.id];
+        const selectedOption =
+          selectedIdx !== undefined && q.options[selectedIdx]
+            ? q.options[selectedIdx]
+            : "No answer provided";
+        return `Q: ${q.question}\nAnswer: ${selectedOption}`;
+      })
+      .join("\n\n");
+
     const evaluation = await evaluateCodeSubmission(
       code,
       skill,
       assessmentContent.description,
-      theoryAnswers,
+      formattedTheoryAnswers,
     );
 
     let txHash = undefined;
@@ -682,6 +712,9 @@ export const Assessment: React.FC<AssessmentProps> = ({
       }
     }
 
+    // Release camera and microphone before handing off to results screen
+    stopAllMediaStreams();
+
     setIsSubmitting(false);
     onComplete({
       score: evaluation.score,
@@ -690,6 +723,7 @@ export const Assessment: React.FC<AssessmentProps> = ({
       cheatingDetected: cheatAnalysis.isCheating,
       cheatingReason: cheatAnalysis.reason,
       certificationHash: txHash,
+      evalToken: evaluation.eval_token,
     });
   }, [
     code,
@@ -702,6 +736,7 @@ export const Assessment: React.FC<AssessmentProps> = ({
     onComplete,
     assessmentContent,
     theoryAnswers,
+    stopAllMediaStreams,
   ]);
 
   const isLowTime = timeLeft < 300; // Less than 5 mins

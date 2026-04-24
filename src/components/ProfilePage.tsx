@@ -331,6 +331,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   });
   const [savingPrivacy, setSavingPrivacy] = useState(false);
 
+  // Employer verification
+  const [verificationStatus, setVerificationStatus] = useState<{
+    is_verified: boolean;
+    verification_requested_at: string | null;
+    pending: boolean;
+  } | null>(null);
+  const [requestingVerification, setRequestingVerification] = useState(false);
+
   // Location detection
   const [detectingLocation, setDetectingLocation] = useState(false);
 
@@ -446,7 +454,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         if (data) setPrivacySettings(data);
       }).catch(() => {});
     }
-  }, [activeTab]);
+    if (activeTab === "profile" && user.role === "employer") {
+      api.get("/profiles/employer/request-verification/").then((data: any) => {
+        if (data) setVerificationStatus(data);
+      }).catch(() => {});
+    }
+  }, [activeTab, user.role]);
 
   const handleTerminateSession = async (sessionId: string) => {
     setTerminatingSession(sessionId);
@@ -458,6 +471,24 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       toast.error("Failed to terminate session.");
     }
     setTerminatingSession(null);
+  };
+
+  const handleRequestVerification = async () => {
+    setRequestingVerification(true);
+    try {
+      const res = (await api.post("/profiles/employer/request-verification/", {})) as any;
+      toast.success(res.detail || "Verification request submitted.");
+      setVerificationStatus((prev) => ({
+        is_verified: prev?.is_verified ?? false,
+        verification_requested_at: res.requested_at ?? new Date().toISOString(),
+        pending: true,
+      }));
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || err?.message || "Request failed.";
+      toast.error(msg);
+    } finally {
+      setRequestingVerification(false);
+    }
   };
 
   // ── Account save ──
@@ -1173,7 +1204,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                       </div>
                     </div>
                   ) : (
-                    /* Employer fields */
+                    <>
+                    {/* Employer fields */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <FormField label="Company Name">
                         <div className="relative">
@@ -1290,6 +1322,56 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                         </div>
                       </FormField>
                     </div>
+
+                    {/* ── Employer Verification ── */}
+                    <div className="mt-6 rounded-2xl border border-gray-100 bg-gray-50/60 p-5">
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${verificationStatus?.is_verified ? "bg-teal/10" : verificationStatus?.pending ? "bg-amber-50" : "bg-gray-100"}`}>
+                          <Shield size={18} className={verificationStatus?.is_verified ? "text-teal" : verificationStatus?.pending ? "text-amber-500" : "text-gray-400"} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800">
+                            {verificationStatus?.is_verified
+                              ? "Verified Employer"
+                              : verificationStatus?.pending
+                              ? "Verification Pending"
+                              : "Get Verified"}
+                          </p>
+                          <p className="mt-0.5 text-xs text-gray-500 leading-relaxed">
+                            {verificationStatus?.is_verified
+                              ? "Your employer account is verified. Candidates can see your verified badge."
+                              : verificationStatus?.pending
+                              ? `Request submitted. Admin will review your account within 24 hours.`
+                              : "Verified employers get a trust badge and higher visibility with candidates."}
+                          </p>
+                          {!verificationStatus?.is_verified && !verificationStatus?.pending && (
+                            <button
+                              onClick={handleRequestVerification}
+                              disabled={requestingVerification}
+                              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-teal px-3.5 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                            >
+                              {requestingVerification ? (
+                                <RefreshCw size={12} className="animate-spin" />
+                              ) : (
+                                <Shield size={12} />
+                              )}
+                              Request Verification
+                            </button>
+                          )}
+                          {verificationStatus?.is_verified && (
+                            <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-teal/10 px-2.5 py-0.5 text-xs font-medium text-teal">
+                              <CheckCircle size={11} /> Verified
+                            </span>
+                          )}
+                          {verificationStatus?.pending && (
+                            <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-600 border border-amber-200">
+                              Under Review
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    </>
                   )}
                 </motion.div>
               )}
