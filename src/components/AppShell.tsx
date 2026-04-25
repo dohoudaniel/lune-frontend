@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useState } from "react";
-import { Menu } from "lucide-react";
+import { Menu, Shield } from "lucide-react";
 import { AppSidebar } from "./AppSidebar";
 import { ViewState } from "../types";
 
@@ -51,6 +51,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isCandidate = user.role === "candidate";
+  const isAdmin = user.role === "admin";
 
   /** Map the current view + employer tab → the sidebar's activeTab string */
   const getSidebarActiveTab = (): string => {
@@ -81,6 +82,13 @@ export const AppShell: React.FC<AppShellProps> = ({
   const handleSidebarTabChange = (tab: string) => {
     if (tab === "profile") {
       onNavigate(ViewState.PROFILE);
+      setSidebarOpen(false);
+      return;
+    }
+    // Admin users in AppShell (e.g. Profile page) → always back to admin panel
+    if (isAdmin) {
+      onNavigate(ViewState.ADMIN_DASHBOARD);
+      setSidebarOpen(false);
       return;
     }
     if (isCandidate) {
@@ -158,6 +166,15 @@ export const AppShell: React.FC<AppShellProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
+            {isAdmin && (
+              <button
+                onClick={() => onNavigate(ViewState.ADMIN_DASHBOARD)}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-full text-xs font-semibold text-purple-700 hover:bg-purple-100 transition-colors"
+              >
+                <Shield size={12} />
+                Admin Panel
+              </button>
+            )}
             {isCandidate && (
               <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full text-xs font-semibold text-emerald-700">
                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />

@@ -1363,6 +1363,14 @@ Verify my certificate: ${certificateUrl}
       case ViewState.CANDIDATE_PROGRESS:
       case ViewState.CANDIDATE_COMMUNITY:
         if (!user) return <LoginPage onNavigate={handleNavigate} />;
+        if (user.role !== "candidate" && !(impersonatedUser?.role === "candidate"))
+          return (
+            <NotFoundPage
+              type="403"
+              onGoHome={() => handleNavigate(ViewState.LANDING)}
+              onGoBack={window.history.length > 1 ? () => window.history.back() : undefined}
+            />
+          );
         return (
           <>
             {impersonatedUser && (
@@ -1435,6 +1443,14 @@ Verify my certificate: ${certificateUrl}
         );
       case ViewState.EMPLOYER_DASHBOARD:
         if (!user) return <LoginPage onNavigate={handleNavigate} />;
+        if (user.role !== "employer" && !(impersonatedUser?.role === "employer"))
+          return (
+            <NotFoundPage
+              type="403"
+              onGoHome={() => handleNavigate(ViewState.LANDING)}
+              onGoBack={window.history.length > 1 ? () => window.history.back() : undefined}
+            />
+          );
         return (
           <>
             {impersonatedUser && (
@@ -1519,7 +1535,13 @@ Verify my certificate: ${certificateUrl}
       case ViewState.ADMIN_DASHBOARD:
         if (!user) return <LoginPage onNavigate={handleNavigate} />;
         if (user.role !== "admin")
-          return <Landing onNavigate={handleNavigate} />;
+          return (
+            <NotFoundPage
+              type="403"
+              onGoHome={() => handleNavigate(ViewState.LANDING)}
+              onGoBack={window.history.length > 1 ? () => window.history.back() : undefined}
+            />
+          );
         return (
           <AdminDashboard
             onLogout={handleLogout}

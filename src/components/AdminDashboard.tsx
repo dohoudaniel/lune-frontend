@@ -346,7 +346,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onImpe
     if (!editRoleTarget) return;
     setEditRoleLoading(true);
     try {
-      await api.put(`/admin/users/${editRoleTarget.id}/`, { role: newRole });
+      await api.patch(`/admin/users/${editRoleTarget.id}/`, { role: newRole });
       setUsers((prev) =>
         prev.map((u) => (u.id === editRoleTarget.id ? { ...u, role: newRole } : u))
       );
