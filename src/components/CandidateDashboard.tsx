@@ -59,119 +59,242 @@ interface CandidateDashboardProps {
   onNavigateProfile?: () => void;
 }
 
-const AVAILABLE_ASSESSMENTS = {
-  // Tech — Core Engineering
+const AVAILABLE_ASSESSMENTS: Record<string, string[]> = {
+  // ── Frontend Engineering ──────────────────────────────────────────────
   "Frontend Development": [
-    "React",
-    "Vue",
-    "Angular",
-    "CSS / Tailwind",
-    "TypeScript",
-    "Next.js",
-  ],
-  "Backend Development": [
-    "Node.js",
-    "Python",
-    "Java",
-    "Go",
-    "Django / FastAPI",
-    "REST API Design",
-  ],
-  "Mobile Development": [
-    "React Native",
-    "Flutter",
-    "iOS (Swift)",
-    "Android (Kotlin)",
-    "Expo",
-  ],
-  "Cloud & DevOps": [
-    "AWS",
-    "Google Cloud",
-    "Azure",
-    "Docker",
-    "Kubernetes",
-    "Terraform",
-    "CI/CD Pipelines",
-  ],
-  "Software Engineering": [
-    "System Design",
-    "Data Structures & Algorithms",
-    "Microservices",
-    "Security Best Practices",
-  ],
-  "Developer Relations": [
-    "Technical Writing",
-    "API Documentation",
-    "Community Management",
-    "Developer Advocacy",
+    "React", "Vue.js", "Angular", "Svelte", "SolidJS",
+    "TypeScript", "JavaScript (ES2024)", "Next.js", "Nuxt.js", "Astro",
+    "CSS / Tailwind", "CSS Animations", "Web Accessibility (WCAG)",
+    "Webpack / Vite", "Testing (Jest / Vitest)", "Storybook",
   ],
 
-  // Operations & Support
-  "Virtual Assistant": [
-    "Executive Virtual Assistant",
-    "Administrative VA",
-    "Research & Data VA",
-    "Calendar & Email Management",
-    "Client Onboarding VA",
+  // ── Backend Engineering ───────────────────────────────────────────────
+  "Backend Development": [
+    "Node.js", "Python", "Java", "Go", "Rust", "C#", "PHP", "Ruby",
+    "Django", "FastAPI", "Flask", "Spring Boot", "NestJS", "Laravel",
+    "REST API Design", "GraphQL", "gRPC", "WebSockets",
+    "Authentication & OAuth2", "Rate Limiting & Caching",
   ],
+
+  // ── Mobile Development ────────────────────────────────────────────────
+  "Mobile Development": [
+    "React Native", "Flutter", "iOS (Swift)", "Android (Kotlin)",
+    "Expo", "SwiftUI", "Jetpack Compose", "Capacitor / Ionic",
+    "Mobile App Architecture", "Push Notifications", "App Store Optimisation",
+  ],
+
+  // ── Cloud & Infrastructure ────────────────────────────────────────────
+  "Cloud & DevOps": [
+    "AWS Core Services", "AWS Solutions Architect",
+    "Google Cloud Platform", "Microsoft Azure",
+    "Docker", "Kubernetes", "Helm", "Terraform", "Pulumi",
+    "CI/CD Pipelines", "GitHub Actions", "Jenkins", "ArgoCD",
+    "Linux Administration", "Bash Scripting", "Nginx / Load Balancing",
+    "Monitoring (Datadog / Grafana)", "Site Reliability Engineering",
+  ],
+
+  // ── Data & AI ─────────────────────────────────────────────────────────
+  "Data Engineering": [
+    "SQL (Advanced)", "PostgreSQL", "MySQL", "MongoDB", "Redis",
+    "Apache Spark", "Apache Kafka", "Airflow", "dbt",
+    "Data Warehousing (Snowflake / BigQuery)", "ETL / ELT Pipelines",
+    "Data Modelling", "Stream Processing",
+  ],
+  "Data Science & Analytics": [
+    "Python for Data Science", "R Programming",
+    "Pandas / NumPy", "Data Visualisation (Matplotlib / Seaborn)",
+    "Statistics & Probability", "A/B Testing",
+    "Tableau", "Power BI", "Looker", "Excel Data Analysis",
+  ],
+  "Machine Learning & AI": [
+    "Machine Learning Fundamentals", "Deep Learning",
+    "Natural Language Processing", "Computer Vision",
+    "PyTorch", "TensorFlow / Keras", "Scikit-learn",
+    "Prompt Engineering", "LLM Fine-Tuning", "RAG Systems",
+    "MLOps & Model Deployment", "AI Ethics & Bias",
+  ],
+
+  // ── Security ──────────────────────────────────────────────────────────
+  "Cybersecurity": [
+    "Web Application Security (OWASP)", "Network Security",
+    "Penetration Testing", "Threat Modelling",
+    "SIEM & Log Analysis", "Incident Response",
+    "Security Compliance (SOC2 / ISO27001)", "Identity & Access Management",
+    "Cloud Security", "Cryptography Fundamentals",
+  ],
+
+  // ── Software Craft ────────────────────────────────────────────────────
+  "Software Engineering": [
+    "System Design", "Distributed Systems",
+    "Data Structures & Algorithms", "Clean Code & SOLID",
+    "Microservices Architecture", "Event-Driven Architecture",
+    "Software Testing (Unit / Integration / E2E)",
+    "Database Design", "Code Review Best Practices",
+  ],
+
+  // ── Design ────────────────────────────────────────────────────────────
+  "UI/UX Design": [
+    "Figma", "Adobe XD", "Sketch",
+    "User Research & Interviews", "Wireframing & Prototyping",
+    "Design Systems", "Interaction Design",
+    "Usability Testing", "Information Architecture",
+    "Motion Design", "Accessibility Design",
+  ],
+  "Graphic Design": [
+    "Adobe Photoshop", "Adobe Illustrator", "Adobe InDesign",
+    "Brand Identity Design", "Typography",
+    "Logo Design", "Print Design", "Packaging Design",
+    "Social Media Graphics", "Canva",
+  ],
+  "Product Design": [
+    "Product Thinking", "Jobs-to-be-Done Framework",
+    "Design Sprints", "Competitive Analysis",
+    "User Personas & Journey Mapping", "OKR-Driven Design",
+    "Handoff & Developer Collaboration",
+  ],
+
+  // ── Product & Engineering Leadership ─────────────────────────────────
+  "Product Management": [
+    "Product Strategy", "Roadmap Planning", "PRD Writing",
+    "User Story Mapping", "Prioritisation Frameworks (RICE / ICE)",
+    "Metrics & KPIs", "Product Analytics",
+    "Go-to-Market Strategy", "Competitive Intelligence",
+    "Stakeholder Management", "Agile Product Management",
+  ],
+  "Engineering Management": [
+    "Team Leadership", "Technical Interviews",
+    "Architecture Decision Records", "Sprint Planning",
+    "Engineering Metrics (DORA)", "Hiring & Performance Reviews",
+    "Technical Roadmapping", "Cross-Functional Collaboration",
+  ],
+
+  // ── DevRel & Technical Content ────────────────────────────────────────
+  "Developer Relations": [
+    "Technical Writing", "API Documentation",
+    "Developer Advocacy", "Community Management",
+    "Tutorial & Sample Code Creation", "Conference Speaking",
+    "Open Source Contribution", "SDK Design",
+  ],
+
+  // ── Operations & Support ──────────────────────────────────────────────
   "Customer Service": [
-    "Customer Support Representative",
-    "Call Center Agent",
-    "Help Desk / IT Support",
-    "Client Success Manager",
-    "Live Chat Support",
+    "Customer Support Representative", "Call Centre Agent",
+    "Help Desk / IT Support", "Client Success Manager",
+    "Live Chat Support", "Escalation Handling",
+    "CSAT & NPS Improvement", "CRM Tools (Zendesk / Freshdesk)",
+  ],
+  "Virtual Assistant": [
+    "Executive Virtual Assistant", "Administrative VA",
+    "Research & Data VA", "Calendar & Email Management",
+    "Client Onboarding VA", "Travel Coordination",
+    "Document Preparation", "Bookkeeping Support",
   ],
   "E-Commerce": [
-    "Shopify Management",
-    "Amazon Seller Central",
-    "Product Listing Optimization",
-    "Order Fulfilment & Logistics",
-    "Customer Returns Handling",
+    "Shopify Management", "WooCommerce", "Amazon Seller Central",
+    "Product Listing Optimisation", "Order Fulfilment & Logistics",
+    "Inventory Management", "Customer Returns Handling",
+    "Marketplace Advertising", "Conversion Rate Optimisation",
   ],
 
-  // Sales & Growth
-  Sales: [
-    "Sales Development Representative (SDR)",
-    "Account Executive",
-    "Business Development",
-    "Lead Generation",
-    "Cold Outreach / Email Sales",
+  // ── Finance & Accounting ──────────────────────────────────────────────
+  "Finance & Accounting": [
+    "Financial Modelling", "Excel for Finance",
+    "Bookkeeping & Accounts", "Management Accounting",
+    "Financial Reporting (IFRS / GAAP)", "Budgeting & Forecasting",
+    "Payroll Processing", "Tax Compliance",
+    "QuickBooks / Xero", "Audit & Internal Controls",
   ],
+
+  // ── Sales ─────────────────────────────────────────────────────────────
+  "Sales": [
+    "Sales Development Representative (SDR)", "Account Executive",
+    "Business Development", "Lead Generation",
+    "Cold Outreach / Email Sales", "Sales Copywriting",
+    "CRM (Salesforce / HubSpot)", "Sales Analytics",
+    "Enterprise Sales", "Channel & Partner Sales",
+  ],
+
+  // ── Marketing ────────────────────────────────────────────────────────
   "Digital Marketing": [
-    "Social Media Management",
-    "SEO & SEM",
-    "Content Creation & Strategy",
-    "Email Marketing",
-    "Paid Advertising (Meta/Google)",
-    "Influencer Marketing",
+    "Social Media Management", "SEO & SEM",
+    "Content Creation & Strategy", "Email Marketing",
+    "Paid Advertising (Meta / Google)", "Influencer Marketing",
+    "Marketing Analytics (GA4)", "Conversion Optimisation",
+    "Brand Strategy", "Community Building",
+    "Video Marketing", "Podcast Production",
   ],
 
-  // Management & Soft Skills
+  // ── Management & People ───────────────────────────────────────────────
   "Project Management": [
-    "Project Manager",
-    "Scrum Master / Agile",
-    "Operations Manager",
-    "Program Coordinator",
+    "Project Manager", "Scrum Master / Agile",
+    "Operations Manager", "Program Coordinator",
+    "PMP Principles", "Jira / Asana / Linear",
+    "Risk Management", "Change Management",
+    "Stakeholder Communication", "Budget Management",
   ],
   "HR & Recruiting": [
-    "HR Coordinator",
-    "Talent Sourcing",
-    "Technical Recruiter",
-    "Onboarding Specialist",
+    "HR Coordinator", "Talent Sourcing",
+    "Technical Recruiter", "Onboarding Specialist",
+    "Compensation & Benefits", "HR Information Systems (HRIS)",
+    "Performance Management", "DEI Practices",
+    "Labour Law Basics", "Employee Relations",
   ],
-  Communication: [
-    "Public Speaking",
-    "Presentation Skills",
-    "Business Writing",
-    "Negotiation",
-    "Active Listening",
+
+  // ── Soft Skills ───────────────────────────────────────────────────────
+  "Communication": [
+    "Public Speaking", "Presentation Skills",
+    "Business Writing", "Negotiation",
+    "Active Listening", "Executive Communication",
+    "Cross-Cultural Communication", "Conflict Resolution",
   ],
   "Office Productivity": [
-    "Microsoft Word",
-    "Microsoft Excel",
-    "Microsoft PowerPoint",
-    "Google Workspace",
-    "Notion / Airtable",
+    "Microsoft Word", "Microsoft Excel", "Microsoft PowerPoint",
+    "Google Workspace", "Notion / Airtable",
+    "Slack Workflows", "Zoom & Remote Collaboration",
+    "Time Management", "Process Documentation",
+  ],
+
+  // ── Legal & Compliance ────────────────────────────────────────────────
+  "Legal & Compliance": [
+    "Contract Review Basics", "GDPR / Data Privacy",
+    "Intellectual Property Fundamentals", "Employment Law Basics",
+    "Regulatory Compliance", "Corporate Governance",
+  ],
+
+  // ── Creative ─────────────────────────────────────────────────────────
+  "Content & Copywriting": [
+    "SEO Content Writing", "Copywriting",
+    "Long-Form Editorial", "UX Writing",
+    "Social Media Copywriting", "Email Copywriting",
+    "Ghostwriting", "Research Writing",
+    "Technical Documentation",
+  ],
+  "Video & Audio Production": [
+    "Video Editing (Premiere / DaVinci)", "After Effects",
+    "YouTube Production", "Short-Form Video (TikTok / Reels)",
+    "Podcast Editing (Audacity / Descript)",
+    "Audio Mixing", "Scriptwriting", "Storyboarding",
+  ],
+};
+
+const ASSESSMENT_TRACKS: Record<string, string[]> = {
+  "All": Object.keys(AVAILABLE_ASSESSMENTS),
+  "Tech": [
+    "Frontend Development", "Backend Development", "Mobile Development",
+    "Cloud & DevOps", "Data Engineering", "Data Science & Analytics",
+    "Machine Learning & AI", "Cybersecurity", "Software Engineering",
+    "Developer Relations",
+  ],
+  "Design": ["UI/UX Design", "Graphic Design", "Product Design"],
+  "Business": [
+    "Product Management", "Engineering Management", "Project Management",
+    "HR & Recruiting", "Finance & Accounting", "Sales", "Digital Marketing",
+    "Legal & Compliance",
+  ],
+  "Operations": ["Customer Service", "Virtual Assistant", "E-Commerce"],
+  "Creative": [
+    "Content & Copywriting", "Video & Audio Production",
+    "Communication", "Office Productivity",
   ],
 };
 
@@ -217,7 +340,8 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
     );
   };
 
-  const [searchQuery, setSearchQuery] = useState(""); // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTrack, setActiveTrack] = useState<string>("All");
   const [recommendations, setRecommendations] = useState<{
     certifications: RecommendedCertification[];
     jobs: Job[];
@@ -227,28 +351,27 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
     string | null
   >(null);
 
-  // Filter assessments based on search query
+  // Filter assessments based on track + search query
   const filteredAssessments = useMemo(() => {
-    if (!searchQuery.trim()) return AVAILABLE_ASSESSMENTS;
-
-    const query = searchQuery.toLowerCase();
-    const filtered: Record<string, string[]> = {};
-
-    Object.entries(AVAILABLE_ASSESSMENTS).forEach(([category, skills]) => {
-      const matchingSkills = skills.filter((skill) =>
-        skill.toLowerCase().includes(query),
-      );
-
-      // Also include category if category name matches
-      const categoryMatches = category.toLowerCase().includes(query);
-
-      if (matchingSkills.length > 0 || categoryMatches) {
-        filtered[category] = categoryMatches ? skills : matchingSkills;
-      }
+    const trackCategories = ASSESSMENT_TRACKS[activeTrack] ?? Object.keys(AVAILABLE_ASSESSMENTS);
+    const trackFiltered: Record<string, string[]> = {};
+    trackCategories.forEach((cat) => {
+      if (AVAILABLE_ASSESSMENTS[cat]) trackFiltered[cat] = AVAILABLE_ASSESSMENTS[cat];
     });
 
-    return filtered;
-  }, [searchQuery]);
+    if (!searchQuery.trim()) return trackFiltered;
+
+    const query = searchQuery.toLowerCase();
+    const result: Record<string, string[]> = {};
+    Object.entries(trackFiltered).forEach(([category, skills]) => {
+      const matchingSkills = skills.filter((s) => s.toLowerCase().includes(query));
+      const categoryMatches = category.toLowerCase().includes(query);
+      if (matchingSkills.length > 0 || categoryMatches) {
+        result[category] = categoryMatches ? skills : matchingSkills;
+      }
+    });
+    return result;
+  }, [searchQuery, activeTrack]);
 
   // Skill Passport State
   const [isGeneratingPassport, setIsGeneratingPassport] = useState(false);
@@ -601,110 +724,6 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
                   <p className="text-xs text-gray-400 italic">
                     No skills verified yet.
                   </p>
-                )}
-              </div>
-
-              <div className="pt-4 border-t border-gray-100">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    Available Assessments
-                  </h4>
-                </div>
-
-                {/* Search Box */}
-                <div className="mb-4">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search for skills or categories..."
-                      className="w-full px-4 py-2.5 pl-10 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange focus:border-transparent outline-none transition"
-                    />
-                    <Search
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                      size={16}
-                    />
-                    {searchQuery && (
-                      <button
-                        onClick={() => setSearchQuery("")}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
-                        aria-label="Clear search"
-                      >
-                        <X size={16} />
-                      </button>
-                    )}
-                  </div>
-                  {searchQuery && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      {Object.keys(filteredAssessments).length === 0
-                        ? "No results found"
-                        : `Found ${Object.values(filteredAssessments).flat().length} skill(s)`}
-                    </p>
-                  )}
-                </div>
-
-                {/* Results */}
-                {Object.keys(filteredAssessments).length > 0 ? (
-                  <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                    {Object.entries(filteredAssessments).map(
-                      ([category, skills]: [string, string[]]) => (
-                        <div key={category}>
-                          <h5 className="text-xs font-bold text-slate-800 mb-2">
-                            {category}
-                          </h5>
-                          <div className="flex flex-wrap gap-2">
-                            {skills.map((skill) => {
-                              const attempts = getSkillAttemptCount(
-                                candidate.id,
-                                skill,
-                              );
-                              const maxed = attempts >= 3;
-                              return (
-                                <motion.button
-                                  key={skill}
-                                  whileHover={
-                                    !maxed
-                                      ? {
-                                          scale: 1.05,
-                                          backgroundColor: "#000",
-                                          color: "#fff",
-                                          borderColor: "#000",
-                                        }
-                                      : {}
-                                  }
-                                  whileTap={!maxed ? { scale: 0.95 } : {}}
-                                  onClick={() => onStartAssessment(skill)}
-                                  disabled={maxed}
-                                  title={
-                                    maxed
-                                      ? "Maximum 3 attempts reached"
-                                      : `${3 - attempts} attempt(s) remaining`
-                                  }
-                                  className={`px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs font-medium transition ${maxed ? "opacity-40 cursor-not-allowed text-gray-400" : "text-gray-600"}`}
-                                >
-                                  {skill}
-                                  {attempts > 0 ? ` (${attempts}/3)` : ""}
-                                </motion.button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ),
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-gray-500">
-                      No assessments match your search.
-                    </p>
-                    <button
-                      onClick={() => setSearchQuery("")}
-                      className="mt-2 text-xs text-orange hover:underline"
-                    >
-                      Clear search
-                    </button>
-                  </div>
                 )}
               </div>
 
@@ -1155,6 +1174,130 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
                     )}
             </div>
           </motion.div>
+        </motion.div>
+
+        {/* ── Available Assessments Section ──────────────────────────────── */}
+        <motion.div
+          variants={itemVariants}
+          initial="hidden"
+          animate="visible"
+          className="mt-10"
+          id="available-assessments"
+        >
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Section header */}
+            <div className="px-6 pt-7 pb-5 border-b border-gray-100">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-orange/10 flex items-center justify-center">
+                    <Target size={20} className="text-orange" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">Available Assessments</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {Object.values(AVAILABLE_ASSESSMENTS).flat().length}+ skills across {Object.keys(AVAILABLE_ASSESSMENTS).length} categories
+                    </p>
+                  </div>
+                </div>
+                {/* Search */}
+                <div className="relative w-full sm:w-72">
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search skills or categories…"
+                    className="w-full pl-9 pr-9 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange/30 focus:border-orange outline-none transition"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Track filter tabs */}
+              <div className="flex gap-1.5 mt-5 flex-wrap">
+                {Object.keys(ASSESSMENT_TRACKS).map((track) => (
+                  <button
+                    key={track}
+                    onClick={() => { setActiveTrack(track); setSearchQuery(""); }}
+                    className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all ${
+                      activeTrack === track
+                        ? "bg-slate-900 text-white shadow-sm"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    {track}
+                  </button>
+                ))}
+              </div>
+
+              {searchQuery && (
+                <p className="text-xs text-gray-500 mt-3">
+                  {Object.keys(filteredAssessments).length === 0
+                    ? "No results found"
+                    : `${Object.values(filteredAssessments).flat().length} skill(s) found`}
+                </p>
+              )}
+            </div>
+
+            {/* Skills grid */}
+            <div className="p-6">
+              {Object.keys(filteredAssessments).length === 0 ? (
+                <div className="text-center py-12">
+                  <Search size={36} className="text-gray-200 mx-auto mb-3" />
+                  <p className="text-gray-500 font-medium">No assessments match your search.</p>
+                  <button
+                    onClick={() => { setSearchQuery(""); setActiveTrack("All"); }}
+                    className="mt-2 text-xs text-orange hover:underline"
+                  >
+                    Clear filters
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {Object.entries(filteredAssessments).map(([category, skills]) => (
+                    <div key={category} className="space-y-3">
+                      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">
+                        {category}
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {skills.map((skill) => {
+                          const attempts = getSkillAttemptCount(candidate.id, skill);
+                          const maxed = attempts >= 3;
+                          const attempted = attempts > 0;
+                          return (
+                            <motion.button
+                              key={skill}
+                              whileHover={!maxed ? { scale: 1.04 } : {}}
+                              whileTap={!maxed ? { scale: 0.97 } : {}}
+                              onClick={() => onStartAssessment(skill)}
+                              disabled={maxed}
+                              title={maxed ? "Maximum 3 attempts reached" : `${3 - attempts} attempt(s) remaining`}
+                              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                                maxed
+                                  ? "opacity-35 cursor-not-allowed bg-gray-50 border-gray-200 text-gray-400"
+                                  : attempted
+                                  ? "bg-orange/8 border-orange/25 text-orange hover:bg-orange hover:text-white hover:border-orange"
+                                  : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-slate-900 hover:text-white hover:border-slate-900"
+                              }`}
+                            >
+                              {skill}{attempted ? ` (${attempts}/3)` : ""}
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </motion.div>
 
       {/* Skill Passport — full-screen page */}
