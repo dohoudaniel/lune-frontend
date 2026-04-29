@@ -198,15 +198,20 @@ class AudioRecordingService {
    */
   stopAllStreams(): void {
     try {
-      if (this.audioStream) {
-        this.audioStream.getTracks().forEach((track) => {
-          track.stop();
-        });
-        this.audioStream = null;
-      }
+      // Stop recorder BEFORE killing the stream tracks so the browser can
+      // flush any pending data and fully release the device indicator.
       if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+        this.mediaRecorder.onstop = null; // drop pending handler
         this.mediaRecorder.stop();
       }
+      this.mediaRecorder = null;
+
+      if (this.audioStream) {
+        this.audioStream.getTracks().forEach((track) => track.stop());
+        this.audioStream = null;
+      }
+
+      this.audioChunks = [];
       this.state.isRecording = false;
       this.state.hasPermission = false;
     } catch (error: any) {

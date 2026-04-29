@@ -24,6 +24,7 @@ import {
   BookOpen,
   Video,
   HelpCircle,
+  Brain,
 } from "lucide-react";
 import {
   evaluateCodeSubmission,
@@ -66,6 +67,7 @@ interface QuestionDistribution {
   mcq: { count: number; percentage: number };
   video: { count: number; percentage: number };
   situational: { count: number; percentage: number };
+  theory: { count: number; percentage: number };
   total: number;
 }
 
@@ -76,28 +78,28 @@ interface ProgressTracker {
   situationalCompleted: number;
 }
 
-// Helper function to detect question type
+// Infer question type from explicit field first, then from structure.
+// Standard coding assessments return theoryQuestions with no `type` field
+// but always include an options array — those are MCQs. Only truly open-ended
+// questions without options fall back to "theory".
 const detectQuestionType = (question: any): QuestionType => {
   if (!question) return "theory";
-
-  // Check if question has an explicit type field
-  if (
-    question.type &&
-    ["mcq", "video", "situational"].includes(question.type)
-  ) {
-    return question.type;
+  if (question.type && ["mcq", "video", "situational"].includes(question.type)) {
+    return question.type as QuestionType;
   }
-
-  // Fallback: assume theory questions are from theoryQuestions array
+  // Infer from structure
+  if (Array.isArray(question.options) && question.options.filter(Boolean).length >= 2) {
+    return "mcq";
+  }
   return "theory";
 };
 
-// Helper function to calculate question distribution
 const calculateDistribution = (questions: any[]): QuestionDistribution => {
   const distribution: QuestionDistribution = {
     mcq: { count: 0, percentage: 0 },
     video: { count: 0, percentage: 0 },
     situational: { count: 0, percentage: 0 },
+    theory: { count: 0, percentage: 0 },
     total: questions.length,
   };
 
@@ -105,18 +107,13 @@ const calculateDistribution = (questions: any[]): QuestionDistribution => {
 
   questions.forEach((q) => {
     const type = detectQuestionType(q);
-    if (type !== "theory") {
-      distribution[type].count++;
-    }
+    distribution[type].count++;
   });
 
-  // Calculate percentages
-  Object.keys(distribution).forEach((key) => {
-    if (key !== "total" && distribution[key as QuestionType]) {
-      distribution[key as QuestionType].percentage = Math.round(
-        (distribution[key as QuestionType].count / distribution.total) * 100,
-      );
-    }
+  (["mcq", "video", "situational", "theory"] as const).forEach((key) => {
+    distribution[key].percentage = Math.round(
+      (distribution[key].count / distribution.total) * 100,
+    );
   });
 
   return distribution;
@@ -399,9 +396,10 @@ export const Assessment: React.FC<AssessmentProps> = ({
     if (loading) return; // video element not rendered yet while loading screen is showing
 
     let stream: MediaStream | null = null;
+    let cancelled = false; // guard against the component unmounting mid-getUserMedia
+
     const startWebcamAndAudio = async () => {
       try {
-        // Request both video and audio
         stream = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: {
@@ -411,6 +409,14 @@ export const Assessment: React.FC<AssessmentProps> = ({
           },
         });
 
+        // If the effect was cleaned up while getUserMedia was pending, stop the
+        // freshly-opened stream immediately and bail — nothing else to set up.
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          audioRecordingService.stopAllStreams();
+          return;
+        }
+
         audioStreamRef.current = stream;
 
         if (videoRef.current) {
@@ -418,9 +424,8 @@ export const Assessment: React.FC<AssessmentProps> = ({
           await videoRef.current.play().catch(() => {
             /* autoplay policy — muted video plays anyway */
           });
-          setWebcamActive(true);
+          if (!cancelled) setWebcamActive(true);
 
-          // Start real face-presence proctoring
           faceProctorRef.current = createFaceProctor(videoRef.current, (secondsAbsent) => {
             setCheatingEvents((prev) => [...prev, `Face absent ${secondsAbsent}s`]);
             setActiveAlert(`Proctor: No face detected for ${secondsAbsent} seconds. Please stay in frame.`);
@@ -429,13 +434,17 @@ export const Assessment: React.FC<AssessmentProps> = ({
           faceProctorRef.current.start();
         }
 
-        // Start audio recording for assessment
-        const audioStarted = await audioRecordingService.startRecording();
-        if (audioStarted) {
-          setIsAudioRecording(true);
-          setAudioRecordingError(null);
+        if (!cancelled) {
+          const audioStarted = await audioRecordingService.startRecording();
+          if (audioStarted && !cancelled) {
+            setIsAudioRecording(true);
+            setAudioRecordingError(null);
+          } else if (cancelled) {
+            audioRecordingService.stopAllStreams();
+          }
         }
       } catch (err: any) {
+        if (cancelled) return;
         console.error("Camera/Microphone access denied", err);
         const reason =
           err?.name === "NotAllowedError"
@@ -452,12 +461,16 @@ export const Assessment: React.FC<AssessmentProps> = ({
     startWebcamAndAudio();
 
     return () => {
-      // Cleanup: stop all media streams
+      cancelled = true;
       faceProctorRef.current?.stop();
       if (stream) {
         stream.getTracks().forEach((t) => t.stop());
       }
-      audioStreamRef.current = null;
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach((t) => t.stop());
+        audioStreamRef.current = null;
+      }
+      audioRecordingService.stopAllStreams();
       setWebcamActive(false);
     };
   }, [loading]);
@@ -664,6 +677,10 @@ export const Assessment: React.FC<AssessmentProps> = ({
     if (!assessmentContent) return;
 
     setIsSubmitting(true);
+    // Stop camera and mic immediately — user does not need proctoring
+    // during the backend evaluation phase, and waiting until after the
+    // async calls complete (3-8 s) leaves the indicator on too long.
+    stopAllMediaStreams();
     setStatusMessage("Analyzing session integrity...");
 
     const metrics = {
@@ -682,14 +699,22 @@ export const Assessment: React.FC<AssessmentProps> = ({
 
     const hasCode = code.trim().length > 0;
     setStatusMessage(hasCode ? "Evaluating code performance..." : "Evaluating your answers...");
+
+    // Build a rich Q&A string: include all options so the AI can determine
+    // whether the selected answer is correct, not just the selected text.
+    const LETTERS = ["A", "B", "C", "D", "E"];
     const formattedTheoryAnswers = (assessmentContent.theoryQuestions || [])
       .map((q) => {
         const selectedIdx = theoryAnswers[q.id];
         const selectedOption =
           selectedIdx !== undefined && q.options[selectedIdx]
-            ? q.options[selectedIdx]
+            ? `${LETTERS[selectedIdx] ?? selectedIdx}) ${q.options[selectedIdx]}`
             : "No answer provided";
-        return `Q: ${q.question}\nAnswer: ${selectedOption}`;
+        const optionsList =
+          q.options?.length
+            ? q.options.map((o, i) => `  ${LETTERS[i] ?? i}) ${o}`).join("\n")
+            : "";
+        return `Q${q.id}: ${q.question}${optionsList ? `\nOptions:\n${optionsList}` : ""}\nCandidate answered: ${selectedOption}`;
       })
       .join("\n\n");
 
@@ -698,6 +723,7 @@ export const Assessment: React.FC<AssessmentProps> = ({
       skill,
       assessmentContent.description,
       formattedTheoryAnswers,
+      skill, // skillName — bind HMAC to the actual skill being assessed
     );
 
     let txHash = undefined;
@@ -711,9 +737,6 @@ export const Assessment: React.FC<AssessmentProps> = ({
         console.error("Mint failed", e);
       }
     }
-
-    // Release camera and microphone before handing off to results screen
-    stopAllMediaStreams();
 
     setIsSubmitting(false);
     onComplete({
@@ -969,6 +992,35 @@ export const Assessment: React.FC<AssessmentProps> = ({
                             }}
                             transition={{ delay: 0.3, duration: 0.6 }}
                             className="h-full bg-gradient-to-r from-green-500 to-green-600"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Theory / Open-ended Distribution */}
+                    {distribution.theory.count > 0 && (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <Brain size={12} className="text-teal-400" />
+                            <span className="font-semibold text-gray-300">
+                              Open-ended: {distribution.theory.count}{" "}
+                              question
+                              {distribution.theory.count !== 1 ? "s" : ""}
+                            </span>
+                          </div>
+                          <span className="text-teal-400 font-bold">
+                            {distribution.theory.percentage}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{
+                              width: `${distribution.theory.percentage}%`,
+                            }}
+                            transition={{ delay: 0.4, duration: 0.6 }}
+                            className="h-full bg-gradient-to-r from-teal-500 to-teal-600"
                           />
                         </div>
                       </div>

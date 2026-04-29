@@ -1048,281 +1048,830 @@ Verify my certificate: ${certificateUrl}
   );
 
   // Combined Skill & Difficulty Selection
-  const renderSkillSelection = () => (
-    <div className="min-h-screen bg-cream flex flex-col items-center justify-center p-4">
-      <div className="max-w-4xl w-full">
-        <div className="flex items-center mb-8">
-          <button
+  const renderSkillSelection = () => {
+    // No skill pre-selected → send back to dashboard where they can pick from the full list
+    if (!selectedSkill) {
+      handleNavigate(ViewState.CANDIDATE_DASHBOARD);
+      return null;
+    }
+
+    const SKILL_NOTES: Record<string, [string, string, string]> = {
+      React: [
+        "Components, JSX, props, hooks, and basic state management.",
+        "Context API, performance optimisation, and advanced hook patterns.",
+        "SSR / RSC, micro-frontend architecture, and rendering deep-dives.",
+      ],
+      Vue: [
+        "Templates, directives, reactivity, and basic component model.",
+        "Composition API, Pinia, Vue Router, and real-world patterns.",
+        "Nuxt, SSR, performance profiling, and plugin authoring.",
+      ],
+      "CSS / Tailwind": [
+        "Selectors, box model, flexbox, and responsive basics.",
+        "Grid, animations, custom properties, and Tailwind internals.",
+        "Performance, theming systems, and scalable CSS architecture.",
+      ],
+      TypeScript: [
+        "Type annotations, interfaces, enums, and basic generics.",
+        "Advanced generics, utility types, and type inference patterns.",
+        "Declaration files, compiler API, and strict type-safe architecture.",
+      ],
+      "Next.js": [
+        "Pages router, file-based routing, and basic data fetching.",
+        "App router, server components, and middleware.",
+        "Streaming, ISR, edge runtimes, and deployment optimisation.",
+      ],
+      "Node.js": [
+        "Modules, async/await, event loop, and REST basics.",
+        "Middleware, streams, error handling, and database access.",
+        "Clustering, security hardening, and microservice patterns.",
+      ],
+      Python: [
+        "Syntax, data types, control flow, and functions.",
+        "OOP, decorators, error handling, and popular libraries.",
+        "Concurrency, metaclasses, design patterns, and API design.",
+      ],
+      Django: [
+        "Models, views, templates, and the request/response cycle.",
+        "DRF, signals, caching, and authentication.",
+        "Async Django, custom middleware, and scaling strategies.",
+      ],
+      "Django / FastAPI": [
+        "Models, views, templates, and the request/response cycle.",
+        "DRF, signals, caching, and authentication.",
+        "Async support, custom middleware, and scaling strategies.",
+      ],
+      Java: [
+        "Syntax, OOP fundamentals, collections, and exceptions.",
+        "Generics, concurrency, streams API, and Spring basics.",
+        "JVM internals, enterprise patterns, and security best practices.",
+      ],
+      Go: [
+        "Syntax, goroutines, channels, and standard library basics.",
+        "Interfaces, concurrency patterns, and error handling idioms.",
+        "Runtime internals, cgo, high-performance service design.",
+      ],
+      "REST API Design": [
+        "HTTP methods, status codes, and resource modelling.",
+        "Authentication, versioning, pagination, and error formats.",
+        "Hypermedia, rate limiting, and API governance.",
+      ],
+      AWS: [
+        "Core services — S3, EC2, IAM, and VPC basics.",
+        "Serverless, auto-scaling, cost management, and CloudFormation.",
+        "Multi-region, advanced security, and Well-Architected Framework.",
+      ],
+      "Google Cloud": [
+        "GCP console, Compute Engine, Cloud Storage, and IAM.",
+        "GKE, Cloud Run, Pub/Sub, and data services.",
+        "Multi-cloud strategy, advanced networking, and cost optimisation.",
+      ],
+      Docker: [
+        "Images, containers, Dockerfiles, and CLI basics.",
+        "Compose, networking, volumes, and multi-stage builds.",
+        "Orchestration, CI/CD integration, and security hardening.",
+      ],
+      Kubernetes: [
+        "Pods, services, deployments, and basic kubectl.",
+        "Ingress, RBAC, Helm charts, and namespaces.",
+        "Autoscaling, multi-cluster federation, and platform engineering.",
+      ],
+      "System Design": [
+        "Fundamentals: load balancing, caching, and databases.",
+        "Distributed systems, CAP theorem, and API design.",
+        "Large-scale architecture, trade-off analysis, and real-world case studies.",
+      ],
+      "Data Structures & Algorithms": [
+        "Arrays, linked lists, stacks, queues, and Big-O basics.",
+        "Trees, graphs, sorting algorithms, and dynamic programming.",
+        "Advanced graph algorithms, NP-hard problems, and competitive patterns.",
+      ],
+      "SQL (Advanced)": [
+        "SELECT, JOIN, GROUP BY, and basic indexing.",
+        "Window functions, CTEs, stored procedures, and query optimisation.",
+        "Partitioning, execution plans, and database internals.",
+      ],
+      Figma: [
+        "Frames, components, auto-layout, and basic prototyping.",
+        "Variables, design tokens, advanced components, and dev mode.",
+        "Plugin development, design system governance, and handoff workflows.",
+      ],
+    };
+
+    const DEFAULT_NOTES: [string, string, string] = [
+      "Fundamentals, core concepts, and entry-level patterns.",
+      "Best practices, real-world problem-solving, and intermediate depth.",
+      "Advanced architecture, performance edge cases, and expert-level nuance.",
+    ];
+
+    const notes = SKILL_NOTES[selectedSkill] ?? DEFAULT_NOTES;
+
+    const levels: {
+      id: DifficultyLevel;
+      label: string;
+      subtitle: string;
+      note: string;
+      accentColor: string;
+      badgeBg: string;
+      badgeText: string;
+      questions: string;
+      time: string;
+      icon: React.ReactNode;
+    }[] = [
+      {
+        id: "Beginner",
+        label: "Beginner",
+        subtitle: "Foundation",
+        note: notes[0],
+        accentColor: "#22c55e",
+        badgeBg: "bg-green-50",
+        badgeText: "text-green-700",
+        questions: "10 questions",
+        time: "~15 min",
+        icon: (
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="10" r="8" stroke="#22c55e" strokeWidth="1.5" />
+            <path d="M7 10l2 2 4-4" stroke="#22c55e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        ),
+      },
+      {
+        id: "Mid-Level",
+        label: "Mid-Level",
+        subtitle: "Practitioner",
+        note: notes[1],
+        accentColor: "#F26430",
+        badgeBg: "bg-orange-50",
+        badgeText: "text-orange-700",
+        questions: "12 questions",
+        time: "~20 min",
+        icon: (
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <polygon points="10,2 13,8 19,9 14.5,13.5 15.5,19.5 10,17 4.5,19.5 5.5,13.5 1,9 7,8" stroke="#F26430" strokeWidth="1.5" fill="none" strokeLinejoin="round" />
+          </svg>
+        ),
+      },
+      {
+        id: "Advanced",
+        label: "Advanced",
+        subtitle: "Expert",
+        note: notes[2],
+        accentColor: "#1F4D48",
+        badgeBg: "bg-teal/8",
+        badgeText: "text-teal",
+        questions: "15 questions",
+        time: "~25 min",
+        icon: (
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M10 2L3 9l7 9 7-9-7-7z" stroke="#1F4D48" strokeWidth="1.5" fill="none" strokeLinejoin="round" />
+          </svg>
+        ),
+      },
+    ];
+
+    return (
+      <div
+        className="min-h-screen flex flex-col"
+        style={{ background: "linear-gradient(160deg, #F5F3EE 0%, #EEF0EA 60%, #F0EDE8 100%)" }}
+      >
+        {/* Dot grid */}
+        <div
+          className="fixed inset-0 pointer-events-none"
+          style={{
+            backgroundImage: "radial-gradient(circle, #1F4D4810 1px, transparent 1px)",
+            backgroundSize: "26px 26px",
+          }}
+        />
+
+        {/* Top bar */}
+        <div className="relative z-10 flex items-center gap-4 px-6 sm:px-10 pt-8 pb-4">
+          <motion.button
+            whileHover={{ x: -2 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => handleNavigate(ViewState.CANDIDATE_DASHBOARD)}
-            className="bg-white p-2 rounded-full hover:bg-gray-100 mr-4"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-slate-700 shadow-sm hover:shadow-md hover:border-gray-300 transition-all"
           >
-            <ArrowLeft />
-          </button>
-          <div>
-            <h2 className="text-3xl font-bold text-slate-900">
-              {selectedSkill ? "Select Difficulty" : "Select a Skill to Verify"}
-            </h2>
-            <p className="text-gray-500">
-              {selectedSkill
-                ? `Choose the level for your ${selectedSkill} assessment.`
-                : "Choose a domain to start your proctored assessment."}
-            </p>
+            <ArrowLeft size={15} />
+            Back to Dashboard
+          </motion.button>
+
+          {/* Breadcrumb */}
+          <div className="hidden sm:flex items-center gap-2 text-xs text-gray-400 font-medium">
+            <span>Dashboard</span>
+            <ArrowRight size={11} />
+            <span className="text-slate-600 font-semibold">{selectedSkill}</span>
+            <ArrowRight size={11} />
+            <span>Select Difficulty</span>
           </div>
         </div>
 
-        {!selectedSkill ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              "Frontend Engineering",
-              "Backend Engineering",
-              "Cloud Architecture",
-            ].map((domain) => (
-              <div
-                key={domain}
-                className="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition"
+        {/* Main content */}
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 sm:px-10 py-10">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full max-w-4xl"
+          >
+            {/* Header */}
+            <div className="text-center mb-12">
+              {/* Skill badge */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.08, duration: 0.4 }}
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-sm font-bold mb-5"
+                style={{ borderColor: "#1F4D4828", color: "#1F4D48", background: "#1F4D4808" }}
               >
-                <h3 className="font-bold text-lg mb-4 text-teal-800">
-                  {domain}
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {(domain === "Frontend Engineering"
-                    ? ["React", "Vue", "CSS"]
-                    : domain === "Backend Engineering"
-                      ? ["Node.js", "Python", "Java"]
-                      : ["AWS", "Docker", "Kubernetes"]
-                  ).map((skill) => (
-                    <button
-                      key={skill}
-                      onClick={() => setSelectedSkill(skill)}
-                      className="px-3 py-1.5 border border-gray-200 rounded-full text-sm hover:bg-teal hover:text-white hover:border-teal transition"
-                    >
-                      {skill}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {(["Beginner", "Mid-Level", "Advanced"] as DifficultyLevel[]).map(
-              (level) => {
-                const SKILL_NOTES: Record<string, [string, string, string]> = {
-                  React: [
-                    "Components, JSX, props, and hooks.",
-                    "Context, performance, and state patterns.",
-                    "SSR, architecture, and rendering optimisation.",
-                  ],
-                  Vue: [
-                    "Templates, directives, and reactivity.",
-                    "Composition API, Pinia, and routing.",
-                    "Nuxt, SSR, and performance tuning.",
-                  ],
-                  CSS: [
-                    "Selectors, box model, and flexbox.",
-                    "Grid, animations, and custom properties.",
-                    "Performance, theming, and CSS-in-JS patterns.",
-                  ],
-                  "Node.js": [
-                    "Modules, async/await, and REST basics.",
-                    "Middleware, streams, and database access.",
-                    "Clustering, security, and microservices.",
-                  ],
-                  Python: [
-                    "Syntax, data types, and functions.",
-                    "OOP, error handling, and popular libraries.",
-                    "Concurrency, design patterns, and API design.",
-                  ],
-                  Java: [
-                    "Syntax, OOP fundamentals, and collections.",
-                    "Generics, concurrency, and Spring basics.",
-                    "JVM internals, enterprise patterns, and security.",
-                  ],
-                  AWS: [
-                    "Core services, S3, EC2, and IAM basics.",
-                    "Architecture, scaling, and cost management.",
-                    "Multi-region, advanced security, and well-architected.",
-                  ],
-                  Docker: [
-                    "Images, containers, and CLI basics.",
-                    "Compose, networking, and volume management.",
-                    "Orchestration, CI/CD integration, and hardening.",
-                  ],
-                  Kubernetes: [
-                    "Pods, services, and basic deployments.",
-                    "Ingress, RBAC, Helm charts, and namespaces.",
-                    "Autoscaling, multi-cluster, and platform engineering.",
-                  ],
-                };
-                const DEFAULT_NOTES: [string, string, string] = [
-                  "Fundamentals and core concepts.",
-                  "Best practices and real-world patterns.",
-                  "Architecture, performance, and edge cases.",
-                ];
-                const notes = selectedSkill
-                  ? (SKILL_NOTES[selectedSkill] ?? DEFAULT_NOTES)
-                  : DEFAULT_NOTES;
-                const note =
-                  level === "Beginner"
-                    ? notes[0]
-                    : level === "Mid-Level"
-                      ? notes[1]
-                      : notes[2];
-                return (
-                  <button
-                    key={level}
-                    onClick={() => startAssessmentFlow(level)}
-                    className="bg-white p-8 rounded-2xl border-2 border-transparent hover:border-teal hover:shadow-lg transition text-left group"
-                  >
-                    <div className="flex justify-between items-start mb-4">
-                      <span
-                        className={`text-xs font-bold px-2 py-1 rounded-full ${level === "Beginner" ? "bg-green-100 text-green-700" : level === "Mid-Level" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}`}
+                <span
+                  className="w-2 h-2 rounded-full"
+                  style={{ background: "#1F4D48" }}
+                />
+                {selectedSkill}
+              </motion.div>
+
+              <motion.h1
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.14, duration: 0.4 }}
+                className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-3"
+              >
+                Choose your level
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.4 }}
+                className="text-slate-500 text-base max-w-sm mx-auto"
+              >
+                Pick the difficulty that matches your experience. Your webcam will be active during the assessment.
+              </motion.p>
+            </div>
+
+            {/* Difficulty cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {levels.map((lvl, i) => (
+                <motion.button
+                  key={lvl.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.26 + i * 0.08, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => startAssessmentFlow(lvl.id)}
+                  className="group relative bg-white rounded-2xl p-7 text-left border-2 border-gray-100 hover:border-current shadow-sm hover:shadow-xl transition-all duration-200 overflow-hidden"
+                  style={{ "--hover-color": lvl.accentColor } as React.CSSProperties}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.borderColor = lvl.accentColor;
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.borderColor = "#f3f4f6";
+                  }}
+                >
+                  {/* Accent strip */}
+                  <div
+                    className="absolute top-0 left-0 right-0 h-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                    style={{ background: `linear-gradient(90deg, ${lvl.accentColor}, ${lvl.accentColor}00)` }}
+                  />
+
+                  {/* Top row */}
+                  <div className="flex items-start justify-between mb-5">
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className="w-9 h-9 rounded-xl flex items-center justify-center"
+                        style={{ background: `${lvl.accentColor}12` }}
                       >
-                        {level}
-                      </span>
-                      <ArrowRight
-                        size={20}
-                        className="opacity-0 group-hover:opacity-100 text-teal transition-opacity"
-                      />
+                        {lvl.icon}
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-gray-400 leading-none mb-0.5">
+                          {lvl.subtitle}
+                        </div>
+                        <div className="font-black text-slate-900 text-base leading-none">
+                          {lvl.label}
+                        </div>
+                      </div>
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-2">
-                      {level}
-                    </h3>
-                    <p className="text-sm text-gray-500">{note}</p>
-                  </button>
-                );
-              },
-            )}
-          </div>
-        )}
+                    <ArrowRight
+                      size={16}
+                      className="mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                      style={{ color: lvl.accentColor }}
+                    />
+                  </div>
+
+                  {/* Note */}
+                  <p className="text-sm text-slate-500 leading-relaxed mb-6 min-h-[3.5rem]">
+                    {lvl.note}
+                  </p>
+
+                  {/* Meta */}
+                  <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+                    <span className="text-xs font-semibold text-gray-400">{lvl.questions}</span>
+                    <span className="w-1 h-1 rounded-full bg-gray-300" />
+                    <span className="text-xs font-semibold text-gray-400">{lvl.time}</span>
+                    <span className="ml-auto">
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${lvl.badgeBg} ${lvl.badgeText}`}
+                      >
+                        {lvl.label}
+                      </span>
+                    </span>
+                  </div>
+                </motion.button>
+              ))}
+            </div>
+
+            {/* Footer note */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.55, duration: 0.4 }}
+              className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-xs text-gray-400 font-medium"
+            >
+              {[
+                { icon: <ShieldCheck size={13} />, text: "Proctored by webcam" },
+                { icon: <CheckCircle size={13} />, text: "AI-graded instantly" },
+                { icon: <Award size={13} />, text: "Score saved to your profile" },
+              ].map(({ icon, text }) => (
+                <div key={text} className="flex items-center gap-1.5">
+                  <span className="text-teal">{icon}</span>
+                  {text}
+                </div>
+              ))}
+            </motion.div>
+          </motion.div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderResult = () => {
     if (!assessmentResult) return null;
 
-    return (
-      <div className="min-h-screen bg-cream flex items-center justify-center p-4">
-        <div className="max-w-2xl w-full bg-white rounded-3xl shadow-xl overflow-hidden flex flex-col md:flex-row">
-          <div
-            className={`md:w-1/3 p-8 ${assessmentResult.passed ? "bg-teal" : "bg-red-500"} flex flex-col items-center justify-center text-white`}
-          >
-            {assessmentResult.passed ? (
-              <ShieldCheck size={80} className="mb-4" />
-            ) : (
-              <AlertCircle size={80} className="mb-4" />
-            )}
-            <h2 className="text-2xl font-bold text-center mb-2">
-              {assessmentResult.passed ? "Verified!" : "Not Passed"}
-            </h2>
-            <div className="text-5xl font-bold my-2">
-              {assessmentResult.score}
-              <span className="text-2xl opacity-60">/100</span>
-            </div>
-            {/* Score progress bar */}
-            <div className="w-full mt-3 mb-1">
-              <div className="w-full bg-white/20 rounded-full h-2">
-                <div
-                  className="bg-white rounded-full h-2 transition-all duration-1000"
-                  style={{ width: `${assessmentResult.score}%` }}
-                />
-              </div>
-              {/* Pass mark indicator */}
-              <div className="flex justify-between text-xs opacity-70 mt-1">
-                <span>0</span>
-                <span>Pass: 70</span>
-                <span>100</span>
-              </div>
-            </div>
-            <div className="text-sm opacity-80">
-              {selectedDifficulty} • {selectedSkill}
-            </div>
-          </div>
+    const passed = assessmentResult.passed;
+    const score = assessmentResult.score;
+    const hasCategoryScores =
+      assessmentResult.categoryScores &&
+      Object.keys(assessmentResult.categoryScores).length > 0;
 
-          <div className="p-8 flex-1 flex flex-col">
-            <div className="flex-1">
-              <div className="bg-white p-6 rounded-2xl text-left border border-gray-200 shadow-sm mb-6">
-                <div className="flex items-start gap-2 mb-4">
-                  <Brain
-                    className="text-teal-600 flex-shrink-0 mt-1"
-                    size={20}
-                  />
-                  <h3 className="font-bold text-lg text-gray-900">
+    const RING_RADIUS = 52;
+    const RING_CIRC = 2 * Math.PI * RING_RADIUS;
+    const ringOffset = RING_CIRC * (1 - score / 100);
+
+    return (
+      <div
+        className="min-h-screen overflow-y-auto"
+        style={{
+          background:
+            "linear-gradient(160deg, #F5F3EE 0%, #EEF0EA 50%, #F0EDE8 100%)",
+        }}
+      >
+        {/* Dot grid */}
+        <div
+          className="pointer-events-none fixed inset-0"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle, #1F4D4812 1px, transparent 1px)",
+            backgroundSize: "28px 28px",
+          }}
+        />
+
+        {/* Top bar */}
+        <div className="relative z-10 flex items-center justify-between px-5 py-4 max-w-4xl mx-auto">
+          <button
+            onClick={() => handleNavigate(ViewState.CANDIDATE_DASHBOARD)}
+            className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#1F4D48] transition-colors"
+          >
+            <ArrowLeft size={15} />
+            Dashboard
+          </button>
+          <div className="flex items-center gap-2">
+            <div
+              className="w-5 h-5 rounded-md flex items-center justify-center text-white text-[9px] font-black"
+              style={{ background: "#1F4D48" }}
+            >
+              L
+            </div>
+            <span className="text-[11px] text-slate-400 font-medium tracking-wide">
+              Lune · Assessment Result
+            </span>
+          </div>
+        </div>
+
+        <div className="relative z-10 max-w-4xl mx-auto px-4 pb-14">
+          {/* Hero card */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+            className="relative rounded-2xl overflow-hidden mb-5"
+            style={{
+              background: passed
+                ? "linear-gradient(135deg, #1F4D48 0%, #2a6b64 100%)"
+                : "linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)",
+            }}
+          >
+            <div
+              className="absolute inset-0 opacity-[0.07]"
+              style={{
+                backgroundImage:
+                  "radial-gradient(circle, #ffffff 1px, transparent 1px)",
+                backgroundSize: "20px 20px",
+              }}
+            />
+            <div className="relative flex flex-col md:flex-row items-center gap-8 p-7 md:p-10">
+              {/* Score ring */}
+              <div className="flex-shrink-0">
+                <div className="relative w-36 h-36">
+                  <svg
+                    className="w-full h-full -rotate-90"
+                    viewBox="0 0 120 120"
+                  >
+                    <circle
+                      cx="60"
+                      cy="60"
+                      r={RING_RADIUS}
+                      fill="none"
+                      stroke="rgba(255,255,255,0.15)"
+                      strokeWidth="7"
+                    />
+                    <motion.circle
+                      cx="60"
+                      cy="60"
+                      r={RING_RADIUS}
+                      fill="none"
+                      stroke={passed ? "#F26430" : "#fca5a5"}
+                      strokeWidth="7"
+                      strokeLinecap="round"
+                      strokeDasharray={RING_CIRC}
+                      initial={{ strokeDashoffset: RING_CIRC }}
+                      animate={{ strokeDashoffset: ringOffset }}
+                      transition={{
+                        duration: 1.4,
+                        delay: 0.3,
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <motion.span
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{
+                        delay: 0.5,
+                        duration: 0.5,
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
+                      className="text-4xl font-black text-white leading-none tabular-nums"
+                    >
+                      {score}
+                    </motion.span>
+                    <span className="text-white/60 text-sm font-semibold">
+                      / 100
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Text */}
+              <div className="flex-1 text-center md:text-left">
+                <motion.div
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2, duration: 0.45 }}
+                  className="flex items-center gap-2 justify-center md:justify-start mb-3"
+                >
+                  {passed ? (
+                    <ShieldCheck size={18} className="text-white/70" />
+                  ) : (
+                    <AlertCircle size={18} className="text-white/70" />
+                  )}
+                  <span className="font-mono text-[10px] font-bold tracking-[0.2em] uppercase text-white/60">
+                    {passed ? "Skill Verified" : "Not Passed — Keep Practicing"}
+                  </span>
+                </motion.div>
+
+                <motion.h1
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.28, duration: 0.45 }}
+                  className="text-3xl sm:text-4xl font-black text-white mb-3 leading-tight"
+                >
+                  {passed
+                    ? `${selectedSkill} Verified`
+                    : score < 50
+                      ? "Keep Practicing"
+                      : "Almost There"}
+                </motion.h1>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.35, duration: 0.4 }}
+                  className="flex items-center gap-2.5 flex-wrap justify-center md:justify-start"
+                >
+                  {[
+                    selectedSkill,
+                    selectedDifficulty,
+                    "Pass mark: 70+",
+                  ].map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border"
+                      style={{
+                        background: "rgba(255,255,255,0.12)",
+                        borderColor: "rgba(255,255,255,0.2)",
+                        color: "rgba(255,255,255,0.85)",
+                      }}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </motion.div>
+
+                {passed && assessmentResult.certificationHash && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.45, duration: 0.4 }}
+                    className="mt-4 flex items-center gap-2 justify-center md:justify-start"
+                  >
+                    <Award size={13} style={{ color: "#F26430" }} />
+                    <span className="font-mono text-[10px] text-white/55 truncate max-w-[280px]">
+                      {assessmentResult.certificationHash}
+                    </span>
+                  </motion.div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Body: two-column grid */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {/* Left col */}
+            <div className="md:col-span-2 space-y-4">
+              {/* Category scores */}
+              {hasCategoryScores && (
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.42, duration: 0.45 }}
+                  className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"
+                >
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.18em] mb-4">
+                    Category Breakdown
+                  </h3>
+                  <div className="space-y-3">
+                    {Object.entries(assessmentResult.categoryScores!).map(
+                      ([cat, catScore], idx) => (
+                        <div key={cat}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-semibold text-slate-600 truncate max-w-[145px]">
+                              {cat}
+                            </span>
+                            <span
+                              className="text-xs font-black tabular-nums"
+                              style={{
+                                color: catScore >= 70 ? "#1F4D48" : "#F26430",
+                              }}
+                            >
+                              {catScore}
+                            </span>
+                          </div>
+                          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <motion.div
+                              className="h-full rounded-full"
+                              style={{
+                                background:
+                                  catScore >= 70 ? "#1F4D48" : "#F26430",
+                              }}
+                              initial={{ width: 0 }}
+                              animate={{ width: `${catScore}%` }}
+                              transition={{
+                                delay: 0.52 + idx * 0.06,
+                                duration: 0.7,
+                                ease: [0.22, 1, 0.36, 1],
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Integrity */}
+              {assessmentResult.integrityScore !== undefined && (
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.48, duration: 0.45 }}
+                  className={`rounded-2xl border p-5 ${
+                    assessmentResult.cheatingDetected
+                      ? "bg-red-50 border-red-100"
+                      : "bg-white border-slate-100 shadow-sm"
+                  }`}
+                >
+                  <h3
+                    className="text-[10px] font-bold uppercase tracking-[0.18em] mb-3"
+                    style={{
+                      color: assessmentResult.cheatingDetected
+                        ? "#dc2626"
+                        : "#94a3b8",
+                    }}
+                  >
+                    Integrity Score
+                  </h3>
+                  <div className="flex items-end gap-1.5 mb-2">
+                    <span
+                      className="text-3xl font-black"
+                      style={{
+                        color: assessmentResult.cheatingDetected
+                          ? "#dc2626"
+                          : "#1F4D48",
+                      }}
+                    >
+                      {assessmentResult.integrityScore}
+                    </span>
+                    <span className="text-slate-400 text-sm mb-1">/ 100</span>
+                  </div>
+                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-2">
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{
+                        background: assessmentResult.cheatingDetected
+                          ? "#dc2626"
+                          : "#1F4D48",
+                      }}
+                      initial={{ width: 0 }}
+                      animate={{
+                        width: `${assessmentResult.integrityScore}%`,
+                      }}
+                      transition={{
+                        delay: 0.6,
+                        duration: 0.7,
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
+                    />
+                  </div>
+                  {assessmentResult.cheatingDetected && (
+                    <p className="text-xs text-red-600 font-medium leading-snug">
+                      <strong>Flag raised:</strong>{" "}
+                      {assessmentResult.cheatingReason}
+                    </p>
+                  )}
+                </motion.div>
+              )}
+
+              {/* Time spent */}
+              {assessmentResult.timeSpentSeconds !== undefined && (
+                <motion.div
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.53, duration: 0.4 }}
+                  className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-center gap-4"
+                >
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: "#1F4D4810" }}
+                  >
+                    <RefreshCw size={17} style={{ color: "#1F4D48" }} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">
+                      Time Spent
+                    </p>
+                    <p className="text-lg font-black text-slate-800 tabular-nums">
+                      {Math.floor(assessmentResult.timeSpentSeconds / 60)}m{" "}
+                      {assessmentResult.timeSpentSeconds % 60}s
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+
+            {/* Right col */}
+            <div className="md:col-span-3 space-y-4">
+              {/* AI Feedback */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.38, duration: 0.45 }}
+                className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6"
+              >
+                <div className="flex items-center gap-2.5 mb-4">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: "#1F4D4810" }}
+                  >
+                    <Brain size={14} style={{ color: "#1F4D48" }} />
+                  </div>
+                  <h3 className="font-bold text-sm text-slate-700">
                     AI Performance Analysis
                   </h3>
                 </div>
-                <div className="text-sm text-gray-700 prose prose-sm max-w-none">
+                <div className="text-sm text-slate-600 leading-relaxed">
                   {formatAIFeedback(assessmentResult.feedback)}
                 </div>
-              </div>
+              </motion.div>
 
-              {assessmentResult.cheatingDetected && (
-                <div className="bg-red-50 border border-red-100 p-4 rounded-xl text-red-600 text-sm mb-6 flex items-start gap-2">
-                  <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
-                  <div>
-                    <strong>Integrity Flag Raised:</strong>{" "}
-                    {assessmentResult.cheatingReason}
-                  </div>
-                </div>
-              )}
+              {/* Actions */}
+              <motion.div
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.48, duration: 0.4 }}
+                className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"
+              >
+                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.18em] mb-4">
+                  {passed ? "Share Your Achievement" : "Next Steps"}
+                </h3>
 
-              {assessmentResult.certificationHash && (
-                <div className="mb-6">
-                  <div className="text-xs uppercase font-bold text-gray-400 mb-1 flex items-center gap-1">
-                    <Award size={12} /> Verified Certificate
+                {passed ? (
+                  <div className="space-y-2.5">
+                    {selectedCertificate && (
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleViewCertificate}
+                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition shadow-sm"
+                        style={{
+                          background:
+                            "linear-gradient(135deg, #7c3aed, #3b82f6)",
+                        }}
+                      >
+                        <Sparkles size={15} />
+                        View Certificate Badge
+                      </motion.button>
+                    )}
+                    <button
+                      onClick={addToLinkedInProfile}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-white transition"
+                      style={{ background: "#0A66C2" }}
+                      onMouseEnter={(e) =>
+                        ((e.currentTarget as HTMLButtonElement).style.background =
+                          "#004182")
+                      }
+                      onMouseLeave={(e) =>
+                        ((e.currentTarget as HTMLButtonElement).style.background =
+                          "#0A66C2")
+                      }
+                    >
+                      <Linkedin size={15} />
+                      Add to LinkedIn Profile
+                    </button>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <button
+                        onClick={handleCopyLink}
+                        className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
+                        style={{ borderColor: "#1F4D4825" }}
+                      >
+                        <Copy size={13} /> Copy Link
+                      </button>
+                      <button
+                        onClick={handleShare}
+                        className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
+                        style={{ borderColor: "#1F4D4825" }}
+                      >
+                        <Share2 size={13} /> Share on X
+                      </button>
+                    </div>
                   </div>
-                  <div className="font-mono text-xs bg-gray-100 p-3 rounded border border-gray-200 text-teal-700 break-all">
-                    {assessmentResult.certificationHash}
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-slate-500 leading-relaxed">
+                      You need{" "}
+                      <strong className="text-slate-700">70+</strong> to earn a
+                      verified badge. Review the feedback above and retry when
+                      ready.
+                    </p>
+                    <button
+                      onClick={() =>
+                        handleNavigate(ViewState.CANDIDATE_DASHBOARD)
+                      }
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, #1F4D48, #2a6b64)",
+                      }}
+                    >
+                      Practice More Skills
+                    </button>
                   </div>
-                </div>
-              )}
-            </div>
-
-            {assessmentResult.passed && (
-              <div className="space-y-3 mt-4">
-                {/* View Certificate Badge Button */}
-                {selectedCertificate && (
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleViewCertificate}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold hover:opacity-90 transition"
-                  >
-                    <Sparkles size={18} />
-                    View NFT Badge
-                  </motion.button>
                 )}
+              </motion.div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={handleCopyLink}
-                    className="flex items-center justify-center gap-2 py-2.5 rounded-lg border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50"
-                  >
-                    <Copy size={16} /> Copy Link
-                  </button>
-                  <button
-                    onClick={handleShare}
-                    className="flex items-center justify-center gap-2 py-2.5 rounded-lg border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50"
-                  >
-                    <Share2 size={16} /> Share
-                  </button>
-                  <button
-                    onClick={addToLinkedInProfile}
-                    className="col-span-2 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[#0A66C2] text-white text-sm font-bold hover:bg-[#004182] transition shadow-sm"
-                  >
-                    <Linkedin size={16} /> Add to LinkedIn Profile
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <button
-              onClick={() => handleNavigate(ViewState.CANDIDATE_DASHBOARD)}
-              className="mt-4 text-center text-gray-400 text-sm hover:text-gray-600"
-            >
-              Return to Dashboard
-            </button>
+              {/* Return link */}
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6, duration: 0.4 }}
+                onClick={() => handleNavigate(ViewState.CANDIDATE_DASHBOARD)}
+                className="w-full py-3 rounded-xl text-sm font-semibold text-slate-400 hover:text-[#1F4D48] hover:bg-white/60 transition"
+              >
+                Return to Dashboard
+              </motion.button>
+            </div>
           </div>
         </div>
       </div>
