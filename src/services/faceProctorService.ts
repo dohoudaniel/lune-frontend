@@ -11,19 +11,14 @@ interface FaceProctor {
     stop: () => void;
 }
 
-// Lazy-loaded FaceMesh instance (shared across start/stop calls)
-let faceMeshInstance: any = null;
-let faceDetected = true;
-let absenceSince: number | null = null;
-let tickInterval: ReturnType<typeof setInterval> | null = null;
-let canvas: HTMLCanvasElement | null = null;
-let ctx: CanvasRenderingContext2D | null = null;
+const SAMPLE_INTERVAL_MS = 2000;
+const ABSENCE_ALERT_THRESHOLD_S = 5;
 
-const SAMPLE_INTERVAL_MS = 2000; // check every 2 s
-const ABSENCE_ALERT_THRESHOLD_S = 5; // alert after 5 s of no face
+// FaceMesh is expensive to init — share the single instance across all proctors.
+let sharedFaceMeshInstance: any = null;
 
 async function loadFaceMesh(): Promise<any> {
-    if (faceMeshInstance) return faceMeshInstance;
+    if (sharedFaceMeshInstance) return sharedFaceMeshInstance;
 
     const { FaceMesh } = await import("@mediapipe/face_mesh");
     const instance = new FaceMesh({
@@ -36,12 +31,8 @@ async function loadFaceMesh(): Promise<any> {
         minDetectionConfidence: 0.5,
         minTrackingConfidence: 0.5,
     });
-    instance.onResults((results: any) => {
-        faceDetected =
-            results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0;
-    });
     await instance.initialize();
-    faceMeshInstance = instance;
+    sharedFaceMeshInstance = instance;
     return instance;
 }
 
@@ -49,13 +40,28 @@ export function createFaceProctor(
     videoEl: HTMLVideoElement,
     onAbsence: AbsenceCallback,
 ): FaceProctor {
+    // Per-instance state — no shared globals
+    let faceDetected = true;
+    let absenceSince: number | null = null;
+    let tickInterval: ReturnType<typeof setInterval> | null = null;
+    let stopped = false;
+    let canvas: HTMLCanvasElement | null = null;
+    let ctx: CanvasRenderingContext2D | null = null;
+
     async function tick() {
-        if (!videoEl || videoEl.readyState < 2) return;
+        if (stopped || !videoEl || videoEl.readyState < 2) return;
 
         try {
             const fm = await loadFaceMesh();
+            if (stopped) return; // guard against in-flight ticks after stop()
 
-            // Draw current frame onto an offscreen canvas
+            // Wire up per-instance result handler each tick (FaceMesh is shared)
+            fm.onResults((results: any) => {
+                faceDetected =
+                    results.multiFaceLandmarks &&
+                    results.multiFaceLandmarks.length > 0;
+            });
+
             if (!canvas) {
                 canvas = document.createElement("canvas");
                 ctx = canvas.getContext("2d");
@@ -65,6 +71,7 @@ export function createFaceProctor(
             ctx?.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
 
             await fm.send({ image: canvas });
+            if (stopped) return;
 
             if (!faceDetected) {
                 if (absenceSince === null) {
@@ -85,17 +92,21 @@ export function createFaceProctor(
 
     return {
         start() {
+            stopped = false;
             faceDetected = true;
             absenceSince = null;
             if (tickInterval) clearInterval(tickInterval);
             tickInterval = setInterval(tick, SAMPLE_INTERVAL_MS);
         },
         stop() {
+            stopped = true;
             if (tickInterval) {
                 clearInterval(tickInterval);
                 tickInterval = null;
             }
             absenceSince = null;
+            canvas = null;
+            ctx = null;
         },
     };
 }

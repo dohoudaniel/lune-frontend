@@ -276,6 +276,7 @@ export const evaluateCodeSubmission = async (
   language: string,
   taskDescription: string,
   theoryAnswers: string,
+  skillName?: string,
 ): Promise<{ score: number; feedback: string; eval_token?: string }> => {
   try {
     return await callBackend("evaluate-submission", {
@@ -283,6 +284,7 @@ export const evaluateCodeSubmission = async (
       language,
       taskDescription,
       theoryAnswers,
+      skillName: skillName || language,
     });
   } catch (e) {
     return { score: 0, feedback: "Evaluation failed." };
@@ -340,19 +342,23 @@ export const getCareerRecommendations = async (
     if (cached) {
       try {
         const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < 5 * 60 * 1000) {
+        if (Date.now() - timestamp < 5 * 60 * 1000 && Array.isArray(data?.jobs) && Array.isArray(data?.certifications)) {
           return data;
         }
       } catch (e) {
         // ignore cache parse error
       }
     }
-    const result = await callBackend("career-recommendations", { skills });
+    const raw = await callBackend("career-recommendations", { skills });
+    const normalized = {
+      certifications: Array.isArray(raw?.certifications) ? raw.certifications : [],
+      jobs: Array.isArray(raw?.jobs) ? raw.jobs : [],
+    };
     sessionStorage.setItem(
       cacheKey,
-      JSON.stringify({ data: result, timestamp: Date.now() }),
+      JSON.stringify({ data: normalized, timestamp: Date.now() }),
     );
-    return result;
+    return normalized;
   } catch (e) {
     return { certifications: [], jobs: [] };
   }

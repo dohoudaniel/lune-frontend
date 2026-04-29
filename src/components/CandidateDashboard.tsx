@@ -894,6 +894,9 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
                     </div>
                   </div>
 
+                  {/* Scrollable recommendations content — fixed height so it never pushes the skills section down */}
+                  <div className="overflow-y-auto h-[320px] custom-scrollbar pr-1">
+
                   {/* Recommendations Error State */}
                   {recommendationsError && !loadingRecommendations && (
                     <div className="bg-red-50 border border-red-200 rounded-2xl p-6 mb-8 flex items-start gap-4">
@@ -1172,6 +1175,8 @@ export const CandidateDashboard: React.FC<CandidateDashboardProps> = ({
                         </p>
                       </motion.div>
                     )}
+
+                  </div>{/* end scrollable recommendations */}
             </div>
           </motion.div>
         </motion.div>

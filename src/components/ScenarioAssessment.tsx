@@ -370,12 +370,18 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
 
   // Webcam Setup for Facial Monitoring
   useEffect(() => {
+    let cancelled = false;
+
     const startWebcam = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: true,
         });
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
         streamRef.current = stream;
         setWebcamActive(true);
         if (videoRef.current) {
@@ -385,11 +391,13 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
           };
         }
       } catch (err) {
-        if (import.meta.env.DEV) console.error("Webcam access denied", err);
-        setWebcamError(
-          "Camera access is required for proctoring. Please enable camera permissions.",
-        );
-        setWebcamActive(false);
+        if (!cancelled) {
+          if (import.meta.env.DEV) console.error("Webcam access denied", err);
+          setWebcamError(
+            "Camera access is required for proctoring. Please enable camera permissions.",
+          );
+          setWebcamActive(false);
+        }
       }
     };
 
@@ -398,7 +406,7 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
     }
 
     return () => {
-      // Stop all tracks and reset state — runs when step changes or component unmounts
+      cancelled = true;
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
       setWebcamActive(false);
@@ -761,6 +769,12 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
       setTimeout(() => setActiveAlert(null), 5000);
       return;
     }
+
+    // Stop all media immediately — user doesn't need proctoring during backend evaluation
+    stopRecording();
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setWebcamActive(false);
 
     setStep("submitting");
     setTimerActive(false); // Stop the timer
@@ -1148,38 +1162,60 @@ export const ScenarioAssessment: React.FC<ScenarioAssessmentProps> = ({
                     <div className="px-3 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
                       Scenarios
                     </div>
-                    {content.situationalQuestions.map((q, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setCurrentQuestionIndex(i)}
-                        className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center justify-between group transition ${
-                          currentQuestionIndex === i
-                            ? "bg-orange-50 text-orange font-bold border border-orange-100"
-                            : "text-gray-600 hover:bg-gray-50"
-                        }`}
-                      >
-                        <span className="flex items-center gap-2">
-                          <span
-                            className={`w-6 h-6 rounded-md flex items-center justify-center text-xs ${
-                              answers[q.id]
-                                ? "bg-green-100 text-green-700"
-                                : currentQuestionIndex === i
-                                  ? "bg-orange-200 text-orange-900"
-                                  : "bg-gray-100 text-gray-500"
-                            }`}
-                          >
-                            {answers[q.id] ? (
-                              <CheckCircle className="w-3 h-3" />
-                            ) : (
-                              i + 1
-                            )}
+                    {content.situationalQuestions.map((q, i) => {
+                      const typeLabel =
+                        q.taskType === "multiple_choice"
+                          ? "Multiple Choice"
+                          : q.taskType === "oral_response"
+                            ? "Audio or Video Response"
+                            : "Written Task";
+                      const typeDot =
+                        q.taskType === "multiple_choice"
+                          ? "bg-blue-400"
+                          : q.taskType === "oral_response"
+                            ? "bg-orange-400"
+                            : "bg-green-400";
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => setCurrentQuestionIndex(i)}
+                          className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center justify-between group transition ${
+                            currentQuestionIndex === i
+                              ? "bg-orange-50 text-orange font-bold border border-orange-100"
+                              : "text-gray-600 hover:bg-gray-50"
+                          }`}
+                        >
+                          <span className="flex items-center gap-2 min-w-0">
+                            <span
+                              className={`w-6 h-6 rounded-md flex-shrink-0 flex items-center justify-center text-xs ${
+                                answers[q.id]
+                                  ? "bg-green-100 text-green-700"
+                                  : currentQuestionIndex === i
+                                    ? "bg-orange-200 text-orange-900"
+                                    : "bg-gray-100 text-gray-500"
+                              }`}
+                            >
+                              {answers[q.id] ? (
+                                <CheckCircle className="w-3 h-3" />
+                              ) : (
+                                i + 1
+                              )}
+                            </span>
+                            <span className="flex flex-col min-w-0">
+                              <span className="flex items-center gap-1.5">
+                                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${typeDot}`} />
+                                <span className="text-xs font-semibold truncate">{typeLabel}</span>
+                              </span>
+                              <span className="text-[10px] text-gray-400 truncate leading-tight">
+                                {q.scenario
+                                  ? q.scenario.split(" ").slice(0, 5).join(" ") + "…"
+                                  : q.question.split(" ").slice(0, 5).join(" ") + "…"}
+                              </span>
+                            </span>
                           </span>
-                          <span className="truncate w-32">
-                            {q.options ? "Multiple Choice" : "Situational"}
-                          </span>
-                        </span>
-                      </button>
-                    ))}
+                        </button>
+                      );
+                    })}
                     {content.oralResponseTask && (
                       <>
                         <div className="px-3 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider mt-4">
